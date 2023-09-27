@@ -1,0 +1,4 @@
+name: mu-calc-de-bruijn
+depend: standard-library freshlists
+include: src/
+flags: --safe --with-K
