@@ -12,6 +12,7 @@ module MuCalc.Named.Contexts
   (Var-countable : IsCountable Var)
   where
 
+open import Level
 open import Data.Sum
 open import Data.Product
 open import Data.Empty
@@ -29,14 +30,14 @@ open IsPropStrictTotalOrder <V-STO hiding (trans)
 
 private
   insert-comm : (x y : Var) (Γ : SList-Var)
-              -> insert x (insert y Γ) ≡ insert y (insert x Γ)
+              → insert x (insert y Γ) ≡ insert y (insert x Γ)
   insert-comm x y Γ = ≈L→≡ (insert-comm' x y Γ)
 
   -- insert-idempotent : (x : Var) (Γ : SList-Var)
-  --                   -> insert x (insert x Γ) ≡ insert x Γ
+  --                   → insert x (insert x Γ) ≡ insert x Γ
   -- insert-idempotent x Γ = ≈L→≡ (insert-idempotent' refl Γ)
 
-  -- ∈-irrelevant : ∀ {a} {xs : SList-Var} -> (p q : a ∈ xs) -> p ≡ q
+  -- ∈-irrelevant : ∀ {a} {xs : SList-Var} → (p q : a ∈ xs) → p ≡ q
   -- ∈-irrelevant = ∈-irrelevant' λ { refl refl → refl }
 
 ---------------
@@ -91,6 +92,17 @@ freevars' acc (μMLη op x ϕ) = freevars' (insert x acc) ϕ -- x is no longer f
 freevars : ∀ {Γ} → μML Γ → SList-Var
 freevars = freevars' []
 
+---------------
+-- Weakening --
+---------------
+
+weaken : ∀ {Γ Δ} (ϕ : μML Γ) → Γ ⊆ Δ → μML Δ
+weaken (var x x∈Γ) p = var x (p x∈Γ)
+weaken (μML₀ op) p = μML₀ op
+weaken (μML₁ op ϕ) p = μML₁ op (weaken ϕ p)
+weaken (μML₂ op ϕ ψ) p = μML₂ op (weaken ϕ p) (weaken ψ p)
+weaken (μMLη op x ϕ) p = μMLη op x (weaken ϕ (insert-preserves-⊆ refl p))
+
 -------------------
 -- Strengthening --
 -------------------
@@ -124,7 +136,7 @@ freevars-lem {Γ} {a} {x} (μMLη op y ϕ) fvs p a≢x = subst (λ u → a ∈ f
   pv Γ fvs op x a a∈xΓ p with a ∈? insert x fvs | a ∈? fvs
   ... | no a∉xfvs  | no a∉fvs = ∈insert-introʳ p
   ... | yes a∈xfvs | no a∉fvs with ∈∪-elim {a} {cons x [] []} {fvs} a∈xfvs
-  pv Γ fvs op x .x a∈xΓ (here refl) | yes a∈xfvs | no a∉fvs | inj₁ (here refl) = here refl
+  pv Γ fvs op x .x a∈xΓ (here refl) | yes a∈xfvs | no a∉fvs | inj₁ (here refl) = ∈insert-introˡ x []
   ... | inj₂ a∈fvs = ⊥-elim $ a∉fvs a∈fvs
 
   p0 : ∀ Γ fvs op x op0
@@ -169,102 +181,134 @@ normalize-context ϕ = strengthen ϕ ⊆-refl
 -----------------------------------------
 
 
--- Two formulas are equal modulo contexts if they have the same free variables,
--- and they are equal as formulas after strengthening the contexts to
--- only include those free variables.
-_≈_ : ∀ {Γ Δ} → μML Γ → μML Δ → Set
-_≈_ {Γ} {Δ} ϕ ψ = Σ[ eq ∈ (freevars ϕ ≡ freevars ψ) ] subst μML eq (normalize-context ϕ) ≡ normalize-context ψ
 
 
 -- The above isn't always easy to manipulate, so we also characterise this notion of equality
--- with the following inductive relation:
-data _≈'_ : ∀ {Γ Δ} -> μML Γ -> μML Δ -> Set where
-  var : ∀ {Γ Δ x y} { p : x ∈ Γ } -> { q : y ∈ Δ } -> x ≡ y -> _≈'_ {Γ} {Δ} (var x p) (var y q)
-  μML₀ : ∀ {Γ Δ a b} -> a ≡ b -> _≈'_ {Γ} {Δ} (μML₀ a) (μML₀ b)
-  μML₁ : ∀ {Γ Δ a b} {ψ : μML Γ} {ψ' : μML Δ} -> a ≡ b -> ψ ≈' ψ' -> (μML₁ a ψ) ≈' (μML₁ b ψ')
-  μML₂ : ∀ {Γ Δ a b} {ψ ϕ : μML Γ} {ψ' ϕ' : μML Δ } -> a ≡ b -> ψ ≈' ψ' -> ϕ ≈' ϕ' -> (μML₂ a ψ ϕ) ≈' (μML₂ b ψ' ϕ')
-  μMLη : ∀ {Γ Δ a b x y} {ψ : μML (insert x Γ)} {ψ' : μML (insert y Δ)} -> a ≡ b -> x ≡ y -> ψ ≈' ψ' -> _≈'_ {Γ} {Δ} (μMLη a x ψ) (μMLη b y ψ')
+-- with the following inductive observational equality relation:
+data _≈_ : ∀ {Γ Δ} → μML Γ → μML Δ → Set where
+  var : ∀ {Γ Δ x y} { p : x ∈ Γ } → { q : y ∈ Δ } → x ≡ y → _≈_ {Γ} {Δ} (var x p) (var y q)
+  μML₀ : ∀ {Γ Δ a b} → a ≡ b → _≈_ {Γ} {Δ} (μML₀ a) (μML₀ b)
+  μML₁ : ∀ {Γ Δ a b} {ψ : μML Γ} {ψ' : μML Δ} → a ≡ b → ψ ≈ ψ' → (μML₁ a ψ) ≈ (μML₁ b ψ')
+  μML₂ : ∀ {Γ Δ a b} {ψ ϕ : μML Γ} {ψ' ϕ' : μML Δ } → a ≡ b → ψ ≈ ψ' → ϕ ≈ ϕ' → (μML₂ a ψ ϕ) ≈ (μML₂ b ψ' ϕ')
+  μMLη : ∀ {Γ Δ a b x y} {ψ : μML (insert x Γ)} {ψ' : μML (insert y Δ)} → a ≡ b → x ≡ y → ψ ≈ ψ' → _≈_ {Γ} {Δ} (μMLη a x ψ) (μMLη b y ψ')
+
+-- This can also be characterised as follows:
+-- Two formulas are equal modulo contexts if they have the same free variables,
+-- and they are equal as formulas after strengthening the contexts to
+-- only include those free variables.
+-- This is very unpleasant to work with in practice, however.
+-- _≈_ : ∀ {Γ Δ} → μML Γ → μML Δ → Set
+-- _≈_ {Γ} {Δ} ϕ ψ = Σ[ eq ∈ (freevars ϕ ≡ freevars ψ) ] subst μML eq (normalize-context ϕ) ≡ normalize-context ψ
 
 -- Properties of ≈' - it is an equivalence relation, and isomorphic with ≈
 
-≈'-refl : ∀ {Γ} {ψ : μML Γ} -> ψ ≈' ψ
-≈'-refl {Γ} {var x p} = var refl
-≈'-refl {Γ} {μML₀ op} = μML₀ refl
-≈'-refl {Γ} {μML₁ op ψ} = μML₁ refl ≈'-refl
-≈'-refl {Γ} {μML₂ op ψ ϕ} = μML₂ refl ≈'-refl ≈'-refl
-≈'-refl {Γ} {μMLη op y ψ} = μMLη refl refl ≈'-refl
+≈-refl : ∀ {Γ} {ψ : μML Γ} → ψ ≈ ψ
+≈-refl {Γ} {var x p} = var refl
+≈-refl {Γ} {μML₀ op} = μML₀ refl
+≈-refl {Γ} {μML₁ op ψ} = μML₁ refl ≈-refl
+≈-refl {Γ} {μML₂ op ψ ϕ} = μML₂ refl ≈-refl ≈-refl
+≈-refl {Γ} {μMLη op y ψ} = μMLη refl refl ≈-refl
 
-≈'-trans : ∀ {Γ Δ Θ} {ψ : μML Γ} {ϕ : μML Δ} {ξ : μML Θ} -> ψ ≈' ϕ -> ϕ ≈' ξ -> ψ ≈' ξ
-≈'-trans (var refl) (var refl) = var refl
-≈'-trans (μML₀ refl) (μML₀ refl) = μML₀ refl
-≈'-trans (μML₁ refl p) (μML₁ refl q) = μML₁ refl (≈'-trans p q)
-≈'-trans (μML₂ refl p p') (μML₂ refl q q') = μML₂ refl (≈'-trans p q) (≈'-trans p' q')
-≈'-trans (μMLη refl refl p) (μMLη refl refl q) = μMLη refl refl (≈'-trans p q)
+≈-trans : ∀ {Γ Δ Θ} {ψ : μML Γ} {ϕ : μML Δ} {ξ : μML Θ} → ψ ≈ ϕ → ϕ ≈ ξ → ψ ≈ ξ
+≈-trans (var refl) (var refl) = var refl
+≈-trans (μML₀ refl) (μML₀ refl) = μML₀ refl
+≈-trans (μML₁ refl p) (μML₁ refl q) = μML₁ refl (≈-trans p q)
+≈-trans (μML₂ refl p p') (μML₂ refl q q') = μML₂ refl (≈-trans p q) (≈-trans p' q')
+≈-trans (μMLη refl refl p) (μMLη refl refl q) = μMLη refl refl (≈-trans p q)
 
-≈'-sym : ∀ {Γ Δ} {ψ : μML Γ} {ϕ : μML Δ} -> ψ ≈' ϕ -> ϕ ≈' ψ
-≈'-sym (var refl) = var refl
-≈'-sym (μML₀ refl) = μML₀ refl
-≈'-sym (μML₁ refl p) = μML₁ refl (≈'-sym p)
-≈'-sym (μML₂ refl p q) = μML₂ refl (≈'-sym p) (≈'-sym q)
-≈'-sym (μMLη refl refl p) = μMLη refl refl (≈'-sym p)
+≈-sym : ∀ {Γ Δ} {ψ : μML Γ} {ϕ : μML Δ} → ψ ≈ ϕ → ϕ ≈ ψ
+≈-sym (var refl) = var refl
+≈-sym (μML₀ refl) = μML₀ refl
+≈-sym (μML₁ refl p) = μML₁ refl (≈-sym p)
+≈-sym (μML₂ refl p q) = μML₂ refl (≈-sym p) (≈-sym q)
+≈-sym (μMLη refl refl p) = μMLη refl refl (≈-sym p)
 
-≈'-reflexive : ∀ {Γ} {ϕ ψ : μML Γ} → ϕ ≡ ψ → ϕ ≈' ψ
-≈'-reflexive refl = ≈'-refl
+≈-reflexive : ∀ {Γ} {ϕ ψ : μML Γ} → ϕ ≡ ψ → ϕ ≈ ψ
+≈-reflexive refl = ≈-refl
 
-≈'-refl-subst : ∀ {Γ Δ} (eq : Γ ≡ Δ) (ϕ : μML Γ) → ϕ ≈' subst μML eq ϕ
-≈'-refl-subst refl p = ≈'-refl
+≈-refl-subst : ∀ {Γ Δ} (eq : Γ ≡ Δ) (ϕ : μML Γ) → ϕ ≈ subst μML eq ϕ
+≈-refl-subst refl p = ≈-refl
 
-strengthen-preserves-≈' : ∀ {Γ Δ} (ϕ : μML Γ) → (p : freevars ϕ ⊆ Δ) → ϕ ≈' strengthen ϕ p
-strengthen-preserves-≈' (var x x∈Γ) p = var refl
-strengthen-preserves-≈' (μML₀ op) p = μML₀ refl
-strengthen-preserves-≈' (μML₁ op ϕ) p = μML₁ refl (strengthen-preserves-≈' ϕ p)
-strengthen-preserves-≈' (μML₂ op ϕ ψ) p = μML₂ refl (strengthen-preserves-≈' ϕ (λ a∈fϕ → p (∈∪-introˡ a∈fϕ (freevars ψ)))) (strengthen-preserves-≈' ψ (λ a∈fψ → p (∈∪-introʳ (freevars ϕ) a∈fψ)))
-strengthen-preserves-≈' {Γ} {Δ} (μMLη op x ϕ) p = μMLη refl refl (strengthen-preserves-≈' ϕ (⊆-trans (⊆-fv-μ Γ op x ϕ) (insert-preserves-⊆ refl p)))
+strengthen-preserves-≈ : ∀ {Γ Δ} (ϕ : μML Γ) → (p : freevars ϕ ⊆ Δ) → ϕ ≈ strengthen ϕ p
+strengthen-preserves-≈ (var x x∈Γ) p = var refl
+strengthen-preserves-≈ (μML₀ op) p = μML₀ refl
+strengthen-preserves-≈ (μML₁ op ϕ) p = μML₁ refl (strengthen-preserves-≈ ϕ p)
+strengthen-preserves-≈ (μML₂ op ϕ ψ) p = μML₂ refl (strengthen-preserves-≈ ϕ (λ a∈fϕ → p (∈∪-introˡ a∈fϕ (freevars ψ)))) (strengthen-preserves-≈ ψ (λ a∈fψ → p (∈∪-introʳ (freevars ϕ) a∈fψ)))
+strengthen-preserves-≈ {Γ} {Δ} (μMLη op x ϕ) p = μMLη refl refl (strengthen-preserves-≈ ϕ (⊆-trans (⊆-fv-μ Γ op x ϕ) (insert-preserves-⊆ refl p)))
 
-normalize-preserves-≈' : ∀ {Γ} (ϕ : μML Γ) → ϕ ≈' normalize-context ϕ
-normalize-preserves-≈' ϕ = strengthen-preserves-≈' ϕ ⊆-refl
+normalize-preserves-≈ : ∀ {Γ} (ϕ : μML Γ) → ϕ ≈ normalize-context ϕ
+normalize-preserves-≈ ϕ = strengthen-preserves-≈ ϕ ⊆-refl
 
-lem : ∀ {Γ Γ'} Δ Δ' (p : Δ ≡ Δ') (ϕ : μML Γ) (ψ : μML Γ')
-    → (f : ∀ {Θ} Λ → μML Θ → μML Λ)
-    → subst μML p (f Δ ϕ) ≡ f Δ' ψ
-    → f Δ ϕ ≈' f Δ' ψ
-lem Δ .Δ refl ϕ ψ f p = ≈'-reflexive p
+------------------------------------------
+-- Wrapping up contexts in a sigma type --
+------------------------------------------
 
-≈→≈'-gen : ∀ {Γ Δ} (ϕ : μML Γ) (ψ : μML Δ)
-         → (g : ∀ {Λ} → μML Λ → SList-Var)
-         → (f : ∀ {Λ} → (ξ : μML Λ) → μML (g ξ))
-         → (f-preserves-≈' : ∀ {Λ} → (ξ : μML Λ) → ξ ≈' f ξ)
-         → (p : g ϕ ≡ g ψ)
-         → subst μML p (f ϕ) ≡ f ψ
-         → f ϕ ≈' f ψ
-≈→≈'-gen ϕ ψ g f f-preserves-≈' p q = ≈'-trans (≈'-refl-subst p (f ϕ)) (≈'-reflexive q)
+-- It's sometimes better to work with a sigma type
+-- Σ[ i ∈ I ] (X i), rather than with just the X i.
+-- Here's how.
 
-≈→≈' : ∀ {Γ Δ} {ϕ : μML Γ} {ψ : μML Δ} → ϕ ≈ ψ → ϕ ≈' ψ
-≈→≈' {Γ} {Δ} {ϕ} {ψ} (p , q) = ≈'-trans (≈'-trans (normalize-preserves-≈' ϕ) (≈→≈'-gen ϕ ψ freevars normalize-context normalize-preserves-≈' p q)) (≈'-sym (normalize-preserves-≈' ψ))
+wrap : ∀ {a b} {I : Set a} → (I → Set b) → Set (a ⊔ b)
+wrap {I = I} X = Σ[ i ∈ I ] X i
 
-μML₁-substlem : ∀ {Γ Δ} (p : Γ ≡ Δ) op (ϕ : μML Γ) → subst μML p (μML₁ op ϕ) ≡ μML₁ op (subst μML p ϕ)
-μML₁-substlem refl op ϕ = refl
+-- In particular, this is good for binary relations over formulas with different indices.
+wrap₂ : ∀ {a b} {I : Set a} {X : I → Set b}
+  → (∀ {i j : I} → X i → X j → Set (a ⊔ b))
+  → (wrap X → wrap X → Set (a ⊔ b))
+wrap₂ f x y = f (proj₂ x) (proj₂ y)
+
+_≈'_ : wrap μML → wrap μML → Set
+_≈'_ ϕ ψ = proj₂ ϕ ≈ proj₂ ψ
+
+-- Wrapped observational equality is propositional.
+-- NB: We are using K here, so the identity type is also propositional.
+≈-propositional : ∀ {Γ} {Δ} {ϕ : μML Γ} {ψ : μML Δ} → (p q : (Γ , ϕ) ≈' (Δ , ψ)) → p ≡ q
+≈-propositional (var refl) (var refl) = refl
+≈-propositional (μML₀ refl) (μML₀ refl) = refl
+≈-propositional (μML₁ refl p) (μML₁ refl q) = cong (μML₁ refl) (≈-propositional p q)
+≈-propositional (μML₂ refl p p₁) (μML₂ refl q q₁) = cong₂ (μML₂ refl) (≈-propositional p q) (≈-propositional p₁ q₁)
+≈-propositional (μMLη refl refl p) (μMLη refl refl q) = cong (μMLη refl refl) (≈-propositional p q)
+
+-- lem : ∀ {Γ Γ'} Δ Δ' (p : Δ ≡ Δ') (ϕ : μML Γ) (ψ : μML Γ')
+--     → (f : ∀ {Θ} Λ → μML Θ → μML Λ)
+--     → subst μML p (f Δ ϕ) ≡ f Δ' ψ
+--     → f Δ ϕ ≈' f Δ' ψ
+-- lem Δ .Δ refl ϕ ψ f p = ≈'-reflexive p
+
+-- ≈→≈'-gen : ∀ {Γ Δ} (ϕ : μML Γ) (ψ : μML Δ)
+--          → (g : ∀ {Λ} → μML Λ → SList-Var)
+--          → (f : ∀ {Λ} → (ξ : μML Λ) → μML (g ξ))
+--          → (f-preserves-≈' : ∀ {Λ} → (ξ : μML Λ) → ξ ≈' f ξ)
+--          → (p : g ϕ ≡ g ψ)
+--          → subst μML p (f ϕ) ≡ f ψ
+--          → f ϕ ≈' f ψ
+-- ≈→≈'-gen ϕ ψ g f f-preserves-≈' p q = ≈'-trans (≈'-refl-subst p (f ϕ)) (≈'-reflexive q)
+
+-- ≈→≈' : ∀ {Γ Δ} {ϕ : μML Γ} {ψ : μML Δ} → ϕ ≈ ψ → ϕ ≈' ψ
+-- ≈→≈' {Γ} {Δ} {ϕ} {ψ} (p , q) = ≈'-trans (≈'-trans (normalize-preserves-≈' ϕ) (≈→≈'-gen ϕ ψ freevars normalize-context normalize-preserves-≈' p q)) (≈'-sym (normalize-preserves-≈' ψ))
+
+-- μML₁-substlem : ∀ {Γ Δ} (p : Γ ≡ Δ) op (ϕ : μML Γ) → subst μML p (μML₁ op ϕ) ≡ μML₁ op (subst μML p ϕ)
+-- μML₁-substlem refl op ϕ = refl
 
 -- μML₂-substlem : subst μML (cong₂ _∪_ p q) (μML₂ op ϕ ψ) ≡ μML₂ op ()
 
-≈'→≈ : ∀ {Γ Δ} {ϕ : μML Γ} {ψ : μML Δ} → ϕ ≈' ψ → ϕ ≈ ψ
-≈'→≈ (var refl) = refl , refl
-≈'→≈ (μML₀ refl) = refl , refl
-≈'→≈ {Γ} {Δ} {μML₁ op ϕ} {μML₁ .op ψ} (μML₁ refl p) with ≈'→≈ p
-... | (u , v) =  u , trans (μML₁-substlem u op (strengthen ϕ (λ q → ∈-preserves-≈L q ≈L-refl))) (cong (μML₁ op) v)
-≈'→≈ {Γ} {Δ} {μML₂ op ϕ ϕ'} {μML₂ .op ψ ψ'} (μML₂ refl p q) with ≈'→≈ p | ≈'→≈ q
-... | (u , v) | (u' , v') = (cong₂ _∪_ u u') , {!trans ? (cong₂ (μML₂ op) v v')!}
-≈'→≈ (μMLη refl refl p) = {!!}
+-- ≈'→≈ : ∀ {Γ Δ} {ϕ : μML Γ} {ψ : μML Δ} → ϕ ≈' ψ → ϕ ≈ ψ
+-- ≈'→≈ (var refl) = refl , refl
+-- ≈'→≈ (μML₀ refl) = refl , refl
+-- ≈'→≈ {Γ} {Δ} {μML₁ op ϕ} {μML₁ .op ψ} (μML₁ refl p) with ≈'→≈ p
+-- ... | (u , v) =  u , trans (μML₁-substlem u op (strengthen ϕ (λ q → ∈-preserves-≈L q ≈L-refl))) (cong (μML₁ op) v)
+-- ≈'→≈ {Γ} {Δ} {μML₂ op ϕ ϕ'} {μML₂ .op ψ ψ'} (μML₂ refl p q) with ≈'→≈ p | ≈'→≈ q
+-- ... | (u , v) | (u' , v') = (cong₂ _∪_ u u') , {!trans ? (cong₂ (μML₂ op) v ?)!}
+-- ≈'→≈ (μMLη refl refl p) = {!!}
 
--- So the same properties are true for ≈.
--- We use the isomorphism every time the contexts are different,
--- since direct proof in that situation is very hard.
+-- -- So the same properties are true for ≈.
+-- -- We use the isomorphism every time the contexts are different,
+-- -- since direct proof in that situation is very hard.
 
-≈-reflexive : ∀ {Γ} {ϕ ψ : μML Γ} → ϕ ≡ ψ → ϕ ≈ ψ
-≈-reflexive refl = {!!}
+-- ≈-reflexive : ∀ {Γ} {ϕ ψ : μML Γ} → ϕ ≡ ψ → ϕ ≈ ψ
+-- ≈-reflexive refl = {!!}
 
-≈-refl : ∀ {Γ} {ϕ : μML Γ} → ϕ ≈ ϕ
-≈-refl {Γ} {ϕ} = ≈-reflexive {ϕ = ϕ} refl
+-- ≈-refl : ∀ {Γ} {ϕ : μML Γ} → ϕ ≈ ϕ
+-- ≈-refl {Γ} {ϕ} = ≈-reflexive {ϕ = ϕ} refl
 
-≈-sym : ∀ {Γ Δ} {ϕ : μML Γ} {ψ : μML Δ} → ϕ ≈ ψ → ψ ≈ ϕ
-≈-sym p = {!!}
+-- ≈-sym : ∀ {Γ Δ} {ϕ : μML Γ} {ψ : μML Δ} → ϕ ≈ ψ → ψ ≈ ϕ
+-- ≈-sym p = {!!}
