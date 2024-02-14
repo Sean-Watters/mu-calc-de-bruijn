@@ -1,4 +1,4 @@
 name: mu-calc-de-bruijn
-depend: standard-library freshlists
+depend: standard-library sketchpad
 include: src/
 flags: --with-K --erasure
