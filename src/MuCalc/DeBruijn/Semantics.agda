@@ -1,3 +1,4 @@
+{-# OPTIONS --allow-unsolved-metas #-}
 open import Algebra.Structures.Propositional
 open import Relation.Unary.Countable
 open import Relation.Binary.PropositionalEquality
@@ -19,6 +20,8 @@ open import Data.Fin.Properties using ()
 open import Data.Fin.MoreProps renaming (<-isPropStrictTotalOrder to Fin-STO)
 open import Data.Vec hiding (toList; filter; insert)
 open import Data.Nat
+open import Data.Nat.Properties using ()
+open import Data.Nat.MoreProps renaming (<-isPropStrictTotalOrder to ℕ-STO)
 open import Data.Bool
 open import Data.Unit
 open import Data.Empty

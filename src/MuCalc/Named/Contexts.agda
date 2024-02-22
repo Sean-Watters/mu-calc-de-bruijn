@@ -1,4 +1,4 @@
-open import Algebra.Structure.OICM
+open import Algebra.Structures.Propositional
 open import Relation.Unary.Countable
 open import Relation.Binary.PropositionalEquality
 
