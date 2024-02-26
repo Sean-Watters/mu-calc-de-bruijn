@@ -14,8 +14,8 @@ module MuCalc.DeBruijn.ContainerSemantics
   (V : At → S → Set) -- A valuation function for propositions at states
   where
 
-open import Level
-open import Data.Fin hiding (_-_)
+open import Level renaming (zero to fzero; suc to fsuc)
+open import Data.Fin hiding (_-_) renaming (zero to fzero; suc to fsuc)
 open import Data.Fin.Properties using ()
 open import Data.Fin.MoreProps renaming (<-isPropStrictTotalOrder to Fin-STO)
 open import Data.Vec hiding (toList; filter; insert)
@@ -28,51 +28,50 @@ open import Data.Empty
 open import Data.Product
 open import Data.Product.Properties
 open import Data.Sum
-open import Data.Container.Indexed renaming (⟦_⟧ to `⟦_⟧` ; μ to Mu)
+open import Data.Container.Indexed renaming (Container to Container'; ⟦_⟧ to `⟦_⟧`)
+open import Data.Container.Indexed.Combinator using (const) renaming (_×_ to _`×`_; _⊎_ to _`+`_; Π to All; Σ to Any)
 open import Relation.Nullary
 open import Relation.Binary
 
 open import MuCalc.DeBruijn.Base <A-STO At-countable renaming (⊤ to ⊤'; ⊥ to ⊥')
 
+private
+  -- we always want small things, so define an alias where the levels are
+  -- fixed at 0
+  Container : Set → Set → Set₁
+  Container I O = Container' I O 0ℓ 0ℓ
 
-{-
-  record Container {i} (I : Set i) (c r : Level) :
-                   Set (i ⊔ suc c ⊔ suc r) where
-    constructor _◃_/_
-    field
-      Shape  : (i : I) → Set c
-      Position : ∀ {i} → Shape i → Set r
-
-  -- The semantics ("extension") of an indexed container.
-    `⟦_⟧` : ∀ {i c r ℓ} {I : Set i} → Container I c r →
-        Pred I ℓ → Pred I _
-  `⟦ C ◃ R ⟧` X o = Σ[ c ∈ C o ] ((r : R c) → X (n c r))
-
--}
-
-mkUnary : ∀ {n} → Container (S × Fin n) S 0ℓ 0ℓ → Container S S  0ℓ 0ℓ
-mkUnary (C ◃ R / n) = C ◃ R / {!!}
+-- mkUnary : ∀ {n} → Container (S × Fin n) S 0ℓ 0ℓ → Container S S  0ℓ 0ℓ
+-- mkUnary {m} (C ◃ R / n) = C ◃ (λ c → R c × Fin m) / {!!}
 
 interpretVec : ∀ {n} → Vec (S → Set) n → (S × Fin n → Set)
 interpretVec xs (s , m) = lookup xs m s
 
-interpretVec' : ∀ {n} → Vec (S → Set) n → (S → Vec Set n)
-interpretVec' [] s = []
-interpretVec' (x ∷ xs) s = (x s) ∷ (interpretVec' xs s)
+-- interpretVec' : ∀ {n} → Vec (S → Set) n → (S → Vec Set n)
+-- interpretVec' [] s = []
+-- interpretVec' (x ∷ xs) s = (x s) ∷ (interpretVec' xs s)
 
-mkCont : {n : ℕ} → μML n → Container (S × Fin n) S 0ℓ 0ℓ
+-- might hope these types could be generalised?
+Mu : ∀ {n} → Container (S × Fin (suc n)) S → Container (S × Fin n) S
+Mu = {!!}
+
+Nu : ∀ {n} → Container (S × Fin (suc n)) S → Container (S × Fin n) S
+Nu = {!!}
+
+mkCont : {n : ℕ} → μML n → Container (S × Fin n) S
 mkCont {n} (var x) = (λ s → ⊤) ◃ (λ _ → ⊤) / λ {s} _ _ → s , x
-mkCont (μML₀ ⊤') = (λ _ → ⊤) ◃ (λ _ → ⊥) / λ _ ()
-mkCont (μML₀ ⊥') = (λ _ → ⊥) ◃ (λ ()) / λ ()
-mkCont (μML₀ (at x)) = V x ◃ (λ _ → ⊥) / λ _ ()
-mkCont (μML₀ (¬at x)) = (λ s → ¬ (V x s)) ◃ (λ _ → ⊥ ) / λ _ ()
-mkCont (μML₁ □ ϕ) = {!!}
-mkCont (μML₁ ◆ ϕ) = {!!}
-mkCont (μML₂ ∧ ϕ ψ) = {!!}
-mkCont (μML₂ ∨ ϕ ψ) = {!!}
-mkCont {n} (μMLη μ ϕ) = Mu {!mkCont ϕ!} ◃ {!!} / {!!}
-mkCont (μMLη ν ϕ) = {!!}
-
+mkCont (μML₀ ⊤') = const (λ _ → ⊤)
+mkCont (μML₀ ⊥') = const(λ _ → ⊥)
+mkCont (μML₀ (at x)) = const (V x)
+mkCont (μML₀ (¬at x)) = const (λ s → ¬ (V x s))
+-- think the command is correct so far but needs to incorporate a recursive call in
+-- the hole. Π's implementation will probably tell us a lot about how it should look
+mkCont (μML₁ □ ϕ) = (λ s → ((x : S) → R s x → {!!})) ◃ {!!} / {!!}
+mkCont (μML₁ ◆ ϕ) = {!(mkCont ϕ)!}
+mkCont (μML₂ ∧ ϕ ψ) = mkCont ϕ `×` mkCont ψ
+mkCont (μML₂ ∨ ϕ ψ) = mkCont ϕ `+` mkCont ψ
+mkCont (μMLη μ ϕ) = Mu (mkCont ϕ)
+mkCont (μMLη ν ϕ) = Nu (mkCont ϕ)
 
 ⟦_⟧ : ∀ {n} → μML n → Vec (S → Set) n → S → Set
 ⟦_⟧ {n} ϕ i = `⟦_⟧` (mkCont ϕ) (interpretVec i)
