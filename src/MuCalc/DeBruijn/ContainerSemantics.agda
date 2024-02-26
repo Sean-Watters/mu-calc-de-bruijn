@@ -64,9 +64,8 @@ mkCont (μML₀ ⊤') = const (λ _ → ⊤)
 mkCont (μML₀ ⊥') = const(λ _ → ⊥)
 mkCont (μML₀ (at x)) = const (V x)
 mkCont (μML₀ (¬at x)) = const (λ s → ¬ (V x s))
--- think the command is correct so far but needs to incorporate a recursive call in
--- the hole. Π's implementation will probably tell us a lot about how it should look
-mkCont (μML₁ □ ϕ) = (λ s → ((x : S) → R s x → {!!})) ◃ {!!} / {!!}
+-- I think this shape is right, is it a general case of Π??
+mkCont (μML₁ □ ϕ) = (λ s → ((x : S) → R s x → Command (mkCont ϕ) x)) ◃ {!!} / {!!}
 mkCont (μML₁ ◆ ϕ) = {!(mkCont ϕ)!}
 mkCont (μML₂ ∧ ϕ ψ) = mkCont ϕ `×` mkCont ψ
 mkCont (μML₂ ∨ ϕ ψ) = mkCont ϕ `+` mkCont ψ
