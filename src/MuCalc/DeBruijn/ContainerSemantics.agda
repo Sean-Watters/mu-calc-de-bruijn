@@ -52,6 +52,7 @@ interpretVec xs (s , m) = lookup xs m s
 -- interpretVec' (x ∷ xs) s = (x s) ∷ (interpretVec' xs s)
 
 -- might hope these types could be generalised?
+-- on the other hand, maybe not posible to generalise, as □ and ◇ look that way too
 Mu : ∀ {n} → Container (S × Fin (suc n)) S → Container (S × Fin n) S
 Mu = {!!}
 
@@ -60,13 +61,18 @@ Nu = {!!}
 
 mkCont : {n : ℕ} → μML n → Container (S × Fin n) S
 mkCont {n} (var x) = (λ s → ⊤) ◃ (λ _ → ⊤) / λ {s} _ _ → s , x
+
 mkCont (μML₀ ⊤') = const (λ _ → ⊤)
 mkCont (μML₀ ⊥') = const(λ _ → ⊥)
 mkCont (μML₀ (at x)) = const (V x)
 mkCont (μML₀ (¬at x)) = const (λ s → ¬ (V x s))
--- I think this shape is right, is it a general case of Π??
-mkCont (μML₁ □ ϕ) = (λ s → ((x : S) → R s x → Command (mkCont ϕ) x)) ◃ {!!} / {!!}
-mkCont (μML₁ ◆ ϕ) = {!(mkCont ϕ)!}
+-- This looks so close to being a general case of Π, but I think not quite
+mkCont (μML₁ □ ϕ) = (λ s → (x : S) → R s x → Command (mkCont ϕ) x)
+                  ◃ (λ {s} c → Σ[ x ∈ S ] Σ[ Rsx ∈ R s x ] Response (mkCont ϕ) (c x Rsx))
+                  / λ { c (x , Rsx , r) → next (mkCont ϕ) (c x Rsx) r }
+mkCont (μML₁ ◆ ϕ) = (λ s → Σ[ x ∈ S ] Σ[ Rsx ∈ R s x ] Command (mkCont ϕ) x )
+                  ◃ (λ { (x , Rsx , c) → Response (mkCont ϕ) c})
+                  / (λ { (x , Rsx , c) r → next (mkCont ϕ) c r })
 mkCont (μML₂ ∧ ϕ ψ) = mkCont ϕ `×` mkCont ψ
 mkCont (μML₂ ∨ ϕ ψ) = mkCont ϕ `+` mkCont ψ
 mkCont (μMLη μ ϕ) = Mu (mkCont ϕ)
