@@ -28,10 +28,12 @@ open import Data.Empty
 open import Data.Product
 open import Data.Product.Properties
 open import Data.Sum
-open import Data.Container.Indexed renaming (Container to Container'; ⟦_⟧ to `⟦_⟧`)
+open import Data.Container.Indexed renaming (Container to Container'; ⟦_⟧ to `⟦_⟧` ; μ to `μ`)
 open import Data.Container.Indexed.Combinator using (const) renaming (_×_ to _`×`_; _⊎_ to _`+`_; Π to All; Σ to Any)
+open import Data.W.Indexed
 open import Relation.Nullary
 open import Relation.Binary
+open import Function using (_∘_)
 
 open import MuCalc.DeBruijn.Base <A-STO At-countable renaming (⊤ to ⊤'; ⊥ to ⊥')
 
@@ -41,27 +43,58 @@ private
   Container : Set → Set → Set₁
   Container I O = Container' I O 0ℓ 0ℓ
 
+------------------------------------------------------------------------------
+
 -- mkUnary : ∀ {n} → Container (S × Fin n) S 0ℓ 0ℓ → Container S S  0ℓ 0ℓ
 -- mkUnary {m} (C ◃ R / n) = C ◃ (λ c → R c × Fin m) / {!!}
-
-interpretVec : ∀ {n} → Vec (S → Set) n → (S × Fin n → Set)
-interpretVec xs (s , m) = lookup xs m s
 
 -- interpretVec' : ∀ {n} → Vec (S → Set) n → (S → Vec Set n)
 -- interpretVec' [] s = []
 -- interpretVec' (x ∷ xs) s = (x s) ∷ (interpretVec' xs s)
 
+interpretVec : ∀ {n} → Vec (S → Set) n → (S × Fin n → Set)
+interpretVec xs (s , m) = lookup xs m s
+
+
 -- might hope these types could be generalised?
 -- on the other hand, maybe not posible to generalise, as □ and ◇ look that way too
+
+
+projR-with-default : {A B : Set} → B → A ⊎ B → B
+projR-with-default d (inj₁ a) = d
+projR-with-default d (inj₂ b) = b
+
+ignore-input : ∀ {I O} → Container (I ⊎ O) O → Container O O
+ignore-input (C ◃ R / n) = C ◃ R / (λ {o} c Rc → projR-with-default o (n c Rc))
+
+par-ap : ∀ {I O} → Container (I ⊎ O) (I ⊎ O) → Container I O → Container O O
+par-ap (C1 ◃ R1 / n1) (C2 ◃ R2 / n2) = {! !} ◃ {!!} / {!!}
+
+data C-Mu {I O} (C : Container (I ⊎ O) O) : O → Set where
+  inn : {o : O} → `μ` {0ℓ} {0ℓ} {0ℓ} {O} (ignore-input C) o → C-Mu C o
+
+Mu' : ∀ {I O} → Container (I ⊎ O) O → Container I O
+Mu' {I} {O} c = C-Mu c ◃ (λ { (inn (sup (C , R))) → {!next c c' r'!}}) / {!!} where
+  Mu-R : {o : O} → (C : Command (ignore-input c) o)
+       → ((r : Response (ignore-input c) C) → W (ignore-input c) (next (ignore-input c) C r))
+       → Response (ignore-input c) C
+  Mu-R = {!!}
+
+map' : ∀ {I I' O} → (I → I') → Container I O → Container I' O
+map' f (C ◃ R / n) = C ◃ R / λ c x → f (n c x)
+
+dist-fin : ∀ {n} → S × Fin (suc n) → S × Fin n ⊎ S
+dist-fin {n} (s , Fin.zero) = inj₂ s
+dist-fin {n} (s , Fin.suc m) = inj₁ (s , m)
+
 Mu : ∀ {n} → Container (S × Fin (suc n)) S → Container (S × Fin n) S
-Mu = {!!}
+Mu {n} C = Mu' {S × Fin n} {S} (map' dist-fin C)
 
 Nu : ∀ {n} → Container (S × Fin (suc n)) S → Container (S × Fin n) S
 Nu = {!!}
 
 mkCont : {n : ℕ} → μML n → Container (S × Fin n) S
 mkCont {n} (var x) = (λ s → ⊤) ◃ (λ _ → ⊤) / λ {s} _ _ → s , x
-
 mkCont (μML₀ ⊤') = const (λ _ → ⊤)
 mkCont (μML₀ ⊥') = const(λ _ → ⊥)
 mkCont (μML₀ (at x)) = const (V x)
@@ -80,6 +113,9 @@ mkCont (μMLη ν ϕ) = Nu (mkCont ϕ)
 
 ⟦_⟧ : ∀ {n} → μML n → Vec (S → Set) n → S → Set
 ⟦_⟧ {n} ϕ i = `⟦_⟧` (mkCont ϕ) (interpretVec i)
+
+
+
 
 {-
 
