@@ -1,11 +1,7 @@
 open import Algebra.Structures.Propositional
 open import Relation.Binary.PropositionalEquality
 
-module MuCalc.DeBruijn.Base
-  {At : Set}
-  {_<A_ : At → At → Set}
-  (<A-STO : IsPropStrictTotalOrder _≡_ _<A_)
-  where
+module MuCalc.DeBruijn.Base where
 
 open import Data.Nat hiding (_≟_)
 open import Data.Fin using (Fin; zero; suc; _≟_) renaming (inject₁ to fin-inject₁)
@@ -18,11 +14,11 @@ data Opη : Set where
   mu : Opη
   nu : Opη
 
-data Op₀ : Set where
-  tt : Op₀
-  ff : Op₀
-  at  : At → Op₀
-  ¬at : At → Op₀
+data Op₀ (At : Set) : Set where
+  tt : Op₀ At
+  ff : Op₀ At
+  at  : At → Op₀ At
+  ¬at : At → Op₀ At
 
 data Op₁ : Set where
   box : Op₁
@@ -35,17 +31,17 @@ data Op₂ : Set where
 -- Formulas are parameterised by the list of names in scope.
 -- TODO: having ϕ and ψ both live at n makes sense,
 -- but causes trouble in the Glue μML situation. What to do?
-data μML (n : ℕ) : Set where
-  var : Fin n → μML n
-  μML₀ : (op : Op₀) → μML n
-  μML₁ : (op : Op₁) → (ϕ : μML n) → μML n
-  μML₂ : (op : Op₂) → (ϕ : μML n) → (ψ : μML n) → μML n
-  μMLη : (op : Opη) → (ϕ : μML (suc n)) → μML n
+data μML (At : Set) (n : ℕ) : Set where
+  var : Fin n → μML At n
+  μML₀ : (op : Op₀ At) → μML At n
+  μML₁ : (op : Op₁) → (ϕ : μML At n) → μML At n
+  μML₂ : (op : Op₂) → (ϕ : μML At n) → (ψ : μML At n) → μML At n
+  μMLη : (op : Opη) → (ϕ : μML At (suc n)) → μML At n
 
 --------------------------------------------------------------
 
 -- Negation is derived by de Morgan substitutions.
-¬ : ∀ {n} → μML n → μML n
+¬ : ∀ {At n} → μML At n → μML At n
 ¬ (var x)        = var x -- is this right?
 ¬ (μML₀ tt)       = μML₀ ff
 ¬ (μML₀ ff)       = μML₀ tt
@@ -59,7 +55,7 @@ data μML (n : ℕ) : Set where
 ¬ (μMLη nu ϕ)     = μMLη mu (¬ ϕ)
 
 -- Material implication
-_⇒_ : ∀ {n} → μML n → μML n → μML n
+_⇒_ : ∀ {At n} → μML At n → μML At n → μML At n
 ϕ ⇒ ψ = μML₂ or (¬ ϕ) ψ
 
 pattern ⊤ = μML₀ tt
@@ -77,7 +73,7 @@ pattern ν ϕ = μMLη nu ϕ
 
 -- Injection
 -- Taking some formula and making it live in a bigger scope
-inject₁ : ∀ {n} → μML n → μML (suc n)
+inject₁ : ∀ {At n} → μML At n → μML At (suc n)
 inject₁ (var x) = var (fin-inject₁ x)
 inject₁ (μML₀ op) = μML₀ op
 inject₁ (μML₁ op ϕ) = μML₁ op (inject₁ ϕ)
@@ -88,7 +84,7 @@ inject₁ (μMLη op ϕ) = μMLη op (inject₁ ϕ)
 -- I feel like a stronger version of this should be possible where the
 -- formula being subbed in can be allowed a scope of n+k if all the free
 -- vars to replace are under at least k many binders. But that sounds hard
-sub : ∀ {n} → μML n → (m : Fin n) → μML n → μML n
+sub : ∀ {At n} → μML At n → (m : Fin n) → μML At n → μML At n
 sub (var x) y α with x ≟ y
 ... | yes p = α
 ... | no ¬p = var x

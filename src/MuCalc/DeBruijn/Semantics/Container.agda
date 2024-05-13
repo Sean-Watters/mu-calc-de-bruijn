@@ -25,7 +25,7 @@ open import Data.Container.Indexed.Fam.SizedTypes
 
 open import Function
 open import Relation.Nullary
-open import MuCalc.DeBruijn.Base <A-STO renaming (⊤ to ⊤'; ⊥ to ⊥'; ¬ to ¬')
+open import MuCalc.DeBruijn.Base renaming (⊤ to ⊤'; ⊥ to ⊥') hiding (¬)
 
 private
   open Kripke renaming (S to S'; _~>_ to R; V to V')
@@ -57,10 +57,11 @@ interpret-vec xs (s , m) = lookup xs m s
 -- The maximum amount of generality allowed by the fixpoint combinators of containers #
 -- is as follows:
 -- The {least/greatest} fixpoint of a container indexed by `I ⊎ J` is indexed by `I`.
--- So if we can write `S × Fin (suc n)` in the form `(S × Fin n) ⊎ S`.
+-- So if we can write `S × Fin (suc n)` in the form `(S × Fin n) ⊎ S`, then we're happy.
+-- And we can, so we are:
 -- This boils down to the fact that `S×(n+1) = (S×n)+S`. In particular, we
 -- think of the left (S×n) as the intepretation of the variables we already had,
--- the the right (+S) as the interpration of the new variable bound by the μ/ν that
+-- and the right (+S) as the interpration of the new variable bound by the μ/ν that
 -- we just went under.
 --
 -- The final detail is that for indexed containers, functoriality in the left index
@@ -71,7 +72,7 @@ dist-fin {n} (inj₂ s) = s , fzero
 
 
 -- Now to draw the rest of the owl!
-MkCont : {n : ℕ} → μML n → Container (S × Fin n) S
+MkCont : {n : ℕ} → μML At n → Container (S × Fin n) S
 MkCont {n} (var x) = (λ _ → ⊤) ◃ λ _ s → ⊤
 MkCont ⊤' = ⟨const⟩ (const ⊤)
 MkCont ⊥' = ⟨const⟩ (const ⊥)
@@ -86,6 +87,6 @@ MkCont (ν ϕ) = ⟨ν⟩ (⟨map⟩ dist-fin (MkCont ϕ))
 
 -- And finally, we can give the semantics of formulas with the type we wanted via
 -- the extension of the above container.
-⟦_⟧ : ∀ {n} → μML n → Vec (S → Set) n → S → Set
+⟦_⟧ : ∀ {n} → μML At n → Vec (S → Set) n → S → Set
 ⟦_⟧ {n} ϕ i = ⟨⟦ MkCont ϕ ⟧⟩ (interpret-vec i)
 

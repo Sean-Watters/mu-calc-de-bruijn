@@ -8,7 +8,7 @@ module MuCalc.DeBruijn.Semantics.FreshList
   (<A-STO : IsPropStrictTotalOrder _≡_ _<A_)
   where
 
-open import MuCalc.DeBruijn.Base <A-STO renaming (⊤ to ⊤'; ⊥ to ⊥')
+open import MuCalc.DeBruijn.Base renaming (⊤ to ⊤'; ⊥ to ⊥')
 
 open import Level
 open import Function
@@ -54,7 +54,7 @@ module FreshLists'
   S = proj₁ (Fin-enum n)
 
   ⟦_⟧ : ∀ {n}
-      → μML n -- The formula we are interpreting
+      → μML At n -- The formula we are interpreting
       → Vec PSet n -- The interpretations of the free variables
       → PSet -- The states where the formula is true.
   ⟦ var x ⟧ i = lookup i x

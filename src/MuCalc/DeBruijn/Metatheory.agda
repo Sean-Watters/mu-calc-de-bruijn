@@ -22,12 +22,12 @@ private
   IsPropStrictTotalOrder.≈-prop <-STO = ≡-irrelevant
   IsPropStrictTotalOrder.<-prop <-STO = <-irrelevant
 
-open import MuCalc.DeBruijn.Base <-STO renaming (⊤ to ⊤'; ⊥ to ⊥')
+open import MuCalc.DeBruijn.Base renaming (⊤ to ⊤'; ⊥ to ⊥')
 open import MuCalc.DeBruijn.Proof.Kozen <-STO
 open import MuCalc.DeBruijn.Semantics.Container <-STO M
 
 open Kripke
 open Container
 
--- soundness : ∀ {n} {ϕ : μML n} → ⊢ ϕ → (i : Vec (S M → Set) n) → (s : S M) → ⟦ ϕ ⟧ i s
+-- soundness : ∀ {n} {ϕ : μML At n} → ⊢ ϕ → (i : Vec (S M → Set) n) → (s : S M) → ⟦ ϕ ⟧ i s
 -- soundness = ?
