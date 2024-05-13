@@ -1,21 +1,16 @@
 {-# OPTIONS --sized-types #-}
 
 open import Algebra.Structures.Propositional
-open import Relation.Unary.Countable
 open import Relation.Binary.PropositionalEquality
-
+open import Data.Kripke
 
 -- The type-theoretic semantics of the modal mu calculus, realised by containers.
 -- We chose Sized Types as the foundation for coinduction.
-module MuCalc.DeBruijn.ContainerSemantics
+module MuCalc.DeBruijn.Semantics.Container
   {At : Set}
   {_<A_ : At → At → Set}
   (<A-STO : IsPropStrictTotalOrder _≡_ _<A_)
-  (At-countable : IsCountable At)
-  -- The Kripke model:
-  (S : Set) -- A set of states
-  (_~>_ : S → S → Set) -- A transition relation on S
-  (V : At → S → Set) -- A valuation function for propositions at states
+  (Mo : Kripke At)
   where
 
 open import Data.Fin using (Fin) renaming (zero to fzero; suc to fsuc)
@@ -26,11 +21,17 @@ open import Data.Empty using (⊥)
 open import Data.Product
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Container.Indexed.Fam renaming (⟦_⟧ to ⟨⟦_⟧⟩)
+open import Data.Container.Indexed.Fam.SizedTypes
 
 open import Function
 open import Relation.Nullary
-open import MuCalc.DeBruijn.Base <A-STO At-countable renaming (⊤ to ⊤'; ⊥ to ⊥')
+open import MuCalc.DeBruijn.Base <A-STO renaming (⊤ to ⊤'; ⊥ to ⊥'; ¬ to ¬')
 
+private
+  open Kripke renaming (S to S'; _~>_ to R; V to V')
+  S = S' Mo
+  _~>_ = R Mo
+  V = V' Mo
 ------------------------------------------------------------------------------
 
 -- We want to assign meaning to formulas in our Kripke model. For some closed sentence
@@ -55,7 +56,7 @@ interpret-vec xs (s , m) = lookup xs m s
 -- `S × Fin n`. The one given by the recursive call ⟦ϕ⟧ has index `(S × Fin (suc n))`.
 -- The maximum amount of generality allowed by the fixpoint combinators of containers #
 -- is as follows:
--- The {least/greatest} fixpoint of a container indexed by `I ⊎ J` is `I`.
+-- The {least/greatest} fixpoint of a container indexed by `I ⊎ J` is indexed by `I`.
 -- So if we can write `S × Fin (suc n)` in the form `(S × Fin n) ⊎ S`.
 -- This boils down to the fact that `S×(n+1) = (S×n)+S`. In particular, we
 -- think of the left (S×n) as the intepretation of the variables we already had,
@@ -72,18 +73,19 @@ dist-fin {n} (inj₂ s) = s , fzero
 -- Now to draw the rest of the owl!
 MkCont : {n : ℕ} → μML n → Container (S × Fin n) S
 MkCont {n} (var x) = (λ _ → ⊤) ◃ λ _ s → ⊤
-MkCont (μML₀ ⊤') = ⟨const⟩ (const ⊤)
-MkCont (μML₀ ⊥') = ⟨const⟩ (const ⊥)
+MkCont ⊤' = ⟨const⟩ (const ⊤)
+MkCont ⊥' = ⟨const⟩ (const ⊥)
 MkCont (μML₀ (at x)) = ⟨const⟩ (V x)
 MkCont (μML₀ (¬at x)) = ⟨const⟩ (λ s → ¬ (V x s))
-MkCont (μML₁ □ ϕ) = ⟨Π⟩ {X = λ x → Σ[ y ∈ S ] (x ~> y)} (λ _ → MkCont ϕ)
-MkCont (μML₁ ◆ ϕ) = ⟨Σ⟩ {X = λ x → Σ[ y ∈ S ] (x ~> y)} (λ _ → MkCont ϕ)
-MkCont (μML₂ ∧ ϕ ψ) = MkCont ϕ ⟨×⟩ MkCont ψ
-MkCont (μML₂ ∨ ϕ ψ) = MkCont ϕ ⟨+⟩ MkCont ψ
-MkCont (μMLη μ ϕ) = ⟨μ⟩ (⟨map⟩ dist-fin (MkCont ϕ))
-MkCont (μMLη ν ϕ) = ⟨ν⟩ (⟨map⟩ dist-fin (MkCont ϕ))
+MkCont (■ ϕ) = ⟨Π⟩ {X = λ x → Σ[ y ∈ S ] (x ~> y)} (λ _ → MkCont ϕ)
+MkCont (◆ ϕ) = ⟨Σ⟩ {X = λ x → Σ[ y ∈ S ] (x ~> y)} (λ _ → MkCont ϕ)
+MkCont (ϕ ∧ ψ) = MkCont ϕ ⟨×⟩ MkCont ψ
+MkCont (ϕ ∨ ψ) = MkCont ϕ ⟨+⟩ MkCont ψ
+MkCont (μ ϕ) = ⟨μ⟩ (⟨map⟩ dist-fin (MkCont ϕ))
+MkCont (ν ϕ) = ⟨ν⟩ (⟨map⟩ dist-fin (MkCont ϕ))
 
 -- And finally, we can give the semantics of formulas with the type we wanted via
 -- the extension of the above container.
 ⟦_⟧ : ∀ {n} → μML n → Vec (S → Set) n → S → Set
 ⟦_⟧ {n} ϕ i = ⟨⟦ MkCont ϕ ⟧⟩ (interpret-vec i)
+

@@ -1,16 +1,14 @@
 {-# OPTIONS --allow-unsolved-metas #-}
 open import Algebra.Structures.Propositional
-open import Relation.Unary.Countable
 open import Relation.Binary.PropositionalEquality
 
-module MuCalc.DeBruijn.Semantics
+module MuCalc.DeBruijn.Semantics.FreshList
   {At : Set}
   {_<A_ : At → At → Set}
   (<A-STO : IsPropStrictTotalOrder _≡_ _<A_)
-  (At-countable : IsCountable At)
   where
 
-open import MuCalc.DeBruijn.Base <A-STO At-countable renaming (⊤ to ⊤'; ⊥ to ⊥')
+open import MuCalc.DeBruijn.Base <A-STO renaming (⊤ to ⊤'; ⊥ to ⊥')
 
 open import Level
 open import Function
@@ -32,7 +30,6 @@ open import Relation.Nullary
 open import Relation.Binary
 
 open import Relation.Unary.Finiteness.WithK
-
 
 open import Data.FreshList.InductiveInductive
 open import Free.IdempotentCommutativeMonoid.Base renaming (_∪_ to _∪'_; _∩_ to _∩'_)
@@ -60,7 +57,17 @@ module FreshLists'
       → μML n -- The formula we are interpreting
       → Vec PSet n -- The interpretations of the free variables
       → PSet -- The states where the formula is true.
-  ⟦_⟧ = {!!}
+  ⟦ var x ⟧ i = lookup i x
+  ⟦ μML₀ ⊤' ⟧ i = S
+  ⟦ μML₀ ⊥' ⟧ i = []
+  ⟦ μML₀ (at x) ⟧ i = V x
+  ⟦ μML₀ (¬at x) ⟧ i = _-<_> (Fin-STO n) S (V x)
+  ⟦ μML₁ □ ϕ ⟧ i = {!!}
+  ⟦ μML₁ ◆ ϕ ⟧ i = {!!}
+  ⟦ μML₂ ∧ ϕ ψ ⟧ i = {!!}
+  ⟦ μML₂ ∨ ϕ ψ ⟧ i = {!!}
+  ⟦ μMLη μ ϕ ⟧ i = {!!} -- repeated iteration, 2^n fuel, "classical" proof that it's enough
+  ⟦ μMLη ν ϕ ⟧ i = {!!}
 
 {-
 
