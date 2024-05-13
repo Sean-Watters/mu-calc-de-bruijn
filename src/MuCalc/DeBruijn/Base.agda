@@ -29,8 +29,6 @@ data Op₂ : Set where
   or : Op₂
 
 -- Formulas are parameterised by the list of names in scope.
--- TODO: having ϕ and ψ both live at n makes sense,
--- but causes trouble in the Glue μML situation. What to do?
 data μML (At : Set) (n : ℕ) : Set where
   var : Fin n → μML At n
   μML₀ : (op : Op₀ At) → μML At n
@@ -38,26 +36,7 @@ data μML (At : Set) (n : ℕ) : Set where
   μML₂ : (op : Op₂) → (ϕ : μML At n) → (ψ : μML At n) → μML At n
   μMLη : (op : Opη) → (ϕ : μML At (suc n)) → μML At n
 
---------------------------------------------------------------
-
--- Negation is derived by de Morgan substitutions.
-¬ : ∀ {At n} → μML At n → μML At n
-¬ (var x)        = var x -- is this right?
-¬ (μML₀ tt)       = μML₀ ff
-¬ (μML₀ ff)       = μML₀ tt
-¬ (μML₀ (at x))  = μML₀ (¬at x)
-¬ (μML₀ (¬at x)) = μML₀ (at x)
-¬ (μML₁ box ϕ)     = μML₁ dia (¬ ϕ)
-¬ (μML₁ dia ϕ)     = μML₁ box (¬ ϕ)
-¬ (μML₂ and ϕ ψ)   = μML₂ or (¬ ϕ) (¬ ψ)
-¬ (μML₂ or ϕ ψ)   = μML₂ and (¬ ϕ) (¬ ψ)
-¬ (μMLη mu ϕ)     = μMLη nu (¬ ϕ)
-¬ (μMLη nu ϕ)     = μMLη mu (¬ ϕ)
-
--- Material implication
-_⇒_ : ∀ {At n} → μML At n → μML At n → μML At n
-ϕ ⇒ ψ = μML₂ or (¬ ϕ) ψ
-
+-- Some prettier pattern synonyms
 pattern ⊤ = μML₀ tt
 pattern ⊥ = μML₀ ff
 -- pattern at x = μML₀ at x
@@ -71,6 +50,27 @@ pattern ν ϕ = μMLη nu ϕ
 
 --------------------------------------------------------------
 
+-- Negation is derived by de Morgan substitutions.
+¬ : ∀ {At n} → μML At n → μML At n
+¬ (var x)        = var x -- is this right?
+¬ ⊤ = ⊥
+¬ ⊥ = ⊤
+¬ (μML₀ (at x)) = μML₀ (¬at x)
+¬ (μML₀ (¬at x)) = μML₀ (at x)
+¬ (■ ϕ) = ◆ (¬ ϕ)
+¬ (◆ ϕ) = ■ (¬ ϕ)
+¬ (ϕ ∧ ψ) = (¬ ϕ) ∨ (¬ ψ)
+¬ (ϕ ∨ ψ) = (¬ ϕ) ∧ (¬ ψ)
+¬ (μ ϕ) = ν (¬ ϕ)
+¬ (ν ϕ) = μ (¬ ϕ)
+
+-- Material implication
+_⇒_ : ∀ {At n} → μML At n → μML At n → μML At n
+ϕ ⇒ ψ = μML₂ or (¬ ϕ) ψ
+
+
+--------------------------------------------------------------
+
 -- Injection
 -- Taking some formula and making it live in a bigger scope
 inject₁ : ∀ {At n} → μML At n → μML At (suc n)
@@ -80,7 +80,7 @@ inject₁ (μML₁ op ϕ) = μML₁ op (inject₁ ϕ)
 inject₁ (μML₂ op ϕ ψ) = μML₂ op (inject₁ ϕ) (inject₁ ψ)
 inject₁ (μMLη op ϕ) = μMLη op (inject₁ ϕ)
 
--- Substitution
+-- Substitution: sub ϕ x ψ  =  ϕ[x\ψ]
 -- I feel like a stronger version of this should be possible where the
 -- formula being subbed in can be allowed a scope of n+k if all the free
 -- vars to replace are under at least k many binders. But that sounds hard
