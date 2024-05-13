@@ -105,10 +105,10 @@ unfoldε-computable ψ (μML₀ op) {acc rs}
   = μML₀ op ,
     u0
 unfoldε-computable ψ (μML₁ op ϕ) {acc rs}
-  = μML₁ op (proj₁ (unfoldε-computable ψ ϕ {rs (lenε ϕ) (s≤s ≤-refl)})) ,
+  = μML₁ op (proj₁ (unfoldε-computable ψ ϕ {rs (s≤s ≤-refl)})) ,
     u1 (proj₂ (unfoldε-computable ψ ϕ))
 unfoldε-computable ψ (μML₂ op L R) {acc rs}
-  = μML₂ op (proj₁ (unfoldε-computable ψ L {rs (lenε L) (s≤s (m≤m+n (lenε L) (lenε R)))})) (proj₁ (unfoldε-computable ψ R {rs (lenε R) (s≤s (m≤n+m (lenε R) (lenε L)))})) ,
+  = μML₂ op (proj₁ (unfoldε-computable ψ L {rs (s≤s (m≤m+n (lenε L) (lenε R)))})) (proj₁ (unfoldε-computable ψ R {rs (s≤s (m≤n+m (lenε R) (lenε L)))})) ,
     u2 (proj₂ (unfoldε-computable ψ L)) (proj₂ (unfoldε-computable ψ R))
 unfoldε-computable {Γ} (fp op x ψ) (var y y∈Γ) {acc rs} with x ≈? y
 ... | yes refl
@@ -122,7 +122,7 @@ unfoldε-computable {Γ} (fp op x ψ) (μMLη op' y ϕ) {acc rs} with x ≈? y
  = μMLη op' y (subst μMLε (≈L→≡ (insert-idempotent y y Γ refl)) ϕ) ,
    uη-eq refl
 ... | no x≢y
- = μMLη op' y (proj₁ (unfoldε-computable (fp op x ψ) (subst μMLε (≈L→≡ (insert-comm y x Γ)) ϕ) {rs (lenε (subst μMLε (≈L→≡ (insert-comm y x Γ)) ϕ)) (s≤s (lenε-substlem ϕ (≈L→≡ (insert-comm y x Γ))))})) ,
+ = μMLη op' y (proj₁ (unfoldε-computable (fp op x ψ) (subst μMLε (≈L→≡ (insert-comm y x Γ)) ϕ) {rs (s≤s (lenε-substlem ϕ (≈L→≡ (insert-comm y x Γ))))})) ,
    uη-neq x≢y (proj₂ (unfoldε-computable (fp op x ψ) (subst μMLε (≈L→≡ (insert-comm y x Γ)) ϕ)))
 
 module WithFunext (funext : Extensionality _ _) where
@@ -170,7 +170,7 @@ unfoldε ψ ϕ {rs} = proj₁ (unfoldε-computable ψ ϕ {rs})
 -- Now saying what it *really* means to unfold a fixpoint formula.
 -- This is the one that corresponds to the book definition.
 unfoldFpε : {ψ' : μMLε []} -> (ψ : μFPε ψ') -> {Acc _<ℕ_ (lenε ψ')} -> μMLε []
-unfoldFpε (fp op x ψ) {acc rs} = unfoldε (fp op x ψ) ψ {rs (lenε ψ) (s≤s ≤-refl)}
+unfoldFpε (fp op x ψ) {acc rs} = unfoldε (fp op x ψ) ψ {rs (s≤s ≤-refl)}
 
 --------------------------
 -- Defining the Closure --

@@ -1,4 +1,4 @@
-open import Algebra.Structure.OICM
+open import Algebra.Structures.Propositional
 open import Relation.Unary.Countable
 open import Relation.Binary.PropositionalEquality
 
@@ -332,12 +332,12 @@ compare-μML (var x x∈Γ) (var y ∈Δ) with compareV x y
 compare-wrap-μML : Trichotomous (wrap₂ {X = μML} _≈_) (wrap₂ _<μ_)
 compare-wrap-μML x y = compare-μML (proj₂ x) (proj₂ y)
 
-<μ-STO : IsStrictTotalOrder (wrap₂ {X = μML} _≈_) (wrap₂ _<μ_)
-IsEquivalence.refl (IsStrictTotalOrder.isEquivalence <μ-STO) = ≈-refl
-IsEquivalence.sym (IsStrictTotalOrder.isEquivalence <μ-STO) = ≈-sym
-IsEquivalence.trans (IsStrictTotalOrder.isEquivalence <μ-STO) = ≈-trans
-IsStrictTotalOrder.trans <μ-STO = <μ-trans
-IsStrictTotalOrder.compare <μ-STO = compare-wrap-μML
+-- <μ-STO : IsStrictTotalOrder (wrap₂ {X = μML} _≈_) (wrap₂ _<μ_)
+-- IsEquivalence.refl (IsStrictTotalOrder.isEquivalence <μ-STO) = ≈-refl
+-- IsEquivalence.sym (IsStrictTotalOrder.isEquivalence <μ-STO) = ≈-sym
+-- IsEquivalence.trans (IsStrictTotalOrder.isEquivalence <μ-STO) = ≈-trans
+-- IsStrictTotalOrder.trans <μ-STO = <μ-trans
+-- IsStrictTotalOrder.compare <μ-STO = compare-wrap-μML
 
 <0-propositional : ∀ {x y} → (p q : x <0 y) → p ≡ q
 <0-propositional (at<at x) (at<at x₁) = cong at<at (IsPropStrictTotalOrder.<-prop <A-STO x x₁)
@@ -358,55 +358,55 @@ IsStrictTotalOrder.compare <μ-STO = compare-wrap-μML
 <η-propositional : ∀ {x y} → (p q : x <η y) → p ≡ q
 <η-propositional μ<ν μ<ν = refl
 
-<μ-propositional : {ϕ ψ : wrap μML} → (p q : (wrap₂ _<μ_) ϕ ψ) → p ≡ q
-<μ-propositional v<0 v<0 = refl
-<μ-propositional v<1 v<1 = refl
-<μ-propositional v<2 v<2 = refl
-<μ-propositional v<η v<η = refl
-<μ-propositional 0<1 0<1 = refl
-<μ-propositional 0<2 0<2 = refl
-<μ-propositional 0<η 0<η = refl
-<μ-propositional 1<2 1<2 = refl
-<μ-propositional 1<η 1<η = refl
-<μ-propositional 2<η 2<η = refl
-<μ-propositional (var x) (var x₁) = cong var (IsPropStrictTotalOrder.<-prop <V-STO x x₁)
-<μ-propositional (op0 x) (op0 x₁) = cong op0 (<0-propositional x x₁)
-<μ-propositional (op1 x) (op1 x₁) = cong op1 (<1-propositional x x₁)
-<μ-propositional (op1 ()) (sf1 refl q)
-<μ-propositional (op2 x) (op2 x₁) = cong op2 (<2-propositional x x₁)
-<μ-propositional (op2 ()) (sf2l refl q)
-<μ-propositional (op2 ()) (sf2r refl p q)
-<μ-propositional (opη x) (opη x₁) = cong opη (<η-propositional x x₁)
-<μ-propositional (opη ()) (varη refl x₂)
-<μ-propositional (opη ()) (sfη refl p q)
-<μ-propositional (varη refl x₁) (opη ())
-<μ-propositional (varη refl x₁) (varη refl x₃) = cong (varη refl) (IsPropStrictTotalOrder.<-prop <V-STO x₁ x₃)
-<μ-propositional (varη refl p) (sfη refl refl q) = ⊥-elim $ IsPropStrictTotalOrder.irrefl <V-STO refl p
-<μ-propositional (sf1 refl p) (op1 ())
-<μ-propositional (sf1 refl p) (sf1 refl q) = cong (sf1 refl) (<μ-propositional p q)
-<μ-propositional (sf2l refl p) (op2 ())
-<μ-propositional (sf2l refl p) (sf2l refl q) = cong (sf2l refl) (<μ-propositional p q)
-<μ-propositional (sf2l refl p) (sf2r refl x q) = ⊥-elim $ IsStrictTotalOrder.irrefl <μ-STO x p
-<μ-propositional (sfη refl refl p) (opη ())
-<μ-propositional (sfη refl refl p) (varη refl q) = ⊥-elim $ IsPropStrictTotalOrder.irrefl <V-STO refl q
-<μ-propositional (sfη refl refl p) (sfη refl refl q) = cong (sfη refl refl) (<μ-propositional p q)
-<μ-propositional (sf2r refl x₁ p) (op2 ())
-<μ-propositional (sf2r refl x p) (sf2l refl q) = ⊥-elim $ IsStrictTotalOrder.irrefl <μ-STO x q
-<μ-propositional (sf2r refl x p) (sf2r refl y q) = cong₂ (sf2r refl) (≈-propositional x y) (<μ-propositional p q)
+-- <μ-propositional : {ϕ ψ : wrap μML} → (p q : (wrap₂ _<μ_) ϕ ψ) → p ≡ q
+-- <μ-propositional v<0 v<0 = refl
+-- <μ-propositional v<1 v<1 = refl
+-- <μ-propositional v<2 v<2 = refl
+-- <μ-propositional v<η v<η = refl
+-- <μ-propositional 0<1 0<1 = refl
+-- <μ-propositional 0<2 0<2 = refl
+-- <μ-propositional 0<η 0<η = refl
+-- <μ-propositional 1<2 1<2 = refl
+-- <μ-propositional 1<η 1<η = refl
+-- <μ-propositional 2<η 2<η = refl
+-- <μ-propositional (var x) (var x₁) = cong var (IsPropStrictTotalOrder.<-prop <V-STO x x₁)
+-- <μ-propositional (op0 x) (op0 x₁) = cong op0 (<0-propositional x x₁)
+-- <μ-propositional (op1 x) (op1 x₁) = cong op1 (<1-propositional x x₁)
+-- <μ-propositional (op1 ()) (sf1 refl q)
+-- <μ-propositional (op2 x) (op2 x₁) = cong op2 (<2-propositional x x₁)
+-- <μ-propositional (op2 ()) (sf2l refl q)
+-- <μ-propositional (op2 ()) (sf2r refl p q)
+-- <μ-propositional (opη x) (opη x₁) = cong opη (<η-propositional x x₁)
+-- <μ-propositional (opη ()) (varη refl x₂)
+-- <μ-propositional (opη ()) (sfη refl p q)
+-- <μ-propositional (varη refl x₁) (opη ())
+-- <μ-propositional (varη refl x₁) (varη refl x₃) = cong (varη refl) (IsPropStrictTotalOrder.<-prop <V-STO x₁ x₃)
+-- <μ-propositional (varη refl p) (sfη refl refl q) = ⊥-elim $ IsPropStrictTotalOrder.irrefl <V-STO refl p
+-- <μ-propositional (sf1 refl p) (op1 ())
+-- <μ-propositional (sf1 refl p) (sf1 refl q) = cong (sf1 refl) (<μ-propositional p q)
+-- <μ-propositional (sf2l refl p) (op2 ())
+-- <μ-propositional (sf2l refl p) (sf2l refl q) = cong (sf2l refl) (<μ-propositional p q)
+-- <μ-propositional (sf2l refl p) (sf2r refl x q) = ⊥-elim $ IsStrictTotalOrder.irrefl <μ-STO x p
+-- <μ-propositional (sfη refl refl p) (opη ())
+-- <μ-propositional (sfη refl refl p) (varη refl q) = ⊥-elim $ IsPropStrictTotalOrder.irrefl <V-STO refl q
+-- <μ-propositional (sfη refl refl p) (sfη refl refl q) = cong (sfη refl refl) (<μ-propositional p q)
+-- <μ-propositional (sf2r refl x₁ p) (op2 ())
+-- <μ-propositional (sf2r refl x p) (sf2l refl q) = ⊥-elim $ IsStrictTotalOrder.irrefl <μ-STO x q
+-- <μ-propositional (sf2r refl x p) (sf2r refl y q) = cong₂ (sf2r refl) (≈-propositional x y) (<μ-propositional p q)
 
-<μ-PSTO : IsPropStrictTotalOrder (wrap₂ {X = μML} _≈_) (wrap₂ _<μ_)
-IsPropStrictTotalOrder.isSTO <μ-PSTO = <μ-STO
-IsPropStrictTotalOrder.≈-prop <μ-PSTO = ≈-propositional
-IsPropStrictTotalOrder.<-prop <μ-PSTO = <μ-propositional
+-- <μ-PSTO : IsPropStrictTotalOrder (wrap₂ {X = μML} _≈_) (wrap₂ _<μ_)
+-- IsPropStrictTotalOrder.isSTO <μ-PSTO = <μ-STO
+-- IsPropStrictTotalOrder.≈-prop <μ-PSTO = ≈-propositional
+-- IsPropStrictTotalOrder.<-prop <μ-PSTO = <μ-propositional
 
-<μ₀-PSTO : IsPropStrictTotalOrder (_≈_ {[]} {[]}) (_<μ_ {[]} {[]})
-IsEquivalence.refl (IsStrictTotalOrder.isEquivalence (IsPropStrictTotalOrder.isSTO <μ₀-PSTO)) = ≈-refl
-IsEquivalence.sym (IsStrictTotalOrder.isEquivalence (IsPropStrictTotalOrder.isSTO <μ₀-PSTO)) = ≈-sym
-IsEquivalence.trans (IsStrictTotalOrder.isEquivalence (IsPropStrictTotalOrder.isSTO <μ₀-PSTO)) = ≈-trans
-IsStrictTotalOrder.trans (IsPropStrictTotalOrder.isSTO <μ₀-PSTO) = <μ-trans
-IsStrictTotalOrder.compare (IsPropStrictTotalOrder.isSTO <μ₀-PSTO) = compare-μML
-IsPropStrictTotalOrder.≈-prop <μ₀-PSTO = ≈-propositional
-IsPropStrictTotalOrder.<-prop <μ₀-PSTO = <μ-propositional
+-- <μ₀-PSTO : IsPropStrictTotalOrder (_≈_ {[]} {[]}) (_<μ_ {[]} {[]})
+-- IsEquivalence.refl (IsStrictTotalOrder.isEquivalence (IsPropStrictTotalOrder.isSTO <μ₀-PSTO)) = ≈-refl
+-- IsEquivalence.sym (IsStrictTotalOrder.isEquivalence (IsPropStrictTotalOrder.isSTO <μ₀-PSTO)) = ≈-sym
+-- IsEquivalence.trans (IsStrictTotalOrder.isEquivalence (IsPropStrictTotalOrder.isSTO <μ₀-PSTO)) = ≈-trans
+-- IsStrictTotalOrder.trans (IsPropStrictTotalOrder.isSTO <μ₀-PSTO) = <μ-trans
+-- IsStrictTotalOrder.compare (IsPropStrictTotalOrder.isSTO <μ₀-PSTO) = compare-μML
+-- IsPropStrictTotalOrder.≈-prop <μ₀-PSTO = ≈-propositional
+-- IsPropStrictTotalOrder.<-prop <μ₀-PSTO = <μ-propositional
 
 {-
 _<FP_ : μFP' -> μFP' -> Set
@@ -475,7 +475,7 @@ _≟μ_ : Decidable {A = μMLΓ} _≡_
 
 -}
 
-import Free.IdempotentCommutativeMonoid as SL
-module Listμ₀ = SL <μ₀-PSTO -- lists of closed formulas.
+-- import Free.IdempotentCommutativeMonoid as SL
+-- module Listμ₀ = SL <μ₀-PSTO -- lists of closed formulas.
 
 -- module ListFP = SL <FP-STO
