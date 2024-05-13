@@ -3,7 +3,7 @@ module MuCalc.Everything where
 
 open import MuCalc.DeBruijn.Base
 open import MuCalc.DeBruijn.Semantics.Container
---open import MuCalc.DeBruijn.Semantics.FreshList
+open import MuCalc.DeBruijn.Semantics.FreshList
 
 open import MuCalc.Named.Base
 open import MuCalc.Named.Closure

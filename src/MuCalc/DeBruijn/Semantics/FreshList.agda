@@ -58,16 +58,16 @@ module FreshLists'
       → Vec PSet n -- The interpretations of the free variables
       → PSet -- The states where the formula is true.
   ⟦ var x ⟧ i = lookup i x
-  ⟦ μML₀ ⊤' ⟧ i = S
-  ⟦ μML₀ ⊥' ⟧ i = []
+  ⟦ ⊤' ⟧ i = S
+  ⟦ ⊥' ⟧ i = []
   ⟦ μML₀ (at x) ⟧ i = V x
   ⟦ μML₀ (¬at x) ⟧ i = _-<_> (Fin-STO n) S (V x)
-  ⟦ μML₁ □ ϕ ⟧ i = {!!}
-  ⟦ μML₁ ◆ ϕ ⟧ i = {!!}
-  ⟦ μML₂ ∧ ϕ ψ ⟧ i = {!!}
-  ⟦ μML₂ ∨ ϕ ψ ⟧ i = {!!}
-  ⟦ μMLη μ ϕ ⟧ i = {!!} -- repeated iteration, 2^n fuel, "classical" proof that it's enough
-  ⟦ μMLη ν ϕ ⟧ i = {!!}
+  ⟦ ■ ϕ ⟧ i = {!!}
+  ⟦ ◆ ϕ ⟧ i = {!!}
+  ⟦ ϕ ∧ ψ ⟧ i = {!!}
+  ⟦ ϕ ∨ ψ ⟧ i = {!!}
+  ⟦ μ ϕ ⟧ i = {!!} -- repeated iteration, 2^n fuel, "classical" proof that it's enough
+  ⟦ ν ϕ ⟧ i = {!!}
 
 {-
 
