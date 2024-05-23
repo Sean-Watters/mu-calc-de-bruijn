@@ -24,6 +24,7 @@ open import Data.Product
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Container.Indexed.Fam renaming (⟦_⟧ to ⟨⟦_⟧⟩)
 open import Data.Container.Indexed.Fam.SizedTypes
+open import Data.Container.Indexed.Fam.Correctness
 
 open import Function
 open import Relation.Nullary
@@ -35,6 +36,7 @@ private
   S = S' Mo
   _~>_ = R Mo
   V = V' Mo
+  open Container
 ------------------------------------------------------------------------------
 
 -- We want to assign meaning to formulas in our Kripke model. For some closed sentence
@@ -81,7 +83,8 @@ MkCont ⊤' = ⟨const⟩ (const ⊤)
 MkCont ⊥' = ⟨const⟩ (const ⊥)
 MkCont (μML₀ (at x)) = ⟨const⟩ (V x)
 MkCont (μML₀ (¬at x)) = ⟨const⟩ (λ s → ¬ (V x s))
-MkCont (■ ϕ) = ⟨Π⟩ {X = λ x → Σ[ y ∈ S ] (x ~> y)} (λ _ → MkCont ϕ)
+MkCont {n} (■ ϕ) = (λ s → (x : Σ[ t ∈ S ] (s ~> t)) → Shape (MkCont ϕ) (proj₁ x))
+               ◃ λ { {s} σ x → Σ[ t ∈ S ] Σ[ sRt ∈ (s ~> t) ] Position (MkCont ϕ) (σ (t , sRt)) x }
 MkCont (◆ ϕ) = ⟨Σ⟩ {X = λ x → Σ[ y ∈ S ] (x ~> y)} (λ _ → MkCont ϕ)
 MkCont (ϕ ∧ ψ) = MkCont ϕ ⟨×⟩ MkCont ψ
 MkCont (ϕ ∨ ψ) = MkCont ϕ ⟨+⟩ MkCont ψ
@@ -99,3 +102,11 @@ module VarCorrect (ext : Extensionality 0ℓ 0ℓ) where
   from (var-correct x i {s}) X = _ , λ { {t , .x} (refl , refl) → X}
   from-to (var-correct x i {s}) (tt , P) = cong (tt ,_) (exti ext (λ { {t , y} → ext (λ { (refl , refl) → refl }) }))
   to-from (var-correct x i {s}) b = refl
+
+module BoxCorrect (ext : Extensionality 0ℓ 0ℓ) where
+  correct : ∀ {n} (s : S) (i : Vec (S → Set) n) (ϕ : μML At n)
+          → ⟦ ■ ϕ ⟧ i s ≃ ((t : S) → s ~> t → ⟦ ϕ ⟧ i t )
+  to (correct s i ϕ) (σ , Q) t sRt = σ (t , sRt) , λ x → Q (t , sRt , x)
+  from (correct s i ϕ) σ = (λ { (t , sRt) → proj₁ (σ t sRt)}) , λ { (t , sRt , P) → proj₂ (σ t sRt) P}
+  from-to (correct s i ϕ) (σ , Q) = refl
+  to-from (correct s i ϕ) b = refl

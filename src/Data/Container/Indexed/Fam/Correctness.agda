@@ -1,5 +1,3 @@
-{-# OPTIONS --safe --cubical-compatible #-}
-
 module Data.Container.Indexed.Fam.Correctness where
 
 
@@ -82,11 +80,12 @@ module IndexedSum (ext : Extensionality 0ℓ 0ℓ) where
   to-from (correct X Y C) _ = refl
 
 
+{-
 module LeastFixedPoint (ext : Extensionality 0ℓ 0ℓ) where
   -- It's a fixpoint (F x ≈ F (F x))
   correct : (X : I → Set) → {!!}
   correct = {!!}
 
   -- And it's the least one.
-
+-}
 -- For correctness of greatest fixed point see ...Fam.SizedTypes.
