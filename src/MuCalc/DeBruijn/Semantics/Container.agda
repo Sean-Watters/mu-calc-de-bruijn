@@ -13,11 +13,13 @@ module MuCalc.DeBruijn.Semantics.Container
   (Mo : Kripke At)
   where
 
-open import Data.Fin using (Fin) renaming (zero to fzero; suc to fsuc)
+open import Level using (0ℓ)
+open import Axiom.Extensionality.Propositional using (Extensionality) renaming (implicit-extensionality to exti)
+open import Data.Fin using (Fin; _≟_) renaming (zero to fzero; suc to fsuc)
 open import Data.Vec using (Vec; lookup)
 open import Data.Nat using (ℕ; zero; suc)
-open import Data.Unit using (⊤)
-open import Data.Empty using (⊥)
+open import Data.Unit using (⊤; tt)
+open import Data.Empty
 open import Data.Product
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Container.Indexed.Fam renaming (⟦_⟧ to ⟨⟦_⟧⟩)
@@ -25,6 +27,7 @@ open import Data.Container.Indexed.Fam.SizedTypes
 
 open import Function
 open import Relation.Nullary
+open import Relation.Binary.Isomorphism
 open import MuCalc.DeBruijn.Base renaming (⊤ to ⊤'; ⊥ to ⊥') hiding (¬)
 
 private
@@ -73,7 +76,7 @@ dist-fin {n} (inj₂ s) = s , fzero
 
 -- Now to draw the rest of the owl!
 MkCont : {n : ℕ} → μML At n → Container (S × Fin n) S
-MkCont {n} (var x) = (λ _ → ⊤) ◃ λ _ s → ⊤ -- I'm confused - don't we need to use x? 
+MkCont {n} (var x) = (const ⊤) ◃ λ { {t} _ (s , y) → x ≡ y × s ≡ t}
 MkCont ⊤' = ⟨const⟩ (const ⊤)
 MkCont ⊥' = ⟨const⟩ (const ⊥)
 MkCont (μML₀ (at x)) = ⟨const⟩ (V x)
@@ -90,3 +93,9 @@ MkCont (ν ϕ) = ⟨ν⟩ (⟨map⟩ dist-fin (MkCont ϕ))
 ⟦_⟧ : ∀ {n} → μML At n → Vec (S → Set) n → S → Set
 ⟦_⟧ {n} ϕ i = ⟨⟦ MkCont ϕ ⟧⟩ (interpret-vec i)
 
+module VarCorrect (ext : Extensionality 0ℓ 0ℓ) where
+  var-correct : ∀ {n} (x : Fin n) (i : Vec (S → Set) n) → ⟦ var x ⟧ i ≃ᵢ lookup i x
+  to (var-correct x i {s}) (_ , P) = P (refl , refl)
+  from (var-correct x i {s}) X = _ , λ { {t , .x} (refl , refl) → X}
+  from-to (var-correct x i {s}) (tt , P) = cong (tt ,_) (exti ext (λ { {t , y} → ext (λ { (refl , refl) → refl }) }))
+  to-from (var-correct x i {s}) b = refl
