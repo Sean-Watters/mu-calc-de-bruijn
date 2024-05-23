@@ -84,6 +84,9 @@ inject₁ (μMLη op ϕ) = μMLη op (inject₁ ϕ)
 -- I feel like a stronger version of this should be possible where the
 -- formula being subbed in can be allowed a scope of n+k if all the free
 -- vars to replace are under at least k many binders. But that sounds hard
+
+-- ES: Alternatively, I think something like thinnings may be a nice
+-- approach for substitution
 sub : ∀ {At n} → μML At n → (m : Fin n) → μML At n → μML At n
 sub (var x) y α with x ≟ y
 ... | yes p = α

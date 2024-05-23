@@ -73,7 +73,7 @@ dist-fin {n} (inj₂ s) = s , fzero
 
 -- Now to draw the rest of the owl!
 MkCont : {n : ℕ} → μML At n → Container (S × Fin n) S
-MkCont {n} (var x) = (λ _ → ⊤) ◃ λ _ s → ⊤
+MkCont {n} (var x) = (λ _ → ⊤) ◃ λ _ s → ⊤ -- I'm confused - don't we need to use x? 
 MkCont ⊤' = ⟨const⟩ (const ⊤)
 MkCont ⊥' = ⟨const⟩ (const ⊥)
 MkCont (μML₀ (at x)) = ⟨const⟩ (V x)
