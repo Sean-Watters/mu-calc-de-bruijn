@@ -36,6 +36,7 @@ data μML (At : Set) (n : ℕ) : Set where
   μML₂ : (op : Op₂) → (ϕ : μML At n) → (ψ : μML At n) → μML At n
   μMLη : (op : Opη) → (ϕ : μML At (suc n)) → μML At n
 
+
 -- Some prettier pattern synonyms
 pattern ⊤ = μML₀ tt
 pattern ⊥ = μML₀ ff
@@ -47,6 +48,7 @@ pattern _∧_ ϕ ψ = μML₂ and ϕ ψ
 pattern _∨_ ϕ ψ = μML₂ or ϕ ψ
 pattern μ ϕ = μMLη mu ϕ
 pattern ν ϕ = μMLη nu ϕ
+
 
 --------------------------------------------------------------
 
@@ -87,6 +89,9 @@ inject₁ (μMLη op ϕ) = μMLη op (inject₁ ϕ)
 
 -- ES: Alternatively, I think something like thinnings may be a nice
 -- approach for substitution
+--
+-- Fred: Should have some notions of semantic substitution, so that substitution commutes with taking the semantics.
+-- Should make life easier.
 sub : ∀ {At n} → μML At n → (m : Fin n) → μML At n → μML At n
 sub (var x) y α with x ≟ y
 ... | yes p = α
