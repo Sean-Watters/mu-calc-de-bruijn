@@ -36,3 +36,8 @@ data Guarded (At : Set) {n : ℕ} (Γ : Vec ℕ n) : Set where
 
 GSentence : Set → Set
 GSentence At = Guarded At []
+
+-- todo:
+-- * DNF is much easier with guardedness
+-- * Q: Is guarded actually equivalent to non-guarded with constructive/container semantics?
+-- * Q: Does this make computing the closure and proving correctness easier?!
