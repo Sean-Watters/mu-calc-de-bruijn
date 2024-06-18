@@ -21,9 +21,14 @@ inc [] = []
 inc (zero ∷ xs) = zero ∷ inc xs
 inc (suc x ∷ xs) = suc (suc x) ∷ inc xs
 
--- guarded by construction formulas; g says whether we're in in the scope of a ■/◆
+-- guarded by construction formulas. Contexts are lists rather than mere nats.
+-- The length of the context tells us how many variables we have in scope, a la
+-- de Bruijn, meanwhile the values living at each position tell us the distance to the
+-- most recent modal operator that guards that variable. We treat a value of 0 as meaning
+-- that variable has not been guarded yet, so when we go deeper into the formula tree, only
+-- the non-zero values are incremented.
 data Guarded (At : Set) {n : ℕ} (Γ : Vec ℕ n) : Set where
-  var : (x : Fin n) → {{NonZero (lookup Γ x)}} → Guarded At Γ
+  var : (x : Fin n) → {{NonZero (lookup Γ x)}} → Guarded At Γ -- instance resolution solves the guardedness proofs for us
   μML₀ : (op : Op₀ At) → Guarded At Γ
   μML₁ : (op : Op₁) → (ϕ : Guarded At {n} ones) → Guarded At Γ
   μML₂ : (op : Op₂) → (ϕ : Guarded At (inc Γ)) → (ψ : Guarded At (inc Γ)) → Guarded At Γ
