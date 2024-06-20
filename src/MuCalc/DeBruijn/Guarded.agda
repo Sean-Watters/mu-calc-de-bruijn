@@ -37,6 +37,20 @@ data Guarded (At : Set) {n : ℕ} (Γ : Vec ℕ n) : Set where
 GSentence : Set → Set
 GSentence At = Guarded At []
 
+
+-- Some prettier pattern synonyms
+pattern ⊤ = μML₀ tt
+pattern ⊥ = μML₀ ff
+-- pattern at x = μML₀ at x
+-- pattern ¬at x = μML₀ ¬at x
+pattern ■ ϕ = μML₁ box ϕ
+pattern ◆ ϕ = μML₁ dia ϕ
+pattern _∧_ ϕ ψ = μML₂ and ϕ ψ
+pattern _∨_ ϕ ψ = μML₂ or ϕ ψ
+pattern μ ϕ = μMLη mu ϕ
+pattern ν ϕ = μMLη nu ϕ
+
+
 -- todo:
 -- * DNF is much easier with guardedness
 -- * Q: Is guarded actually equivalent to non-guarded with constructive/container semantics?

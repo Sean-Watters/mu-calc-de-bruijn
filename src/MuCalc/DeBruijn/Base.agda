@@ -1,6 +1,3 @@
-open import Algebra.Structures.Propositional
-open import Relation.Binary.PropositionalEquality
-
 module MuCalc.DeBruijn.Base where
 
 open import Data.Nat hiding (_≟_)
