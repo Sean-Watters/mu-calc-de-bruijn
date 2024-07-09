@@ -2,6 +2,7 @@ module MuCalc.DeBruijn.Base where
 
 open import Data.Nat hiding (_≟_)
 open import Data.Fin using (Fin; zero; suc; _≟_) renaming (inject₁ to fin-inject₁)
+open import Data.Product
 open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary.Decidable
 
@@ -33,6 +34,16 @@ data μML (At : Set) (n : ℕ) : Set where
   μML₂ : (op : Op₂) → (ϕ : μML At n) → (ψ : μML At n) → μML At n
   μMLη : (op : Opη) → (ϕ : μML At (suc n)) → μML At n
 
+data IsFP {At : Set} : {n : ℕ} (ϕ : μML At n) → Set where
+  fp : {n : ℕ} (op : Opη) → (ϕ : μML At (suc n)) → IsFP (μMLη op ϕ)
+
+record μFP (At : Set) : Set where
+  constructor fp
+  field
+    {n} : ℕ
+    {ϕ} : μML At n
+    pf : IsFP ϕ
+open μFP
 
 -- Some prettier pattern synonyms
 pattern ⊤ = μML₀ tt
