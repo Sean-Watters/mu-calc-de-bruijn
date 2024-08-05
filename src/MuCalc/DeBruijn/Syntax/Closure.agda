@@ -139,8 +139,8 @@ recompute-forget Γ (μML₂ op ϕ ψ) = cong₂ (μML₂ op) (recompute-forget 
 recompute-forget {At} {n} Γ (μMLη op {ψ} ϕ p) = cong-fp (≈⇒≡∘forget p) (trans (recompute-forget (Γ -, fp op ψ) ϕ) {!!})
 
 -- Open terms are open graphs! In the well-scoped world, the scope only tells us how many backedges were chopped off,
--- so there are many ways to close the term. But with the "sublime" scopes, there is 1 unique way to close the term
--- (starting from a μ/ν, at lease; we can always put more propositional/modal stuff above that).
+-- so there are many ways to close the term. But with the "sublime" scopes, there is 1* unique way to close the term.
+-- *Starting from the outermost μ/ν, at least; we can always put more propositional/modal operators above that.
 -- This means that for every choice of scope Γ, we have the following isomorphism:
 
 sublime-iso : {At : Set} {n : ℕ} (Γ : Scope At n) → μML At n ≃ μMLε At Γ
