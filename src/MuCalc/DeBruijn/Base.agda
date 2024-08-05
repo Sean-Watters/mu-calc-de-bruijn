@@ -97,6 +97,10 @@ rescope ρ (μML₁ op ϕ) = μML₁ op (rescope ρ ϕ)
 rescope ρ (μML₂ op ϕ ψ) = μML₂ op (rescope ρ ϕ) (rescope ρ ψ)
 rescope ρ (μMLη op ϕ) = μMLη op (rescope (ext ρ) ϕ)
 
+-- In particular, we can rescope upwards by 1
+inject₁ : ∀ {n At} → μML At n → μML At (suc n)
+inject₁ = rescope Data.Fin.inject₁
+
 -- Parallel substitutions are maps from variables to formulae
 Subst : Set → ℕ → ℕ → Set
 Subst At n m = Fin n → μML At m
