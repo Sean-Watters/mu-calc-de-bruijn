@@ -11,6 +11,7 @@ open import MuCalc.DeBruijn.Base hiding (¬; sub₀; _[_]) renaming (unfold to u
 open import MuCalc.DeBruijn.Guarded
 open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Binary.Isomorphism
+open import Relation.Binary.Construct.Closure.ReflexiveTransitive using (Star)
 open import Relation.Nullary
 
 -- Vectors of fixpoint formulas, with the extra trick that the number of
@@ -121,22 +122,22 @@ forget-recompute Γ (μML₁ op ϕ) = cong (μML₁ op) (forget-recompute Γ ϕ)
 forget-recompute Γ (μML₂ op ϕ ψ) = cong₂ (μML₂ op) (forget-recompute Γ ϕ) (forget-recompute Γ ψ)
 forget-recompute Γ (μMLη op ϕ) = cong (μMLη op) (forget-recompute (Γ -, fp op ϕ) ϕ)
 
--- instinct says this should be an instance of some general fact; we're basically saying that substing the same element after proving the types equal is the identity
--- the general thing will definitely be easier to prove, so let's try and nail that down.
-rf-lemma : ∀ {At} {n} {Γ : Scope At n} {op} {ψ : μML At (suc n)}
-         → {ϕ : μMLε At (Γ -, fp op ψ)} {p : ψ ≈ ϕ}
-         → (eq : forget-scope ϕ ≡ ψ)
-         → recompute-scope (Γ -, fp op ψ) (forget-scope ϕ)
+
+-- this is basically just saying that substing the same element after proving the types equal is the identity,
+-- but the weird dependencies seem to make it not an obvious instance of any much more general case.
+rf-lemma : ∀ {At} {n} {Γ : Scope At n} {op} {ψ ϕ : μML At (suc n)}
+         → (eq : ϕ ≡ ψ)
+         → recompute-scope (Γ -, fp op ψ) ϕ
          ≡ subst (λ z → μMLε At (Γ -, fp op z)) eq
-           (recompute-scope (Γ -, fp op (forget-scope ϕ)) (forget-scope ϕ))
-rf-lemma eq = {!!}
+           (recompute-scope (Γ -, fp op ϕ) ϕ)
+rf-lemma refl = refl
 
 recompute-forget : ∀ {At n} (Γ : Scope At n) → (ϕ : μMLε At Γ) → ϕ ≡ recompute-scope Γ (forget-scope ϕ)
 recompute-forget Γ (var x) = refl
 recompute-forget Γ (μML₀ op) = refl
 recompute-forget Γ (μML₁ op ϕ) = cong (μML₁ op) (recompute-forget Γ ϕ)
 recompute-forget Γ (μML₂ op ϕ ψ) = cong₂ (μML₂ op) (recompute-forget Γ ϕ) (recompute-forget Γ ψ)
-recompute-forget {At} {n} Γ (μMLη op {ψ} ϕ p) = cong-fp (≈⇒≡∘forget p) (trans (recompute-forget (Γ -, fp op ψ) ϕ) {!!})
+recompute-forget {At} {n} Γ (μMLη op {ψ} ϕ p) = cong-fp (≈⇒≡∘forget p) (trans (recompute-forget (Γ -, fp op ψ) ϕ) (rf-lemma (≈⇒≡∘forget p)))
 
 -- Open terms are open graphs! In the well-scoped world, the scope only tells us how many backedges were chopped off,
 -- so there are many ways to close the term. But with the "sublime" scopes, there is 1* unique way to close the term.
@@ -186,32 +187,33 @@ data _⊑_ {At : Set} : {i j : ℕ} → (ψ : μML At i) (ϕ : μML At j) → {{
 unfold : ∀ {At n} {Γ : Scope At n} {ϕ : μMLε At Γ} → IsFPε ϕ → μMLε At Γ
 unfold {Γ = Γ} ϕ = recompute-scope Γ (unfold' (forget-scope-fp ϕ))
 
--- The subformula tree. Identification of equal subformulas in different branches yields the sf dag,
--- and replacement of variables with backedges yields the closure graph?
--- Does this smell ok? Diversion --- look at the example that gives exponential difference between closure and sf,
--- and figure out what happens to that here.
-data ClosTree {At : Set} {n : ℕ} {Γ : Scope At n} : μMLε At Γ → Set where
-  leaf  : ∀ {op} → ClosTree (μML₀ op)
-  node₁ : ∀ {op ϕ} → ClosTree ϕ → ClosTree (μML₁ op ϕ)
-  node₂ : ∀ {op ϕ ψ} → ClosTree ϕ → ClosTree ψ → ClosTree (μML₂ op ϕ ψ)
-  nodeη : ∀ {op ψ ϕ} → (p : ψ ≈ ϕ) → ClosTree ϕ → ClosTree (μMLη op ϕ p)
-  back : ∀ {x} → ClosTree (var x) -- variables store pointers back to their binders, and so indicate backedges
 
--- The closure relation.
--- Only defined on closed formulas for now, though an "open closure"
--- notion could be interesting. What sort of compositional structure
--- is there?
+-- The "open" closure relation. "Open" in the sense that we don't insist
+-- that the formulas are closed.
 -- Anyway, this is our correctness criteria for the algorithm.
-data _~C~>_ {At : Set} : (ϕ ψ : μMLε At []) → Set where
-  down  : (op : Op₁) (ϕ : μMLε At [])   → μML₁ op ϕ ~C~> ϕ
-  left  : (op : Op₂) (ϕ ψ : μMLε At []) → μML₂ op ϕ ψ ~C~> ϕ
-  right : (op : Op₂) (ϕ ψ : μMLε At []) → μML₂ op ϕ ψ ~C~> ψ
-  thru  : {ϕ' : μMLε At []} (ϕ : IsFPε ϕ') → ϕ' ~C~> unfold ϕ
+data _~C~>_ {At : Set} {n : ℕ} {Γ : Scope At n} : (ϕ ψ : μMLε At Γ) → Set where
+  down  : (op : Op₁) (ϕ : μMLε At Γ)   → μML₁ op ϕ ~C~> ϕ
+  left  : (op : Op₂) (ϕ ψ : μMLε At Γ) → μML₂ op ϕ ψ ~C~> ϕ
+  right : (op : Op₂) (ϕ ψ : μMLε At Γ) → μML₂ op ϕ ψ ~C~> ψ
+  thru  : {ϕ' : μMLε At Γ} (ϕ : IsFPε ϕ') → ϕ' ~C~> unfold ϕ
 
+-- ψ is in the closure of ϕ if there is a path ϕ ~...~> ψ.
+-- That is, the membership relation for the closure set is the transitive reflexive
+-- closure of _~C~>_
+_∈C_ : {At : Set} {n : ℕ} {Γ : Scope At n} → (ψ ϕ : μMLε At Γ) → Set
+_∈C_ = Star _~C~>_ 
 
+-- The closure of ϕ is defined as the set of all formulas reachable in this way from ϕ.
+Closure : {At : Set} {n : ℕ} {Γ : Scope At n} → μMLε At Γ → Set
+Closure {At} {n} {Γ} ϕ = Σ[ ψ ∈ μMLε At Γ ] (ψ ∈C ϕ)
+
+-- And now the closure algorithm. Here's our finite set machinery
 
 postulate _<ε_ : {At : Set} {n : ℕ} {Γ : Scope At n} → (ϕ ψ : μMLε At Γ) → Set
 postulate <ε-STO : (At : Set) {n : ℕ} {Γ : Scope At n} → IsPropStrictTotalOrder {μMLε At Γ} _≡_ _<ε_
 open import Data.FreshList.InductiveInductive
 open import Free.IdempotentCommutativeMonoid.Base
 open import Free.IdempotentCommutativeMonoid.Properties
+
+
+-- closure : ∀ {At }
