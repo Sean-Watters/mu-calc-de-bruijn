@@ -4,8 +4,7 @@ module MuCalc.DeBruijn.Syntax.Closure where
 open import Algebra.Structures.Propositional
 open import Data.Nat
 open import Data.Nat.Properties
-open import Data.Fin using (Fin; fromℕ; fold) renaming (zero to fzero; suc to fsuc)
-open import Data.Vec hiding ([_])
+open import Data.Fin using (Fin; fromℕ; fold; toℕ; _ℕ-_) renaming (zero to fzero; suc to fsuc)
 open import Data.Product
 open import MuCalc.DeBruijn.Base hiding (¬; sub₀; _[_]) renaming (unfold to unfold')
 open import MuCalc.DeBruijn.Guarded
@@ -13,6 +12,10 @@ open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Binary.Isomorphism
 open import Relation.Binary.Construct.Closure.ReflexiveTransitive using (Star)
 open import Relation.Nullary
+
+----------------
+-- Data Types --
+----------------
 
 -- Vectors of fixpoint formulas, with the extra trick that the number of
 -- free variables allowed depends on its position in the vector
@@ -47,6 +50,30 @@ data IsFPε {At : Set} : {n : ℕ} {Γ : Scope At n} → μMLε At Γ → Set wh
   fp : ∀ {n} {Γ : Scope At n} → (op : Opη) {ψ : μML At (suc n)} (ϕ : μMLε At (Γ -, fp op ψ)) (p : ψ ≈ ϕ) → IsFPε (μMLη op ϕ p)
 
 
+--------------------------
+-- Machinery for Scopes --
+--------------------------
+
+-- Lookup is a pain, because the position of the formula tells us its scope, but in reverse order
+-- (the head has the largest scope, and the final element has the empty scope).
+
+-- So we need to first define the function that converts an index in the scope to the size
+-- of the scope of the formula there.
+
+complement : {n : ℕ} → Fin n → Fin n
+complement {suc n} fzero = fromℕ n
+complement {suc n} (fsuc x) = {!n ℕ- (fsuc x)!}
+
+ind : {n : ℕ} → Fin n → ℕ
+ind = {!!}
+
+lookup : ∀ {At n} → (Γ : Scope At n) → (x : Fin n) → μML At (ind x)
+lookup = {!!}
+
+----------------------------
+-- Machinery for Formulas --
+----------------------------
+
 -- ≈ is prop-valued
 ≈-irrelevant : ∀ {At n} {Γ : Scope At n} {ϕ : μML At n} {ψ : μMLε At Γ} → (p q : ϕ ≈ ψ) → p ≡ q
 ≈-irrelevant (var x) (var .x) = refl
@@ -55,12 +82,6 @@ data IsFPε {At : Set} : {n : ℕ} {Γ : Scope At n} → μMLε At Γ → Set wh
 ≈-irrelevant (μML₂ op p1 p2) (μML₂ .op q1 q2) = cong₂ (μML₂ op) (≈-irrelevant p1 q1) (≈-irrelevant p2 q2)
 ≈-irrelevant (μMLη op p) (μMLη .op .p) = refl
 
--- The extra dependencies in the scopes make proving equalities on fixpoint formulas especially tricky.
--- In particular, if we can write the type of this lemma, then it's already easy. But making things fit seems
--- to be the hard part. In particular, forcing both ϕ and ψ to depend on definitionally the same θ is a big ask.
-
--- (Random thought; the issue seems to be that the equalities on the terms are trivial as soon as we know that
--- the identity type-checks in the first place. But writing down the type is the hard part. Heterogenenous eq? Subst? HoTT?)
 cong-fp : ∀ {op At n} {Γ : Scope At n}
         → {ϕ' ψ' : μML At (suc n)}
         → {ϕ : μMLε At (Γ -, fp op ϕ')} {ψ : μMLε At (Γ -, fp op ψ')}
@@ -188,9 +209,11 @@ unfold : ∀ {At n} {Γ : Scope At n} {ϕ : μMLε At Γ} → IsFPε ϕ → μML
 unfold {Γ = Γ} ϕ = recompute-scope Γ (unfold' (forget-scope-fp ϕ))
 
 
--- The "open" closure relation. "Open" in the sense that we don't insist
--- that the formulas are closed.
--- Anyway, this is our correctness criteria for the algorithm.
+-- The closure relation. At first glance it may seem that we aren't
+-- insisting on closed formulas, but this isn't really true because the scopes
+-- tell us what all the binders are. So there's really no such thing as a "free"
+-- variable in this sense.
+-- Anyway, this is the foundation of the correctness criteria for the algorithm.
 data _~C~>_ {At : Set} {n : ℕ} {Γ : Scope At n} : (ϕ ψ : μMLε At Γ) → Set where
   down  : (op : Op₁) (ϕ : μMLε At Γ)   → μML₁ op ϕ ~C~> ϕ
   left  : (op : Op₂) (ϕ ψ : μMLε At Γ) → μML₂ op ϕ ψ ~C~> ϕ
@@ -198,7 +221,7 @@ data _~C~>_ {At : Set} {n : ℕ} {Γ : Scope At n} : (ϕ ψ : μMLε At Γ) → 
   thru  : {ϕ' : μMLε At Γ} (ϕ : IsFPε ϕ') → ϕ' ~C~> unfold ϕ
 
 -- ψ is in the closure of ϕ if there is a path ϕ ~...~> ψ.
--- That is, the membership relation for the closure set is the transitive reflexive
+-- That is, the membership relation for the Fischer-Ladner closure set is the transitive reflexive
 -- closure of _~C~>_
 _∈C_ : {At : Set} {n : ℕ} {Γ : Scope At n} → (ψ ϕ : μMLε At Γ) → Set
 _∈C_ = Star _~C~>_ 
@@ -207,13 +230,17 @@ _∈C_ = Star _~C~>_
 Closure : {At : Set} {n : ℕ} {Γ : Scope At n} → μMLε At Γ → Set
 Closure {At} {n} {Γ} ϕ = Σ[ ψ ∈ μMLε At Γ ] (ψ ∈C ϕ)
 
--- And now the closure algorithm. Here's our finite set machinery
-
+-- And now the closure algorithm. Here's our finite set machinery.
 postulate _<ε_ : {At : Set} {n : ℕ} {Γ : Scope At n} → (ϕ ψ : μMLε At Γ) → Set
-postulate <ε-STO : (At : Set) {n : ℕ} {Γ : Scope At n} → IsPropStrictTotalOrder {μMLε At Γ} _≡_ _<ε_
+postulate <ε-STO : (At : Set) {n : ℕ} (Γ : Scope At n) → IsPropStrictTotalOrder {μMLε At Γ} _≡_ _<ε_
 open import Data.FreshList.InductiveInductive
-open import Free.IdempotentCommutativeMonoid.Base
+open import Free.IdempotentCommutativeMonoid.Base renaming (_∪_ to un)
 open import Free.IdempotentCommutativeMonoid.Properties
 
-
--- closure : ∀ {At }
+-- todo: this needs to be done with wf-induction. also scopes need some *work*.
+closure : ∀ {At n} {Γ : Scope At n} → (ϕ : μMLε At Γ) → SortedList (<ε-STO At Γ)
+closure {Γ = Γ} (var x) = cons (recompute-scope Γ (lookup Γ x)) [] [] -- might be best to make scopes *less* fancy and have them just be Vecs again, because lookup is gonna cause a lot of pain
+closure {Γ = Γ} (μML₀ op) = cons (recompute-scope Γ (μML₀ op)) [] []
+closure {At} {Γ = Γ} (μML₁ op ϕ) = insert (<ε-STO At Γ) (μML₁ op ϕ) (closure ϕ)
+closure {At} {Γ = Γ} (μML₂ op ϕ ψ) = insert (<ε-STO At Γ) (μML₂ op ϕ ψ) (un (<ε-STO At Γ) (closure ϕ) (closure ψ))
+closure {At} {Γ = Γ} (μMLη op ϕ p) = insert (<ε-STO At Γ) (μMLη op ϕ p) {!closure!}
