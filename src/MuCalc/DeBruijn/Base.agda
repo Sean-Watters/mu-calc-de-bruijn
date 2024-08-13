@@ -35,15 +35,7 @@ data μML (At : Set) (n : ℕ) : Set where
   μMLη : (op : Opη) → (ϕ : μML At (suc n)) → μML At n
 
 data IsFP {At : Set} : {n : ℕ} (ϕ : μML At n) → Set where
-  fp : {n : ℕ} (op : Opη) → (ψ : μML At (suc n)) → IsFP (μMLη op ψ)
-
-record μFP (At : Set) : Set where
-  constructor pack
-  field
-    {ctx} : ℕ
-    {tm} : μML At ctx
-    pf : IsFP tm
-open μFP
+  instance fp : {n : ℕ} {op : Opη} {ψ : μML At (suc n)} → IsFP (μMLη op ψ)
 
 -- Some prettier pattern synonyms
 pattern ⊤ = μML₀ tt
@@ -127,5 +119,5 @@ _[_] : ∀ {n At} → μML At (suc n) → μML At n → μML At n
 _[_] {n} {At} ϕ σ = sub (sub₀ σ) ϕ
 
 -- And now fixpoint unfolding is a single substitution
-unfold : ∀ {At n} {ϕ : μML At n} → IsFP ϕ → μML At n
-unfold (fp op ψ) = ψ [ μMLη op ψ ]
+unfold : ∀ {At n} (ϕ : μML At n) → {{_ : IsFP ϕ}} → μML At n
+unfold (μMLη op ψ) = ψ [ μMLη op ψ ]

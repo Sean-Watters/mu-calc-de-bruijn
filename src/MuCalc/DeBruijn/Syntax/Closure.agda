@@ -4,10 +4,10 @@ module MuCalc.DeBruijn.Syntax.Closure where
 open import Algebra.Structures.Propositional
 open import Data.Nat
 open import Data.Nat.Properties
-open import Data.Fin using (Fin; fromℕ; fold; toℕ; _ℕ-_) renaming (zero to fzero; suc to fsuc)
+open import Data.Fin using (Fin; fromℕ; fold; toℕ; _ℕ-_) renaming (zero to fzero; suc to fsuc; inject₁ to finject₁)
 open import Data.Product
+open import Function using (_∘_)
 open import MuCalc.DeBruijn.Base hiding (¬; sub₀; _[_]) renaming (unfold to unfold')
-open import MuCalc.DeBruijn.Guarded
 open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Binary.Isomorphism
 open import Relation.Binary.Construct.Closure.ReflexiveTransitive using (Star)
@@ -21,7 +21,7 @@ open import Relation.Nullary
 -- free variables allowed depends on its position in the vector
 data Scope (At : Set) : ℕ → Set where
   [] : Scope At zero
-  _-,_ : ∀ {n} → (Γ₀ : Scope At n) → {ϕ : μML At n} (Γ₀ : IsFP ϕ) → Scope At (suc n)
+  _-,_ : ∀ {n} → (Γ₀ : Scope At n) → (ϕ : μML At n) → {{_ : IsFP ϕ}} → Scope At (suc n)
 
 -- Sublimely-scoped formulas
 mutual
@@ -30,7 +30,7 @@ mutual
     μML₀ : (op : Op₀ At) → μMLε At Γ
     μML₁ : (op : Op₁) → (ϕ : μMLε At Γ) → μMLε At Γ
     μML₂ : (op : Op₂) → (ϕ : μMLε At Γ) → (ψ : μMLε At Γ) → μMLε At Γ
-    μMLη : (op : Opη) → {ψ : μML At (suc n)} → (ϕ : μMLε At (Γ -, fp op ψ)) → ψ ≈ ϕ → μMLε At Γ
+    μMLη : (op : Opη) → {ψ : μML At (suc n)} → (ϕ : μMLε At (Γ -, μMLη op ψ)) → ψ ≈ ϕ → μMLε At Γ
 
   data _≈_ {At : Set} {n : ℕ} {Γ : Scope At n} : μML At n → μMLε At Γ → Set where
     var  : (x : Fin n) → (var x) ≈ (var x)
@@ -43,32 +43,20 @@ mutual
          → ϕ ≈ ϕ' → ψ ≈ ψ'
          → μML₂ op ϕ ψ ≈ μML₂ op ϕ' ψ'
     μMLη : (op : Opη)
-         → {ϕ : μML At (suc n)} {ϕ' : μMLε At (Γ -, fp op ϕ)} → (p : ϕ ≈ ϕ')
+         → {ϕ : μML At (suc n)} {ϕ' : μMLε At (Γ -, μMLη op ϕ)} → (p : ϕ ≈ ϕ')
          → μMLη op ϕ ≈ μMLη op ϕ' p
 
 data IsFPε {At : Set} : {n : ℕ} {Γ : Scope At n} → μMLε At Γ → Set where
-  fp : ∀ {n} {Γ : Scope At n} → (op : Opη) {ψ : μML At (suc n)} (ϕ : μMLε At (Γ -, fp op ψ)) (p : ψ ≈ ϕ) → IsFPε (μMLη op ϕ p)
+  fp : ∀ {n} {Γ : Scope At n} → (op : Opη) {ψ : μML At (suc n)} (ϕ : μMLε At (Γ -, μMLη op ψ)) (p : ψ ≈ ϕ) → IsFPε (μMLη op ϕ p)
 
 
 --------------------------
 -- Machinery for Scopes --
 --------------------------
 
--- Lookup is a pain, because the position of the formula tells us its scope, but in reverse order
--- (the head has the largest scope, and the final element has the empty scope).
-
--- So we need to first define the function that converts an index in the scope to the size
--- of the scope of the formula there.
-
-complement : {n : ℕ} → Fin n → Fin n
-complement {suc n} fzero = fromℕ n
-complement {suc n} (fsuc x) = {!n ℕ- (fsuc x)!}
-
-ind : {n : ℕ} → Fin n → ℕ
-ind = {!!}
-
-lookup : ∀ {At n} → (Γ : Scope At n) → (x : Fin n) → μML At (ind x)
-lookup = {!!}
+lookup : ∀ {At n} → (Γ : Scope At n) → (x : Fin n) → μML At n
+lookup (Γ -, ϕ) fzero = inject₁ ϕ
+lookup (Γ -, ϕ) (fsuc x) = inject₁ (lookup Γ x)
 
 ----------------------------
 -- Machinery for Formulas --
@@ -84,9 +72,9 @@ lookup = {!!}
 
 cong-fp : ∀ {op At n} {Γ : Scope At n}
         → {ϕ' ψ' : μML At (suc n)}
-        → {ϕ : μMLε At (Γ -, fp op ϕ')} {ψ : μMLε At (Γ -, fp op ψ')}
+        → {ϕ : μMLε At (Γ -, μMLη op ϕ')} {ψ : μMLε At (Γ -, μMLη op ψ')}
         → (eq : ψ' ≡ ϕ')
-        → ϕ ≡ subst (λ z → μMLε At (Γ -, fp op z)) eq ψ -- Please let me live to not regret this
+        → ϕ ≡ subst (λ z → μMLε At (Γ -, μMLη op z)) eq ψ -- Please let me live to not regret this
         → {p : ϕ' ≈ ϕ} {q : ψ' ≈ ψ}
         → (μMLη op ϕ p) ≡ (μMLη op ψ q)
 cong-fp {op = op} {ϕ = ϕ} refl refl = cong (μMLη op ϕ) (≈-irrelevant _ _)
@@ -100,13 +88,13 @@ recompute-scope Γ (var x) = var x
 recompute-scope Γ (μML₀ op) = μML₀ op
 recompute-scope Γ (μML₁ op ϕ) = μML₁ op (recompute-scope Γ ϕ)
 recompute-scope Γ (μML₂ op ϕ ψ) = μML₂ op (recompute-scope Γ ϕ) (recompute-scope Γ ψ)
-recompute-scope Γ (μMLη op ϕ) = μMLη op (recompute-scope (Γ -, fp op ϕ) ϕ) (recompute-scope-eq (Γ -, fp op ϕ) ϕ)
+recompute-scope Γ (μMLη op ϕ) = μMLη op (recompute-scope (Γ -, μMLη op ϕ) ϕ) (recompute-scope-eq (Γ -, μMLη op ϕ) ϕ)
 
 recompute-scope-eq Γ (var x) = var x
 recompute-scope-eq Γ (μML₀ op) = μML₀ op
 recompute-scope-eq Γ (μML₁ op ϕ) = μML₁ op (recompute-scope-eq Γ ϕ)
 recompute-scope-eq Γ (μML₂ op ϕ ψ) = μML₂ op (recompute-scope-eq Γ ϕ) (recompute-scope-eq Γ ψ)
-recompute-scope-eq Γ (μMLη op ϕ) = μMLη op (recompute-scope-eq (Γ -, fp op ϕ) ϕ)
+recompute-scope-eq Γ (μMLη op ϕ) = μMLη op (recompute-scope-eq (Γ -, μMLη op ϕ) ϕ)
 
 -- And of course, we can throw our richer scope away.
 forget-scope : ∀ {At : Set} {n : ℕ} {Γ : Scope At n} → μMLε At Γ → μML At n
@@ -129,28 +117,24 @@ forget-scope (μMLη op ϕ p) = μMLη op (forget-scope ϕ)
 ≈⇒≡∘forget (μMLη op p) = cong (μMLη op) (≈⇒≡∘forget p)
 
 -- Forgetting scope preserves being a fixpoint formula, of course.
-forget-scope-fp : ∀ {At : Set} {n : ℕ} {Γ : Scope At n} {ϕ : μMLε At Γ} → IsFPε ϕ → IsFP (forget-scope ϕ)
-forget-scope-fp (fp op (var x) p) = fp op (var x)
-forget-scope-fp (fp op (μML₀ op') p) = fp op (μML₀ op')
-forget-scope-fp (fp op (μML₁ op' ϕ) p) = fp op (μML₁ op' (forget-scope ϕ))
-forget-scope-fp (fp op (μML₂ op' ϕ ψ) p) = fp op (μML₂ op' (forget-scope ϕ) (forget-scope ψ))
-forget-scope-fp (fp op (μMLη op' ϕ q) p) = fp op (μMLη op' (forget-scope ϕ))
+forget-scope-fp : ∀ {At : Set} {n : ℕ} {Γ : Scope At n} (ϕ : μMLε At Γ) → {{_ : IsFPε ϕ}} → IsFP (forget-scope ϕ)
+forget-scope-fp (μMLη op ϕ x) = fp
 
 forget-recompute : ∀ {At n} (Γ : Scope At n) → (ϕ : μML At n) → ϕ ≡ forget-scope (recompute-scope Γ ϕ)
 forget-recompute Γ (var x) = refl
 forget-recompute Γ (μML₀ op) = refl
 forget-recompute Γ (μML₁ op ϕ) = cong (μML₁ op) (forget-recompute Γ ϕ)
 forget-recompute Γ (μML₂ op ϕ ψ) = cong₂ (μML₂ op) (forget-recompute Γ ϕ) (forget-recompute Γ ψ)
-forget-recompute Γ (μMLη op ϕ) = cong (μMLη op) (forget-recompute (Γ -, fp op ϕ) ϕ)
+forget-recompute Γ (μMLη op ϕ) = cong (μMLη op) (forget-recompute (Γ -, μMLη op ϕ) ϕ)
 
 
 -- this is basically just saying that substing the same element after proving the types equal is the identity,
 -- but the weird dependencies seem to make it not an obvious instance of any much more general case.
 rf-lemma : ∀ {At} {n} {Γ : Scope At n} {op} {ψ ϕ : μML At (suc n)}
          → (eq : ϕ ≡ ψ)
-         → recompute-scope (Γ -, fp op ψ) ϕ
-         ≡ subst (λ z → μMLε At (Γ -, fp op z)) eq
-           (recompute-scope (Γ -, fp op ϕ) ϕ)
+         → recompute-scope (Γ -, μMLη op ψ) ϕ
+         ≡ subst (λ z → μMLε At (Γ -, μMLη op z)) eq
+           (recompute-scope (Γ -, μMLη op ϕ) ϕ)
 rf-lemma refl = refl
 
 recompute-forget : ∀ {At n} (Γ : Scope At n) → (ϕ : μMLε At Γ) → ϕ ≡ recompute-scope Γ (forget-scope ϕ)
@@ -158,7 +142,7 @@ recompute-forget Γ (var x) = refl
 recompute-forget Γ (μML₀ op) = refl
 recompute-forget Γ (μML₁ op ϕ) = cong (μML₁ op) (recompute-forget Γ ϕ)
 recompute-forget Γ (μML₂ op ϕ ψ) = cong₂ (μML₂ op) (recompute-forget Γ ϕ) (recompute-forget Γ ψ)
-recompute-forget {At} {n} Γ (μMLη op {ψ} ϕ p) = cong-fp (≈⇒≡∘forget p) (trans (recompute-forget (Γ -, fp op ψ) ϕ) (rf-lemma (≈⇒≡∘forget p)))
+recompute-forget {At} {n} Γ (μMLη op {ψ} ϕ p) = cong-fp (≈⇒≡∘forget p) (trans (recompute-forget (Γ -, μMLη op ψ) ϕ) (rf-lemma (≈⇒≡∘forget p)))
 
 -- Open terms are open graphs! In the well-scoped world, the scope only tells us how many backedges were chopped off,
 -- so there are many ways to close the term. But with the "sublime" scopes, there is 1* unique way to close the term.
@@ -205,8 +189,8 @@ data _⊑_ {At : Set} : {i j : ℕ} → (ψ : μML At i) (ϕ : μML At j) → {{
 -- If we were to try to naively replicate the implementation of substitution and unfolding here, we'd be
 -- restricted (specifically in the implementation of subst extension) by how prescriptive our scopes are.
 -- So instead, we just directly use the isomorphism. Which, besides, is neater.
-unfold : ∀ {At n} {Γ : Scope At n} {ϕ : μMLε At Γ} → IsFPε ϕ → μMLε At Γ
-unfold {Γ = Γ} ϕ = recompute-scope Γ (unfold' (forget-scope-fp ϕ))
+unfold : ∀ {At n} {Γ : Scope At n} (ϕ : μMLε At Γ) → {{_ : IsFPε ϕ}} → μMLε At Γ
+unfold {Γ = Γ} ϕ {{isFp}} = recompute-scope Γ (unfold' (forget-scope ϕ) {{forget-scope-fp ϕ}})
 
 
 -- The closure relation. At first glance it may seem that we aren't
@@ -218,7 +202,7 @@ data _~C~>_ {At : Set} {n : ℕ} {Γ : Scope At n} : (ϕ ψ : μMLε At Γ) → 
   down  : (op : Op₁) (ϕ : μMLε At Γ)   → μML₁ op ϕ ~C~> ϕ
   left  : (op : Op₂) (ϕ ψ : μMLε At Γ) → μML₂ op ϕ ψ ~C~> ϕ
   right : (op : Op₂) (ϕ ψ : μMLε At Γ) → μML₂ op ϕ ψ ~C~> ψ
-  thru  : {ϕ' : μMLε At Γ} (ϕ : IsFPε ϕ') → ϕ' ~C~> unfold ϕ
+  thru  : (ϕ : μMLε At Γ) {{_ : IsFPε ϕ}} → ϕ ~C~> unfold ϕ
 
 -- ψ is in the closure of ϕ if there is a path ϕ ~...~> ψ.
 -- That is, the membership relation for the Fischer-Ladner closure set is the transitive reflexive
@@ -237,9 +221,9 @@ open import Data.FreshList.InductiveInductive
 open import Free.IdempotentCommutativeMonoid.Base renaming (_∪_ to un)
 open import Free.IdempotentCommutativeMonoid.Properties
 
--- todo: this needs to be done with wf-induction. also scopes need some *work*.
+-- todo: this needs to be done with wf-induction.
 closure : ∀ {At n} {Γ : Scope At n} → (ϕ : μMLε At Γ) → SortedList (<ε-STO At Γ)
-closure {Γ = Γ} (var x) = cons (recompute-scope Γ (lookup Γ x)) [] [] -- might be best to make scopes *less* fancy and have them just be Vecs again, because lookup is gonna cause a lot of pain
+closure {Γ = Γ} (var x) = cons (recompute-scope Γ (lookup Γ x)) [] []
 closure {Γ = Γ} (μML₀ op) = cons (recompute-scope Γ (μML₀ op)) [] []
 closure {At} {Γ = Γ} (μML₁ op ϕ) = insert (<ε-STO At Γ) (μML₁ op ϕ) (closure ϕ)
 closure {At} {Γ = Γ} (μML₂ op ϕ ψ) = insert (<ε-STO At Γ) (μML₂ op ϕ ψ) (un (<ε-STO At Γ) (closure ϕ) (closure ψ))
