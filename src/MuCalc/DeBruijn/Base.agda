@@ -1,6 +1,7 @@
 module MuCalc.DeBruijn.Base where
 
 open import Data.Nat hiding (_≟_)
+open import Data.Nat.Properties using (m≤n⇒m≤1+n; ≤-refl; ≤-trans)
 open import Data.Fin using (Fin; zero; suc; _≟_) renaming (inject₁ to fin-inject₁)
 open import Data.Product
 open import Relation.Binary.PropositionalEquality hiding ([_])
@@ -121,3 +122,25 @@ _[_] {n} {At} ϕ σ = sub (sub₀ σ) ϕ
 -- And now fixpoint unfolding is a single substitution
 unfold : ∀ {At n} (ϕ : μML At n) → {{_ : IsFP ϕ}} → μML At n
 unfold (μMLη op ψ) = ψ [ μMLη op ψ ]
+
+
+-----------------
+-- Subformulas --
+-----------------
+
+-- The direct subformula relation.
+data _⊏_ {At : Set} : {i j : ℕ} → (ψ : μML At i) (ϕ : μML At j) → {{i ≤ j}} → Set where
+  down  : ∀ op {i j} {p : i ≤ j} {ψ : μML At i} {ϕ : μML At j} → (ψ ⊏ ϕ) {{p}} → (ψ ⊏ (μML₁ op ϕ)) {{p}}
+  left  : ∀ op {i j} {p : i ≤ j} {ψ : μML At i} {ϕˡ ϕʳ : μML At j} → (ψ ⊏ ϕˡ) {{p}} → (ψ ⊏ (μML₂ op ϕˡ ϕʳ)) {{p}}
+  right : ∀ op {i j} {p : i ≤ j} {ψ : μML At i} {ϕˡ ϕʳ : μML At j} → (ψ ⊏ ϕʳ) {{p}} → (ψ ⊏ (μML₂ op ϕˡ ϕʳ)) {{p}}
+  under : ∀ op {i j} {p : i ≤ j} {ψ : μML At i} {ϕ : μML At (suc j)} → (ψ ⊏ ϕ) {{m≤n⇒m≤1+n p}} → (ψ ⊏ (μMLη op ϕ)) {{p}}
+
+-- The membership relation for the subformula set is the reflexive transitive closure of _⊏_.
+-- In other words, ⊏-paths. The stdlib version doesn't fit here because of the way we treat the indices.
+data _∈SF_ {At : Set} : {i j : ℕ} → (ψ : μML At i) (ϕ : μML At j) → {{i ≤ j}} → Set where
+  ε : ∀ {i} {ϕ : μML At i} → (ϕ ∈SF ϕ) {{≤-refl}}
+  _◅_ : ∀ {i j k} {p : i ≤ j} {q : j ≤ k} {ξ : μML At i} {ψ : μML At j} {ϕ : μML At k} → (ξ ⊏ ψ) {{p}} → (ψ ∈SF ϕ) {{q}} → (ξ ∈SF ϕ) {{≤-trans p q}}
+
+-- We need to carry around a bunch of indices to form the subformula set, unfortunately (unless we want the...i≤n-indexed suformula family...?)
+Sfor : {At : Set} {n : ℕ} → μML At n → Set
+Sfor {At} {n} ϕ = Σ[ i ∈ ℕ ] Σ[ p ∈ i ≤ n ] Σ[ ψ ∈ μML At i ] ((ψ ∈SF ϕ) {{p}})
