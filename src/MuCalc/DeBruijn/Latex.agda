@@ -23,20 +23,20 @@ bvName : ∀ {n} → Fin n → String
 bvName x = let y = n- x
            in replicate (suc $ y / 26) (Char.fromℕ $ 65 + (y % 26))
 
--- Helper functions for reducing unnecessary parentheses
--- ◆x, ◆■ϕ, ◆(ϕ∧ψ), ◆(μx.ϕ)
+-- Helper functions for reducing unnecessary parentheses:
 shouldParen₁ : ∀ {At n} → μML At n → Bool
-shouldParen₁ (μML₂ _ _ _) = true
-shouldParen₁ (μMLη _ _) = true
-shouldParen₁ _ = false
+shouldParen₁ (μML₂ _ _ _) = true -- ◆(ϕ ∧ ψ)
+shouldParen₁ (μMLη _ _) = true   -- ◆(μX.ϕ)
+shouldParen₁ _ = false           -- ◆■ϕ    ◆p
+
 
 shouldParen₂ : ∀ {At n} → Op₂ → μML At n → Bool
-shouldParen₂ _ (μMLη _ _) = true
-shouldParen₂ and (μML₂ and _ _) = false
-shouldParen₂ and (μML₂ or _ _) = true
-shouldParen₂ or (μML₂ or _ _) = false
-shouldParen₂ or (μML₂ and _ _) = true
-shouldParen₂ _ _ = false
+shouldParen₂ _ (μMLη _ _) = true        -- ϕ ∧ (μX.ϕ)
+shouldParen₂ and (μML₂ and _ _) = false -- ϕ ∧ ψ ∧ ξ
+shouldParen₂ and (μML₂ or _ _) = true   -- ϕ ∧ (ψ ∨ ξ)
+shouldParen₂ or (μML₂ or _ _) = false   -- ϕ ∨ ψ ∨ ξ
+shouldParen₂ or (μML₂ and _ _) = true   -- ϕ ∨ (ψ ∧ ξ)
+shouldParen₂ _ _ = false                -- ■ϕ ∧ p
 
 maybeParen : Bool → String → String
 maybeParen shouldParen s = if shouldParen
@@ -44,7 +44,6 @@ maybeParen shouldParen s = if shouldParen
                            else s
 
 -- in general for any set At
--- TODO - make the bracketing smarter, see below comments
 toTeX' : ∀ {At n} → (At → String) → μML At n → String
 toTeX' r (var x) = bvName x
 toTeX' r ⊤ = "\\top{}"
@@ -60,7 +59,14 @@ toTeX' {n = n} r (ν ϕ) = "\\nu{} " ++ (bvName {suc n} fzero) ++ ". " ++ toTeX'
 
 -- In practice, we always have At = ℕ
 propName : ℕ → String
-propName x = replicate (suc $ x / 26) (Char.fromℕ $ 80 + (x % 26))
+propName x = replicate (suc $ x / 26) (Char.fromℕ $ 112 + (x % 26))
 
 toTeX : ∀ {n} → μML ℕ n → String
 toTeX = toTeX' propName
+
+
+----------------------------------------------------
+-- Rendering Trees with graphviz
+----------------------------------------------------
+
+

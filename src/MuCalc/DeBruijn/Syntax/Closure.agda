@@ -6,7 +6,7 @@ open import Data.Nat
 open import Data.Fin using (Fin; fromℕ; fold; toℕ; _ℕ-_) renaming (zero to fzero; suc to fsuc; inject₁ to finject₁)
 open import Data.Product
 open import Function using (_∘_; flip)
-open import MuCalc.DeBruijn.Base hiding (¬; sub₀; _[_]) renaming (unfold to unfold')
+open import MuCalc.DeBruijn.Base hiding (¬; sub₀) renaming (unfold to unfold')
 open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Binary.Isomorphism
 open import Relation.Binary.Construct.Closure.ReflexiveTransitive using (Star)
@@ -48,11 +48,24 @@ mutual
 data IsFPε {At : Set} : {n : ℕ} {Γ : Scope At n} → μMLε Γ → Set where
   instance fp : ∀ {n} {Γ : Scope At n} {op : Opη} {ψ : μML At (suc n)} {ϕ : μMLε (Γ -, μMLη op ψ)} {p : ψ ≈ ϕ} → IsFPε (μMLη op ϕ p)
 
+pattern ⊤ = μML₀ tt
+pattern ⊥ = μML₀ ff
+pattern lit x = μML₀ (at x)
+pattern ¬lit x = μML₀ (¬at x)
+pattern ■ ϕ = μML₁ box ϕ
+pattern ◆ ϕ = μML₁ dia ϕ
+pattern _∧_ ϕ ψ = μML₂ and ϕ ψ
+pattern _∨_ ϕ ψ = μML₂ or ϕ ψ
+pattern μ' ϕ p = μMLη mu ϕ p
+pattern ν' ϕ p = μMLη nu ϕ p
 
 --------------------------
 -- Machinery for Scopes --
 --------------------------
 
+-- Lookup has a wrinkle; beacuse the elements of the scope all live at different
+-- indices, we have to inject the element we're looking up up to the same level as
+-- the head. Otherwise the result index would need to depend on x, and it'd be awful
 lookup : ∀ {At n} → (Γ : Scope At n) → (x : Fin n) → μML At n
 lookup (Γ -, ϕ) fzero = inject₁ ϕ
 lookup (Γ -, ϕ) (fsuc x) = inject₁ (lookup Γ x)
@@ -161,30 +174,23 @@ formulafam-β₀ : (At : Set) (n : ℕ) → μML At n
 formulafam-β₀ At n = μMLη mu (fold (μML At) (λ {n = n} ϕ → μML₂ and (var (fromℕ n)) (inject₁ ϕ)) (var fzero) (fromℕ n))
 
 
-formulafam-α : (At : Set) (n : ℕ) (i j : Fin n) → μML At n
-formulafam-β' : (At : Set) (n : ℕ) → (i : Fin n) → μML At n
+-- formulafam-α : (At : Set) (n : ℕ) (i j : Fin n) → μML At n
+-- formulafam-β' : (At : Set) (n : ℕ) → (i : Fin n) → μML At n
 
-formulafam-α At n i j = {!!}
-formulafam-β' At n i = {!!}
+-- formulafam-α At n i j = {!!}
+-- formulafam-β' At n i = {!!}
 
 
 ---------------------------
 -- Unfolding and Closure --
 ---------------------------
 
--- If we were to try to naively replicate the implementation of substitution and unfolding here, we'd be
+-- If we were to try to naively replicate the implementation of substitution here, we'd be
 -- restricted (specifically in the implementation of subst extension) by how prescriptive our scopes are.
 -- (TODO: I'm not 100% convinced this is true; I probably just missed something.)
 -- So instead, we just directly use the isomorphism.
 unfold : ∀ {At n} {Γ : Scope At n} (ϕ : μMLε Γ) → {{_ : IsFPε ϕ}} → μMLε Γ
 unfold {Γ = Γ} ϕ {{isFp}} = recompute-scope Γ (unfold' (forget-scope ϕ) {{forget-scope-fp ϕ}})
-
-
--- The expansion map is the simulaneous unfolding of all the fixpoints.
--- The scope contains level-0 formulas, so we can do the substitution there
--- and transport back up along the iso.
-expand : ∀ {At n} {Γ : Scope At n} → μMLε Γ → μMLε Γ
-expand {Γ = Γ} ϕ = recompute-scope Γ (sub (lookup Γ) (forget-scope ϕ))
 
 -- The closure relation. At first glance it may seem that we aren't
 -- insisting on closed formulas, but this isn't really true because the scopes
@@ -207,29 +213,28 @@ _∈C_ = Star (flip _~C~>_)
 Closure : {At : Set} {n : ℕ} {Γ : Scope At n} → μMLε Γ → Set
 Closure {At} {n} {Γ} ϕ = Σ[ ψ ∈ μMLε Γ ] (ψ ∈C ϕ)
 
+-- The expansion map for well-scoped formulas. Defined at that level first because
+-- that's where substitution is easy.
+expand : ∀ {n At} → Scope At n → μML At n → μML At 0
+expand [] ϕ = ϕ
+expand (Γ -, Γ₀) ϕ = expand Γ (ϕ [ Γ₀ ])
+
+-- The expansion map for sublimely-scoped formulas.
+expandε : ∀ {At n} {Γ : Scope At n} → μMLε Γ → μMLε {At} []
+expandε {Γ = Γ} ϕ = recompute-scope [] (expand Γ (forget-scope ϕ))
+
 -- And now the closure algorithm. Here's our finite set machinery.
-postulate _<ε_ : {At : Set} {n : ℕ} {Γ : Scope At n} → (ϕ ψ : μMLε Γ) → Set
-postulate <ε-STO : (At : Set) {n : ℕ} (Γ : Scope At n) → IsPropStrictTotalOrder {μMLε Γ} _≡_ _<ε_
-open import Data.FreshList.InductiveInductive
-open import Free.IdempotentCommutativeMonoid.Base renaming (_∪_ to un)
-open import Free.IdempotentCommutativeMonoid.Properties
+-- We take the expansions of all the subformulas.
+module _ (At : Set) where
+  postulate _<ε_ : (ϕ ψ : μMLε {At} []) → Set
+  postulate <ε-STO : IsPropStrictTotalOrder {μMLε {At} []} _≡_ _<ε_
+  open import Data.FreshList.InductiveInductive
+  open import Free.IdempotentCommutativeMonoid.Base <ε-STO
+  open import Free.IdempotentCommutativeMonoid.Properties <ε-STO
 
-
--- -- When computing the closure, to have an easy life we need to be able to start anywhere
--- -- and follow the graph around back to the start. The amount of fuel we need to do that is
--- -- the maximum length of any path starting at that point which either loops back to itself,
--- -- or hits a leaf.
--- max-path-length : ∀ {At n} {Γ : Scope At n} → (ϕ : μMLε Γ) → ℕ
--- max-path-length ϕ = {!ϕ!}
-
--- -- todo: this needs to be done with wf-induction.
--- closure : ∀ {At n} {Γ : Scope At n} → (ϕ : μMLε Γ) → SortedList (<ε-STO At Γ)
--- closure {Γ = Γ} (var x) = cons (recompute-scope Γ (lookup Γ x)) [] []
--- closure {Γ = Γ} (μML₀ op) = cons (recompute-scope Γ (μML₀ op)) [] []
--- closure {At} {Γ = Γ} (μML₁ op ϕ) = insert (<ε-STO At Γ) (μML₁ op ϕ) (closure ϕ)
--- closure {At} {Γ = Γ} (μML₂ op ϕ ψ) = insert (<ε-STO At Γ) (μML₂ op ϕ ψ) (un (<ε-STO At Γ) (closure ϕ) (closure ψ))
--- closure {At} {Γ = Γ} (μMLη op ϕ p) = insert (<ε-STO At Γ) (μMLη op ϕ p) {!closure (unfold (μMLη op ϕ p))!}
--- -- idea: can follow downwards edges as much as we want, but backedges only once
-
--- OPTION B: (choose this one!!!)
--- The closure via the expansion map; subformulas of the expansion
+  closure : ∀ {n} {Γ : Scope At n} → (ϕ : μMLε Γ) → SortedList
+  closure {Γ = Γ} α@(var x) = cons (expandε α) [] []
+  closure {Γ = Γ} α@(μML₀ op) = cons (expandε α) [] []
+  closure {At} {Γ = Γ} α@(μML₁ op ϕ) = insert (expandε α) (closure ϕ)
+  closure {At} {Γ = Γ} α@(μML₂ op ϕ ψ) = insert (expandε α) ((closure ϕ) ∪ (closure ψ))
+  closure {At} {Γ = Γ} α@(μMLη op ϕ p) = insert (expandε α) (closure ϕ)

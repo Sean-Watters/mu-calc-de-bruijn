@@ -41,8 +41,8 @@ data IsFP {At : Set} : {n : ℕ} (ϕ : μML At n) → Set where
 -- Some prettier pattern synonyms
 pattern ⊤ = μML₀ tt
 pattern ⊥ = μML₀ ff
--- pattern at x = μML₀ at x
--- pattern ¬at x = μML₀ ¬at x
+pattern lit x = μML₀ (at x)
+pattern ¬lit x = μML₀ (¬at x)
 pattern ■ ϕ = μML₁ box ϕ
 pattern ◆ ϕ = μML₁ dia ϕ
 pattern _∧_ ϕ ψ = μML₂ and ϕ ψ
@@ -117,7 +117,7 @@ sub₀ ϕ zero = ϕ -- at 0 we substitute
 sub₀ ϕ (suc x) = var x -- elsewhere we leave step the variable
 
 _[_] : ∀ {n At} → μML At (suc n) → μML At n → μML At n
-_[_] {n} {At} ϕ σ = sub (sub₀ σ) ϕ
+_[_] {n} {At} ϕ δ = sub (sub₀ δ) ϕ
 
 -- And now fixpoint unfolding is a single substitution
 unfold : ∀ {At n} (ϕ : μML At n) → {{_ : IsFP ϕ}} → μML At n
