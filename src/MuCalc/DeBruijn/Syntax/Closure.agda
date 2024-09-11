@@ -5,6 +5,7 @@ open import Algebra.Structures.Propositional
 open import Data.Nat
 open import Data.Fin using (Fin; fromℕ; fold; toℕ; _ℕ-_) renaming (zero to fzero; suc to fsuc; inject₁ to finject₁)
 open import Data.Product
+-- open import Data.Tree.Backedges
 open import Function using (_∘_; flip)
 open import MuCalc.DeBruijn.Base hiding (¬; sub₀) renaming (unfold to unfold')
 open import Relation.Binary.PropositionalEquality hiding ([_])
@@ -181,9 +182,9 @@ formulafam-β₀ At n = μMLη mu (fold (μML At) (λ {n = n} ϕ → μML₂ and
 -- formulafam-β' At n i = {!!}
 
 
----------------------------
--- Unfolding and Closure --
----------------------------
+-------------------------------
+-- Definition of the Closure --
+-------------------------------
 
 -- If we were to try to naively replicate the implementation of substitution here, we'd be
 -- restricted (specifically in the implementation of subst extension) by how prescriptive our scopes are.
@@ -213,6 +214,26 @@ _∈C_ = Star (flip _~C~>_)
 Closure : {At : Set} {n : ℕ} {Γ : Scope At n} → μMLε Γ → Set
 Closure {At} {n} {Γ} ϕ = Σ[ ψ ∈ μMLε Γ ] (ψ ∈C ϕ)
 
+
+
+---------------------------
+-- Computing the Closure --
+---------------------------
+
+-- {1,2}-ary trees that store data at both nodes and leaves
+data Tree (X : Set) : Set where
+  lf : X → Tree X
+  n1 : X → Tree X → Tree X
+  n2 : X → Tree X → Tree X → Tree X
+
+data _∈T_ {X : Set} : X → Tree X → Set where
+  here₀ : ∀ {x}                 → x ∈T lf x
+  here₁ : ∀ {x t}               → x ∈T n1 x t
+  down  : ∀ {x t}     → x ∈T t  → x ∈T n1 x t
+  here₂ : ∀ {x lt rt}           → x ∈T n2 x lt rt
+  left  : ∀ {x lt rt} → x ∈T lt → x ∈T n2 x lt rt
+  right : ∀ {x lt rt} → x ∈T rt → x ∈T n2 x lt rt
+
 -- The expansion map for well-scoped formulas. Defined at that level first because
 -- that's where substitution is easy.
 expand : ∀ {n At} → Scope At n → μML At n → μML At 0
@@ -223,18 +244,23 @@ expand (Γ -, Γ₀) ϕ = expand Γ (ϕ [ Γ₀ ])
 expandε : ∀ {At n} {Γ : Scope At n} → μMLε Γ → μMLε {At} []
 expandε {Γ = Γ} ϕ = recompute-scope [] (expand Γ (forget-scope ϕ))
 
--- And now the closure algorithm. Here's our finite set machinery.
--- We take the expansions of all the subformulas.
-module _ (At : Set) where
-  postulate _<ε_ : (ϕ ψ : μMLε {At} []) → Set
-  postulate <ε-STO : IsPropStrictTotalOrder {μMLε {At} []} _≡_ _<ε_
-  open import Data.FreshList.InductiveInductive
-  open import Free.IdempotentCommutativeMonoid.Base <ε-STO
-  open import Free.IdempotentCommutativeMonoid.Properties <ε-STO
+-- The closure is the expansion of all the subformulas.
+-- NB: There will be duplicates! We need to allow for back and left edges
+-- a la Ghani & Hamana to de-deuplicate.
+closure : ∀ {At n} {Γ : Scope At n} → (ϕ : μMLε Γ) → Tree (μMLε {At} [])
+closure {Γ = Γ} α@(var x) = lf (expandε α)
+closure {Γ = Γ} α@(μML₀ op) = lf (expandε α)
+closure {At} {Γ = Γ} α@(μML₁ op ϕ) = n1 (expandε α) (closure ϕ)
+closure {At} {Γ = Γ} α@(μML₂ op ϕ ψ) = n2 (expandε α) (closure ϕ) (closure ψ)
+closure {At} {Γ = Γ} α@(μMLη op ϕ p) = n1 (expandε α) (closure ϕ)
 
-  closure : ∀ {n} {Γ : Scope At n} → (ϕ : μMLε Γ) → SortedList
-  closure {Γ = Γ} α@(var x) = cons (expandε α) [] []
-  closure {Γ = Γ} α@(μML₀ op) = cons (expandε α) [] []
-  closure {At} {Γ = Γ} α@(μML₁ op ϕ) = insert (expandε α) (closure ϕ)
-  closure {At} {Γ = Γ} α@(μML₂ op ϕ ψ) = insert (expandε α) ((closure ϕ) ∪ (closure ψ))
-  closure {At} {Γ = Γ} α@(μMLη op ϕ p) = insert (expandε α) (closure ϕ)
+------------------------------------------
+-- Correctness of the Closure Algorithm --
+------------------------------------------
+
+closure-correct : ∀ {At n} {Γ : Scope At n} → (ξ : μMLε Γ)
+                → Σ[ ϕ ∈ μMLε {At} [] ] (ϕ ∈T closure ξ)
+                ≃ Closure ξ
+closure-correct = {!!}
+
+-- are the backedges even useful? on the trees, or on the formulas? TBD
