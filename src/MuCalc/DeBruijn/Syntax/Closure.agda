@@ -10,7 +10,7 @@ open import Function using (_∘_; flip)
 open import MuCalc.DeBruijn.Base hiding (¬; sub₀) renaming (unfold to unfold')
 open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Binary.Isomorphism
-open import Relation.Binary.Construct.Closure.ReflexiveTransitive using (Star)
+open import Relation.Binary.Construct.Closure.ReflexiveTransitive as Star using (Star)
 open import Relation.Nullary
 
 ----------------
@@ -129,6 +129,15 @@ forget-scope (μMLη op ϕ p) = μMLη op (forget-scope ϕ)
 ≈⇒≡∘forget (μML₂ op p q) = cong₂ (μML₂ op) (≈⇒≡∘forget p) (≈⇒≡∘forget q)
 ≈⇒≡∘forget (μMLη op p) = cong (μMLη op) (≈⇒≡∘forget p)
 
+-- This one isn't needed for the iso, but is still useful.
+forget-scope-eq : ∀ {At : Set} {n : ℕ} {Γ : Scope At n} → (ϕ : μMLε Γ) → forget-scope ϕ ≈ ϕ
+forget-scope-eq (var x) = var x
+forget-scope-eq (μML₀ op) = μML₀ op
+forget-scope-eq (μML₁ op ϕ) = μML₁ op (forget-scope-eq ϕ)
+forget-scope-eq (μML₂ op ϕ ψ) = μML₂ op (forget-scope-eq ϕ) (forget-scope-eq ψ)
+forget-scope-eq (μMLη op {ψ} ϕ p) = subst (_≈ μMLη op ϕ p) (cong (μMLη op) (sym (≈⇒≡∘forget p))) (μMLη op p)
+
+
 -- Forgetting scope preserves being a fixpoint formula, of course.
 forget-scope-fp : ∀ {At : Set} {n : ℕ} {Γ : Scope At n} (ϕ : μMLε Γ) → {{_ : IsFPε ϕ}} → IsFP (forget-scope ϕ)
 forget-scope-fp (μMLη op ϕ x) = fp
@@ -182,6 +191,99 @@ formulafam-β₀ At n = μMLη mu (fold (μML At) (λ {n = n} ϕ → μML₂ and
 -- formulafam-β' At n i = {!!}
 
 
+
+------------------
+-- Substitution --
+------------------
+
+-- In this setting, the coherence proofs required in the fixpoint cases make life harder.
+-- We need to prove a fair few extra lemmas as we go, some mutually.
+module Sub where
+  -- Rescoping
+  rescope' : ∀ {At n m} {Γ : Scope At n} {Δ : Scope At m}
+          → (Fin n → Fin m) -- if we have an embedding of n to m...
+          → μMLε Γ → μMLε Δ -- then we can rescope' n-terms to be m-terms.
+  rescope-eq : ∀ {At} {n} {m} {Γ : Scope At n} {Δ : Scope At m}
+               (ρ : Fin n → Fin m)
+             → {ψ : μML At n} {ϕ : μMLε Γ}
+             → ψ ≈ ϕ
+             → rescope ρ ψ ≈ rescope' {Γ = Γ} {Δ = Δ} ρ ϕ
+
+  rescope' ρ (var x) = var (ρ x)
+  rescope' ρ (μML₀ op) = μML₀ op
+  rescope' ρ (μML₁ op ϕ) = μML₁ op (rescope' ρ ϕ)
+  rescope' ρ (μML₂ op ϕ ψ) = μML₂ op (rescope' ρ ϕ) (rescope' ρ ψ)
+  rescope' ρ (μMLη op {ψ} ϕ p) = μMLη op {rescope (ext ρ) ψ} (rescope' (ext ρ) ϕ) (rescope-eq (ext ρ) p)
+
+  rescope-eq ρ (var x) = var (ρ x)
+  rescope-eq ρ (μML₀ op) = μML₀ op
+  rescope-eq ρ (μML₁ op p) = μML₁ op (rescope-eq ρ p)
+  rescope-eq ρ (μML₂ op p q) = μML₂ op (rescope-eq ρ p) (rescope-eq ρ q)
+  rescope-eq ρ (μMLη op p) = μMLη op (rescope-eq (ext ρ) p)
+
+  -- Parallel substitutions are maps from variables to formulae
+  Subst' : {At : Set} → ℕ → {m : ℕ} → Scope At m → Set
+  Subst' n Γ = Fin n → μMLε Γ
+
+  -- Substitution extension
+  exts' : ∀ {At n m} {Δ : Scope At m} {ψ : μML At m} {{_ : IsFP ψ}} → Subst' n Δ → Subst' (suc n) (Δ -, ψ)
+  exts' σ fzero = var fzero
+  exts' σ (fsuc x) =  rescope' fsuc (σ x)
+
+
+  -- Rescoping commutes with forgetting the scope.
+  rescope-forget : ∀ {At n} {Γ : Scope At n} {ψ : μML At n} {{_ : IsFP ψ}}
+                 → (ϕ : μMLε Γ)
+                 → rescope fsuc (forget-scope ϕ) ≈ rescope' {Γ = Γ} {Δ = Γ -, ψ} fsuc ϕ
+  rescope-forget (var y) = var (fsuc y)
+  rescope-forget (μML₀ op) = μML₀ op
+  rescope-forget (μML₁ op ϕ) = μML₁ op (rescope-forget ϕ)
+  rescope-forget (μML₂ op ϕ ψ) = μML₂ op (rescope-forget ϕ) (rescope-forget ψ)
+  rescope-forget (μMLη op ϕ p) = {!!}
+
+  -- Substitution extension commutes with forgetting the scope.
+  -- If we downgrade the substitution to the WS world then extend there, thats the same as extending up here in SS land then downgrading the result.
+  exts-forget : ∀ {At n m} {Δ : Scope At m} {ψ : μML At m} {{_ : IsFP ψ}}
+              → (σ : Subst' n Δ) → (x : Fin (suc n)) → exts (forget-scope ∘ σ) x ≈ exts' {ψ = ψ} σ x
+  exts-forget σ fzero = var fzero
+  exts-forget σ (fsuc x) = rescope-forget (σ x)
+
+  -- The above as a real (pointwise) identity.
+  exts-forget-comm : ∀ {At n m} {Δ : Scope At m} {ψ : μML At m} {{_ : IsFP ψ}}
+                   → (σ : Subst' n Δ) → exts (forget-scope ∘ σ) ≗ (forget-scope ∘ (exts' {ψ = ψ} σ))
+  exts-forget-comm σ x = sym (≈⇒≡∘forget (exts-forget σ x))
+
+
+  -- Executing a parallel substitution
+  sub' : ∀ {At n m} {Δ : Scope At n} {Γ : Scope At m} → Subst' n Γ → μMLε Δ → μMLε Γ
+  sub-forget-eq : ∀ {At n m} {Γ : Scope At n} {Δ : Scope At m}
+                → (σ : Subst' n Δ)
+                → {ψ : μML At n} {ϕ : μMLε Γ}
+                → ψ ≈ ϕ
+                → sub (forget-scope ∘ σ) ψ ≈ sub' σ ϕ
+
+  sub' σ (var x) = σ x
+  sub' σ (μML₀ op) = μML₀ op
+  sub' σ (μML₁ op ϕ) = μML₁ op (sub' σ ϕ)
+  sub' σ (μML₂ op ϕ ψ) = μML₂ op (sub' σ ϕ) (sub' σ ψ)
+  sub' σ (μMLη op {ψ} ϕ p) = μMLη op {sub (exts (forget-scope ∘ σ)) ψ} (sub' (exts' σ) ϕ) {!(sub-forget-eq (exts' σ) p)!} -- same problem/solution as goal below I think
+
+  sub-forget-eq σ (var x) = forget-scope-eq (σ x)
+  sub-forget-eq σ (μML₀ op) = μML₀ op
+  sub-forget-eq σ (μML₁ op p) = μML₁ op (sub-forget-eq σ p)
+  sub-forget-eq σ (μML₂ op p q) = μML₂ op (sub-forget-eq σ p) (sub-forget-eq σ q)
+  sub-forget-eq σ {μMLη op ϕ} {μMLη op ϕ' p} (μMLη op p) = μMLη op {!subst (λ z → sub z ϕ ≈ sub' (exts' σ) ϕ') ? (sub-forget-eq (exts' σ) p)!} -- do I need to postulate funext here, or is there a way around?
+
+  -- Single substitution is a special case of parallel substitution
+  sub₀' : ∀ {At n} {Γ : Scope At n} → μMLε Γ → Subst' (suc n) Γ
+  sub₀' ϕ fzero = ϕ -- at 0 we substitute
+  sub₀' ϕ (fsuc x) = var x -- elsewhere we leave step the variable
+
+  _[_]' : ∀ {At n} {Γ : Scope At n} {ϕ : μML At n} {{_ : IsFP ϕ}} → μMLε (Γ -, ϕ) → μMLε Γ → μMLε Γ
+  _[_]' {n} {At} ϕ δ =  sub' (sub₀' δ) ϕ
+
+  -- And now that we have this, we don't need to use the iso any more. Was it worth it? That seemed like a lot of work, and we may still need more lemmas...
+
 -------------------------------
 -- Definition of the Closure --
 -------------------------------
@@ -193,26 +295,31 @@ formulafam-β₀ At n = μMLη mu (fold (μML At) (λ {n = n} ϕ → μML₂ and
 unfold : ∀ {At n} {Γ : Scope At n} (ϕ : μMLε Γ) → {{_ : IsFPε ϕ}} → μMLε Γ
 unfold {Γ = Γ} ϕ {{isFp}} = recompute-scope Γ (unfold' (forget-scope ϕ) {{forget-scope-fp ϕ}})
 
+-- instad of saying (unfold μϕ), lets try (unfold ϕ) where ϕ has at least 1 free var, and we
+-- unfold that outermost var. may be neater
+unfoldsf : ∀ {At n} {Γ : Scope At n} {ψ : μML At n} {{_ : IsFP ψ}} → (ϕ : μMLε (Γ -, ψ)) → μMLε Γ
+unfoldsf {Γ = Γ} {ψ = ψ} ϕ = recompute-scope Γ ((forget-scope ϕ) [ ψ ])
+
 -- The closure relation. At first glance it may seem that we aren't
 -- insisting on closed formulas, but this isn't really true because the scopes
 -- tell us what all the binders are. So there's really no such thing as a "free"
 -- variable in this sense.
 -- Anyway, this is the foundation of the correctness criteria for the algorithm.
-data _~C~>_ {At : Set} {n : ℕ} {Γ : Scope At n} : (ϕ ψ : μMLε Γ) → Set where
-  down  : (op : Op₁) (ϕ : μMLε Γ)   → μML₁ op ϕ ~C~> ϕ
-  left  : (op : Op₂) (ϕ ψ : μMLε Γ) → μML₂ op ϕ ψ ~C~> ϕ
-  right : (op : Op₂) (ϕ ψ : μMLε Γ) → μML₂ op ϕ ψ ~C~> ψ
-  thru  : (ϕ : μMLε Γ) {{_ : IsFPε ϕ}} → ϕ ~C~> unfold ϕ
+data _~C~>_ {At : Set} : (ϕ ψ : μMLε {At} []) → Set where
+  down  : (op : Op₁) (ϕ : μMLε [])   → μML₁ op ϕ ~C~> ϕ
+  left  : (op : Op₂) (ϕ ψ : μMLε []) → μML₂ op ϕ ψ ~C~> ϕ
+  right : (op : Op₂) (ϕ ψ : μMLε []) → μML₂ op ϕ ψ ~C~> ψ
+  thru  : (ϕ : μMLε []) {{_ : IsFPε ϕ}} → ϕ ~C~> unfold ϕ
 
--- ψ is in the closure of ϕ if there is a path ϕ ~...~> ψ.
+-- ϕ is in the closure of ξ if there is a path ξ ~...~> ϕ.
 -- That is, the membership relation for the Fischer-Ladner closure set is the transitive reflexive
 -- closure of _~C~>_
-_∈C_ : {At : Set} {n : ℕ} {Γ : Scope At n} → (ψ ϕ : μMLε Γ) → Set
-_∈C_ = Star (flip _~C~>_)
+_∈-Closure_ : {At : Set} → (ϕ ξ : μMLε {At} []) → Set
+_∈-Closure_ = Star (flip _~C~>_)
 
 -- The closure of ϕ is defined as the set of all formulas reachable in this way from ϕ.
-Closure : {At : Set} {n : ℕ} {Γ : Scope At n} → μMLε Γ → Set
-Closure {At} {n} {Γ} ϕ = Σ[ ψ ∈ μMLε Γ ] (ψ ∈C ϕ)
+Closure : {At : Set} → μMLε {At} [] → Set
+Closure {At} ϕ = Σ[ ψ ∈ μMLε [] ] (ψ ∈-Closure ϕ)
 
 
 
@@ -258,9 +365,24 @@ closure {At} {Γ = Γ} α@(μMLη op ϕ p) = n1 (expandε α) (closure ϕ)
 -- Correctness of the Closure Algorithm --
 ------------------------------------------
 
-closure-correct : ∀ {At n} {Γ : Scope At n} → (ξ : μMLε Γ)
-                → Σ[ ϕ ∈ μMLε {At} [] ] (ϕ ∈T closure ξ)
-                ≃ Closure ξ
-closure-correct = {!!}
 
--- are the backedges even useful? on the trees, or on the formulas? TBD
+closure-sound : ∀ {At} (ξ ϕ : μMLε {At} [])
+                → (ϕ ∈T closure ξ) → (ϕ ∈-Closure ξ)
+closure-sound (μML₀ op)     .(expandε {Γ = []} (μML₀ op)) here₀    = Star.ε
+closure-sound (μML₁ op ξ)   .(expandε (μML₁ op ξ))        here₁
+  rewrite sym (recompute-forget [] ξ)
+  = Star.ε
+closure-sound (μML₁ op ξ)   .(expandε (μML₁ op ξ))       (down p)  = {!!}
+closure-sound (μML₂ op ξ θ) .(expandε (μML₂ op ξ θ))      here₂
+  rewrite sym (recompute-forget [] ξ)
+  rewrite sym (recompute-forget [] θ)
+  = Star.ε
+closure-sound (μML₂ op ξ θ) .(expandε (μML₂ op ξ θ))     (left p)  = {!!}
+closure-sound (μML₂ op ξ θ) .(expandε (μML₂ op ξ θ))     (right p) = {!!}
+closure-sound (μMLη op ξ x) .(expandε (μMLη op ξ x))      here₁
+  = {!!}
+closure-sound (μMLη op ξ x) .(expandε (μMLη op ξ x))     (down p)  = {!!}
+
+closure-complete : ∀ {At} (ξ ϕ : μMLε {At} [])
+                 → (ϕ ∈-Closure ξ) → (ϕ ∈T closure ξ)
+closure-complete = {!!}
