@@ -82,7 +82,7 @@ ext ρ zero = zero
 ext ρ (suc x) = suc (ρ x)
 
 -- Rescoping
-rescope : ∀ {n m At} → (Fin n → Fin m) -- if we have an embedding of n to m...
+rescope : ∀ {At n m} → (Fin n → Fin m) -- if we have an embedding of n to m...
         → μML At n → μML At m -- then we can rescope n-terms to be m-terms.
 rescope ρ (var x) = var (ρ x)
 rescope ρ (μML₀ op) = μML₀ op
@@ -91,7 +91,7 @@ rescope ρ (μML₂ op ϕ ψ) = μML₂ op (rescope ρ ϕ) (rescope ρ ψ)
 rescope ρ (μMLη op ϕ) = μMLη op (rescope (ext ρ) ϕ)
 
 -- In particular, we can rescope upwards by 1
-inject₁ : ∀ {n At} → μML At n → μML At (suc n)
+inject₁ : ∀ {At n} → μML At n → μML At (suc n)
 inject₁ = rescope Data.Fin.inject₁
 
 -- Parallel substitutions are maps from variables to formulae
@@ -99,12 +99,12 @@ Subst : Set → ℕ → ℕ → Set
 Subst At n m = Fin n → μML At m
 
 -- Substitution extension
-exts : ∀ {n m At} → Subst At n m → Subst At (suc n) (suc m)
+exts : ∀ {At n m} → Subst At n m → Subst At (suc n) (suc m)
 exts σ zero = var zero
 exts σ (suc x) = rescope suc (σ x)
 
 -- Executing a parallel substitution
-sub : ∀ {n m At} → Subst At n m → μML At n → μML At m
+sub : ∀ {At n m} → Subst At n m → μML At n → μML At m
 sub σ (var x) = σ x
 sub σ (μML₀ op) = μML₀ op
 sub σ (μML₁ op ϕ) = μML₁ op (sub σ ϕ)
@@ -116,13 +116,21 @@ sub₀ : ∀ {At n} → μML At n → Subst At (suc n) n
 sub₀ ϕ zero = ϕ -- at 0 we substitute
 sub₀ ϕ (suc x) = var x -- elsewhere we leave step the variable
 
-_[_] : ∀ {n At} → μML At (suc n) → μML At n → μML At n
-_[_] {n} {At} ϕ δ = sub (sub₀ δ) ϕ
+_[_] : ∀ {At n} → μML At (suc n) → μML At n → μML At n
+ϕ [ δ ] = sub (sub₀ δ) ϕ
 
 -- And now fixpoint unfolding is a single substitution
 unfold : ∀ {At n} (ϕ : μML At n) → {{_ : IsFP ϕ}} → μML At n
 unfold (μMLη op ψ) = ψ [ μMLη op ψ ]
 
+
+--------------------------------
+-- Properties of Substitution --
+--  (and related machinery)   --
+--------------------------------
+
+rescope-preserves-fp : ∀ {At n m} → {ρ : Fin n → Fin m} → (ϕ : μML At n) → {{_ : IsFP ϕ}} → IsFP (rescope ρ ϕ)
+rescope-preserves-fp (μMLη op ϕ) = fp
 
 -----------------
 -- Subformulas --

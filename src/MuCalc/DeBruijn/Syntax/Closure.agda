@@ -6,6 +6,7 @@ open import Data.Nat
 open import Data.Fin using (Fin; fromℕ; fold; toℕ; _ℕ-_) renaming (zero to fzero; suc to fsuc; inject₁ to finject₁)
 open import Data.Product
 -- open import Data.Tree.Backedges
+open import Data.Empty using () renaming (⊥ to Zero)
 open import Function using (_∘_; flip)
 open import MuCalc.DeBruijn.Base hiding (¬; sub₀) renaming (unfold to unfold')
 open import Relation.Binary.PropositionalEquality hiding ([_])
@@ -196,6 +197,7 @@ formulafam-β₀ At n = μMLη mu (fold (μML At) (λ {n = n} ϕ → μML₂ and
 -- Substitution --
 ------------------
 
+{-
 -- In this setting, the coherence proofs required in the fixpoint cases make life harder.
 -- We need to prove a fair few extra lemmas as we go, some mutually.
 module Sub where
@@ -239,7 +241,8 @@ module Sub where
   rescope-forget (μML₀ op) = μML₀ op
   rescope-forget (μML₁ op ϕ) = μML₁ op (rescope-forget ϕ)
   rescope-forget (μML₂ op ϕ ψ) = μML₂ op (rescope-forget ϕ) (rescope-forget ψ)
-  rescope-forget (μMLη op ϕ p) = {!!}
+  rescope-forget {ψ = ψ} (μMLη op {ϕ'} ϕ p) with rescope-forget {ψ = rescope fsuc ψ} {{rescope-preserves-fp ψ}} ϕ
+  ... | z = {!_≈_.μMLη op {rescope (ext fsuc) (forget-scope ϕ)} {rescope' (ext fsuc) ϕ} (rescope-eq (ext fsuc) z)  !}
 
   -- Substitution extension commutes with forgetting the scope.
   -- If we downgrade the substitution to the WS world then extend there, thats the same as extending up here in SS land then downgrading the result.
@@ -272,7 +275,7 @@ module Sub where
   sub-forget-eq σ (μML₀ op) = μML₀ op
   sub-forget-eq σ (μML₁ op p) = μML₁ op (sub-forget-eq σ p)
   sub-forget-eq σ (μML₂ op p q) = μML₂ op (sub-forget-eq σ p) (sub-forget-eq σ q)
-  sub-forget-eq σ {μMLη op ϕ} {μMLη op ϕ' p} (μMLη op p) = μMLη op {!subst (λ z → sub z ϕ ≈ sub' (exts' σ) ϕ') ? (sub-forget-eq (exts' σ) p)!} -- do I need to postulate funext here, or is there a way around?
+  sub-forget-eq σ {μMLη op ϕ} {μMLη op ϕ' p} (μMLη op p) = μMLη op {!subst (λ z → sub z ϕ ≈ sub' (exts' σ) ϕ') ? (sub-forget-eq (exts' σ) p)!} -- do I need to postulate funext here, or is there a way around? there must be a way around, since finext is not needed if going via the iso...
 
   -- Single substitution is a special case of parallel substitution
   sub₀' : ∀ {At n} {Γ : Scope At n} → μMLε Γ → Subst' (suc n) Γ
@@ -282,7 +285,7 @@ module Sub where
   _[_]' : ∀ {At n} {Γ : Scope At n} {ϕ : μML At n} {{_ : IsFP ϕ}} → μMLε (Γ -, ϕ) → μMLε Γ → μMLε Γ
   _[_]' {n} {At} ϕ δ =  sub' (sub₀' δ) ϕ
 
-  -- And now that we have this, we don't need to use the iso any more. Was it worth it? That seemed like a lot of work, and we may still need more lemmas...
+-}
 
 -------------------------------
 -- Definition of the Closure --
@@ -300,11 +303,8 @@ unfold {Γ = Γ} ϕ {{isFp}} = recompute-scope Γ (unfold' (forget-scope ϕ) {{f
 unfoldsf : ∀ {At n} {Γ : Scope At n} {ψ : μML At n} {{_ : IsFP ψ}} → (ϕ : μMLε (Γ -, ψ)) → μMLε Γ
 unfoldsf {Γ = Γ} {ψ = ψ} ϕ = recompute-scope Γ ((forget-scope ϕ) [ ψ ])
 
--- The closure relation. At first glance it may seem that we aren't
--- insisting on closed formulas, but this isn't really true because the scopes
--- tell us what all the binders are. So there's really no such thing as a "free"
--- variable in this sense.
--- Anyway, this is the foundation of the correctness criteria for the algorithm.
+-- The one-step closure relation.
+-- This is the foundation of the correctness criteria for the algorithm.
 data _~C~>_ {At : Set} : (ϕ ψ : μMLε {At} []) → Set where
   down  : (op : Op₁) (ϕ : μMLε [])   → μML₁ op ϕ ~C~> ϕ
   left  : (op : Op₂) (ϕ ψ : μMLε []) → μML₂ op ϕ ψ ~C~> ϕ
@@ -313,33 +313,43 @@ data _~C~>_ {At : Set} : (ϕ ψ : μMLε {At} []) → Set where
 
 -- ϕ is in the closure of ξ if there is a path ξ ~...~> ϕ.
 -- That is, the membership relation for the Fischer-Ladner closure set is the transitive reflexive
--- closure of _~C~>_
+-- closure of _<~C~_
 _∈-Closure_ : {At : Set} → (ϕ ξ : μMLε {At} []) → Set
-_∈-Closure_ = Star (flip _~C~>_)
+ϕ ∈-Closure ξ = Star (_~C~>_) ξ ϕ
+
+-- if this is hard, then theres a problem...
+test1 : _∈-Closure_ {Zero} ⊤ (■ (■ (■ ⊤)))
+test1 =  down box (■ (■ ⊤))
+  Star.◅ down box (■ ⊤)
+  Star.◅ down box ⊤
+  Star.◅ Star.ε
 
 -- The closure of ϕ is defined as the set of all formulas reachable in this way from ϕ.
 Closure : {At : Set} → μMLε {At} [] → Set
 Closure {At} ϕ = Σ[ ψ ∈ μMLε [] ] (ψ ∈-Closure ϕ)
 
 
-
 ---------------------------
 -- Computing the Closure --
 ---------------------------
 
--- {1,2}-ary trees that store data at both nodes and leaves
+-- {1,2}-ary trees that store data at both nodes and leaves.
+-- Nodes are labelled ■/◆/∧/∨/μ/ν
 data Tree (X : Set) : Set where
   lf : X → Tree X
-  n1 : X → Tree X → Tree X
-  n2 : X → Tree X → Tree X → Tree X
+  n1 : Op₁ → X → Tree X → Tree X
+  n2 : Op₂ → X → Tree X → Tree X → Tree X
+  nη : Opη → X → Tree X → Tree X
 
 data _∈T_ {X : Set} : X → Tree X → Set where
-  here₀ : ∀ {x}                 → x ∈T lf x
-  here₁ : ∀ {x t}               → x ∈T n1 x t
-  down  : ∀ {x t}     → x ∈T t  → x ∈T n1 x t
-  here₂ : ∀ {x lt rt}           → x ∈T n2 x lt rt
-  left  : ∀ {x lt rt} → x ∈T lt → x ∈T n2 x lt rt
-  right : ∀ {x lt rt} → x ∈T rt → x ∈T n2 x lt rt
+  here₀ : ∀ {x}                      → x ∈T lf x
+  here₁ : ∀ {op x t}                 → x ∈T n1 op x t
+  down  : ∀ {op x y t}     → x ∈T t  → x ∈T n1 op y t
+  here₂ : ∀ {op x lt rt}             → x ∈T n2 op x lt rt
+  left  : ∀ {op x y lt rt} → x ∈T lt → x ∈T n2 op y lt rt
+  right : ∀ {op x y lt rt} → x ∈T rt → x ∈T n2 op y lt rt
+  hereη : ∀ {op x t}                 → x ∈T nη op x t
+  thru  : ∀ {op x y t}     → x ∈T t  → x ∈T nη op y t
 
 -- The expansion map for well-scoped formulas. Defined at that level first because
 -- that's where substitution is easy.
@@ -357,32 +367,60 @@ expandε {Γ = Γ} ϕ = recompute-scope [] (expand Γ (forget-scope ϕ))
 closure : ∀ {At n} {Γ : Scope At n} → (ϕ : μMLε Γ) → Tree (μMLε {At} [])
 closure {Γ = Γ} α@(var x) = lf (expandε α)
 closure {Γ = Γ} α@(μML₀ op) = lf (expandε α)
-closure {At} {Γ = Γ} α@(μML₁ op ϕ) = n1 (expandε α) (closure ϕ)
-closure {At} {Γ = Γ} α@(μML₂ op ϕ ψ) = n2 (expandε α) (closure ϕ) (closure ψ)
-closure {At} {Γ = Γ} α@(μMLη op ϕ p) = n1 (expandε α) (closure ϕ)
+closure {At} {Γ = Γ} α@(μML₁ op ϕ) = n1 op (expandε α) (closure ϕ)
+closure {At} {Γ = Γ} α@(μML₂ op ϕ ψ) = n2 op (expandε α) (closure ϕ) (closure ψ)
+closure {At} {Γ = Γ} α@(μMLη op ϕ p) = nη op (expandε α) (closure ϕ)
+
+
 
 ------------------------------------------
 -- Correctness of the Closure Algorithm --
 ------------------------------------------
 
+-- An important lemma; if ϕ ∈ closure ξ, then ϕ ∈ closure (unfold (μ ξ))
+closure-unfold : ∀ {At} {op} {ξ' : μML At 1} (ξ : μMLε ([] -, μMLη op ξ')) {x : ξ' ≈ ξ} (ϕ : μMLε [])
+               → ϕ ∈T closure ξ → ϕ ∈T closure (unfold (μMLη op ξ x))
+closure-unfold (var x) ϕ here₀ = {!!}
+closure-unfold (μML₀ op) ϕ here₀ = {!!}
+closure-unfold (μML₁ op ξ) ϕ here₁ = {!!}
+closure-unfold (μML₁ op ξ) ϕ (down p) = {!!}
+closure-unfold (μML₂ op ξ ξ₁) ϕ here₂ = {!!}
+closure-unfold (μML₂ op ξ ξ₁) ϕ (left p) = {!!}
+closure-unfold (μML₂ op ξ ξ₁) ϕ (right p) = {!!}
+closure-unfold (μMLη op ξ x) ϕ hereη = {!!}
+closure-unfold (μMLη op ξ x) ϕ (thru p) = {!!}
+
 
 closure-sound : ∀ {At} (ξ ϕ : μMLε {At} [])
                 → (ϕ ∈T closure ξ) → (ϕ ∈-Closure ξ)
-closure-sound (μML₀ op)     .(expandε {Γ = []} (μML₀ op)) here₀    = Star.ε
-closure-sound (μML₁ op ξ)   .(expandε (μML₁ op ξ))        here₁
+closure-sound (μML₀ op)   ϕ here₀    = Star.ε
+closure-sound (μML₁ op ξ) ϕ here₁
   rewrite sym (recompute-forget [] ξ)
   = Star.ε
-closure-sound (μML₁ op ξ)   .(expandε (μML₁ op ξ))       (down p)  = {!!}
-closure-sound (μML₂ op ξ θ) .(expandε (μML₂ op ξ θ))      here₂
+closure-sound (μML₁ op ξ) ϕ (down p)
+  = down op ξ Star.◅ closure-sound ξ ϕ p
+closure-sound (μML₂ op ξ θ) ϕ here₂
   rewrite sym (recompute-forget [] ξ)
   rewrite sym (recompute-forget [] θ)
   = Star.ε
-closure-sound (μML₂ op ξ θ) .(expandε (μML₂ op ξ θ))     (left p)  = {!!}
-closure-sound (μML₂ op ξ θ) .(expandε (μML₂ op ξ θ))     (right p) = {!!}
-closure-sound (μMLη op ξ x) .(expandε (μMLη op ξ x))      here₁
-  = {!!}
-closure-sound (μMLη op ξ x) .(expandε (μMLη op ξ x))     (down p)  = {!!}
+closure-sound (μML₂ op ξ θ) ϕ (left p)
+  = left op ξ θ Star.◅ closure-sound ξ ϕ p
+closure-sound (μML₂ op ξ θ) ϕ (right p)
+  = right op ξ θ Star.◅ closure-sound θ ϕ p
+closure-sound (μMLη op {ψ} ξ x) ϕ hereη
+  = subst (_∈-Closure (μMLη op ξ x)) (cong-fp (≈⇒≡∘forget x) (trans (recompute-forget _ ξ) (eq x))) Star.ε where
+    eq : ∀ {At} {op} {ψ : μML At 1} {ξ : μMLε ([] -, μMLη op ψ)} (x : ψ ≈ ξ)
+       → recompute-scope ([] -, μMLη op ψ) (forget-scope ξ)
+       ≡ subst (λ z → μMLε ([] -, μMLη op z)) (≈⇒≡∘forget x) (recompute-scope ([] -, μMLη op (forget-scope ξ)) (forget-scope ξ))
+    eq x rewrite (≈⇒≡∘forget x) = refl
 
+closure-sound (μMLη op ξ x) ϕ (thru p)
+  = thru (μMLη op ξ x) Star.◅ {! closure-sound (unfold (μMLη op ξ x)) ϕ (closure-unfold p) !}
+  -- termination checker obviously dislikes this. it feels wrong that we're going to all the trouble of having graph-like terms,
+  -- yet we still can't keep track of the fact that unfolding = following a back-edge
+
+
+-- And the other direction
 closure-complete : ∀ {At} (ξ ϕ : μMLε {At} [])
                  → (ϕ ∈-Closure ξ) → (ϕ ∈T closure ξ)
 closure-complete = {!!}
