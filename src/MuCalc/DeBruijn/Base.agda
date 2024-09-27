@@ -147,7 +147,8 @@ data _⊏_ {At : Set} : {i j : ℕ} → (ψ : μML At i) (ϕ : μML At j) → {{
 -- In other words, ⊏-paths. The stdlib version doesn't fit here because of the way we treat the indices.
 data _∈SF_ {At : Set} : {i j : ℕ} → (ψ : μML At i) (ϕ : μML At j) → {{i ≤ j}} → Set where
   ε : ∀ {i} {ϕ : μML At i} → (ϕ ∈SF ϕ) {{≤-refl}}
-  _◅_ : ∀ {i j k} {p : i ≤ j} {q : j ≤ k} {ξ : μML At i} {ψ : μML At j} {ϕ : μML At k} → (ξ ⊏ ψ) {{p}} → (ψ ∈SF ϕ) {{q}} → (ξ ∈SF ϕ) {{≤-trans p q}}
+  _◅_ : ∀ {i j k} {p : i ≤ j} {q : j ≤ k} {ξ : μML At i} {ψ : μML At j} {ϕ : μML At k}
+      → (ξ ⊏ ψ) {{p}} → (ψ ∈SF ϕ) {{q}} → (ξ ∈SF ϕ) {{≤-trans p q}}
 
 -- We need to carry around a bunch of indices to form the subformula set, unfortunately (unless we want the...i≤n-indexed suformula family...?)
 Sfor : {At : Set} {n : ℕ} → μML At n → Set

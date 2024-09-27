@@ -8,7 +8,7 @@ open import Data.Product
 -- open import Data.Tree.Backedges
 open import Data.Empty using () renaming (⊥ to Zero)
 open import Function using (_∘_; flip)
-open import MuCalc.DeBruijn.Base hiding (¬; sub₀) renaming (unfold to unfold')
+open import MuCalc.DeBruijn.Base renaming (unfold to unfold')
 open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Binary.Isomorphism
 open import Relation.Binary.Construct.Closure.ReflexiveTransitive as Star using (Star)
@@ -317,13 +317,6 @@ data _~C~>_ {At : Set} : (ϕ ψ : μMLε {At} []) → Set where
 _∈-Closure_ : {At : Set} → (ϕ ξ : μMLε {At} []) → Set
 ϕ ∈-Closure ξ = Star (_~C~>_) ξ ϕ
 
--- if this is hard, then theres a problem...
-test1 : _∈-Closure_ {Zero} ⊤ (■ (■ (■ ⊤)))
-test1 =  down box (■ (■ ⊤))
-  Star.◅ down box (■ ⊤)
-  Star.◅ down box ⊤
-  Star.◅ Star.ε
-
 -- The closure of ϕ is defined as the set of all formulas reachable in this way from ϕ.
 Closure : {At : Set} → μMLε {At} [] → Set
 Closure {At} ϕ = Σ[ ψ ∈ μMLε [] ] (ψ ∈-Closure ϕ)
@@ -342,14 +335,14 @@ data Tree (X : Set) : Set where
   nη : Opη → X → Tree X → Tree X
 
 data _∈T_ {X : Set} : X → Tree X → Set where
-  here₀ : ∀ {x}                      → x ∈T lf x
-  here₁ : ∀ {op x t}                 → x ∈T n1 op x t
-  down  : ∀ {op x y t}     → x ∈T t  → x ∈T n1 op y t
-  here₂ : ∀ {op x lt rt}             → x ∈T n2 op x lt rt
-  left  : ∀ {op x y lt rt} → x ∈T lt → x ∈T n2 op y lt rt
-  right : ∀ {op x y lt rt} → x ∈T rt → x ∈T n2 op y lt rt
-  hereη : ∀ {op x t}                 → x ∈T nη op x t
-  thru  : ∀ {op x y t}     → x ∈T t  → x ∈T nη op y t
+  here₀ : ∀ {x y}           → x ≡ y   → x ∈T lf y
+  here₁ : ∀ {op x y t}      → x ≡ y   → x ∈T n1 op y t
+  down  : ∀ {op x y t}      → x ∈T t  → x ∈T n1 op y t
+  here₂ : ∀ {op x y lt rt}  → x ≡ y   → x ∈T n2 op y lt rt
+  left  : ∀ {op x y lt rt}  → x ∈T lt → x ∈T n2 op y lt rt
+  right : ∀ {op x y lt rt}  → x ∈T rt → x ∈T n2 op y lt rt
+  hereη : ∀ {op x y t}      → x ≡ y   → x ∈T nη op y t
+  thru  : ∀ {op x y t}      → x ∈T t  → x ∈T nη op y t
 
 -- The expansion map for well-scoped formulas. Defined at that level first because
 -- that's where substitution is easy.
@@ -371,6 +364,16 @@ closure {At} {Γ = Γ} α@(μML₁ op ϕ) = n1 op (expandε α) (closure ϕ)
 closure {At} {Γ = Γ} α@(μML₂ op ϕ ψ) = n2 op (expandε α) (closure ϕ) (closure ψ)
 closure {At} {Γ = Γ} α@(μMLη op ϕ p) = nη op (expandε α) (closure ϕ)
 
+-- Some illustrative examples of both types of membership proof
+private module _ where
+  test1 : _∈-Closure_ {Zero} ⊤ (■ (■ (■ ⊤)))
+  test1 =  down box (■ (■ ⊤))
+    Star.◅ down box (■ ⊤)
+    Star.◅ down box ⊤
+    Star.◅ Star.ε
+
+  test2 : ⊤ ∈T closure {Zero} {Γ = []} (■ (■ (■ ⊤)))
+  test2 = down {t = closure (■ (■ ⊤))} (down {t = closure (■ ⊤)} (down {t = closure ⊤} (here₀ refl)))
 
 
 ------------------------------------------
@@ -380,26 +383,26 @@ closure {At} {Γ = Γ} α@(μMLη op ϕ p) = nη op (expandε α) (closure ϕ)
 -- An important lemma; if ϕ ∈ closure ξ, then ϕ ∈ closure (unfold (μ ξ))
 closure-unfold : ∀ {At} {op} {ξ' : μML At 1} (ξ : μMLε ([] -, μMLη op ξ')) {x : ξ' ≈ ξ} (ϕ : μMLε [])
                → ϕ ∈T closure ξ → ϕ ∈T closure (unfold (μMLη op ξ x))
-closure-unfold (var x) ϕ here₀ = {!!}
-closure-unfold (μML₀ op) ϕ here₀ = {!!}
-closure-unfold (μML₁ op ξ) ϕ here₁ = {!!}
-closure-unfold (μML₁ op ξ) ϕ (down p) = {!!}
-closure-unfold (μML₂ op ξ ξ₁) ϕ here₂ = {!!}
-closure-unfold (μML₂ op ξ ξ₁) ϕ (left p) = {!!}
-closure-unfold (μML₂ op ξ ξ₁) ϕ (right p) = {!!}
-closure-unfold (μMLη op ξ x) ϕ hereη = {!!}
-closure-unfold (μMLη op ξ x) ϕ (thru p) = {!!}
+closure-unfold (var x) ϕ (here₀ refl) = {!here₀!}
+closure-unfold (μML₀ op) ϕ (here₀ refl) = (here₀ refl)
+closure-unfold (μML₁ op ξ) ϕ (here₁ refl) = {!here₁!}
+closure-unfold (μML₁ op ξ) ϕ (down p) = down {!!} -- recursive call doesnt really fit here, need to find the more correct inductive structure
+closure-unfold (μML₂ op ξ ξ₁) ϕ (here₂ refl) = {!here₂!}
+closure-unfold (μML₂ op ξ ξ₁) ϕ (left p) = left {!!}
+closure-unfold (μML₂ op ξ ξ₁) ϕ (right p) = right {!!}
+closure-unfold (μMLη op ξ x) ϕ (hereη refl) = {!!}
+closure-unfold (μMLη op ξ x) ϕ (thru p) = thru {!!}
 
 
 closure-sound : ∀ {At} (ξ ϕ : μMLε {At} [])
                 → (ϕ ∈T closure ξ) → (ϕ ∈-Closure ξ)
-closure-sound (μML₀ op)   ϕ here₀    = Star.ε
-closure-sound (μML₁ op ξ) ϕ here₁
+closure-sound (μML₀ op)   ϕ (here₀ refl)    = Star.ε
+closure-sound (μML₁ op ξ) ϕ (here₁ refl)
   rewrite sym (recompute-forget [] ξ)
   = Star.ε
 closure-sound (μML₁ op ξ) ϕ (down p)
   = down op ξ Star.◅ closure-sound ξ ϕ p
-closure-sound (μML₂ op ξ θ) ϕ here₂
+closure-sound (μML₂ op ξ θ) ϕ (here₂ refl)
   rewrite sym (recompute-forget [] ξ)
   rewrite sym (recompute-forget [] θ)
   = Star.ε
@@ -407,7 +410,7 @@ closure-sound (μML₂ op ξ θ) ϕ (left p)
   = left op ξ θ Star.◅ closure-sound ξ ϕ p
 closure-sound (μML₂ op ξ θ) ϕ (right p)
   = right op ξ θ Star.◅ closure-sound θ ϕ p
-closure-sound (μMLη op {ψ} ξ x) ϕ hereη
+closure-sound (μMLη op {ψ} ξ x) ϕ (hereη refl)
   = subst (_∈-Closure (μMLη op ξ x)) (cong-fp (≈⇒≡∘forget x) (trans (recompute-forget _ ξ) (eq x))) Star.ε where
     eq : ∀ {At} {op} {ψ : μML At 1} {ξ : μMLε ([] -, μMLη op ψ)} (x : ψ ≈ ξ)
        → recompute-scope ([] -, μMLη op ψ) (forget-scope ξ)
