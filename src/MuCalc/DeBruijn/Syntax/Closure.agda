@@ -1,8 +1,9 @@
-
+{-# OPTIONS --guardedness #-}
 module MuCalc.DeBruijn.Syntax.Closure where
 
 open import Algebra.Structures.Propositional
 open import Data.Nat
+open import Data.Nat.Properties using (m≤n⇒m≤1+n; ≤-refl)
 open import Data.Fin using (Fin; fromℕ; fold; toℕ; _ℕ-_) renaming (zero to fzero; suc to fsuc; inject₁ to finject₁)
 open import Data.Product
 -- open import Data.Tree.Backedges
@@ -373,8 +374,41 @@ private module _ where
     Star.◅ Star.ε
 
   test2 : ⊤ ∈T closure {Zero} {Γ = []} (■ (■ (■ ⊤)))
-  test2 = down {t = closure (■ (■ ⊤))} (down {t = closure (■ ⊤)} (down {t = closure ⊤} (here₀ refl)))
+  test2 = down (down (down (here₀ refl)))
 
+
+-----------------
+-- Subformulas --
+-----------------
+
+-- Context extension. Δ is an extension of Γ if it has Γ as a prefix
+data _prefix-of_ {At : Set} {n : ℕ} (Γ : Scope At n) : {m : ℕ} (Δ : Scope At m) → Set where
+  ε : {Δ : Scope At n} → Γ ≡ Δ → Γ prefix-of Δ
+  cons : ∀ {m : ℕ} {Δ : Scope At m} → (ϕ : μML At m) {{q : IsFP ϕ}} → Γ prefix-of Δ → Γ prefix-of (Δ -, ϕ)
+
+prefix-of-weaken : ∀ {At n m} {Γ : Scope At n} {Δ : Scope At m} {ϕ : μML At n} {{p : IsFP ϕ}}
+                 → (Γ -, ϕ) prefix-of Δ → Γ prefix-of Δ
+prefix-of-weaken (ε refl) = cons _ (ε refl)
+prefix-of-weaken (cons ϕ p) = cons _ (prefix-of-weaken p)
+
+prefix-of-trans : ∀ {At i j k} {Γ : Scope At i} {Δ : Scope At j} {Θ : Scope At k}
+                → Γ prefix-of Δ → Δ prefix-of Θ → Γ prefix-of Θ
+prefix-of-trans (ε refl) q = q
+prefix-of-trans p (ε refl) = p
+prefix-of-trans (cons ϕ p) (cons ψ q) = cons ψ (prefix-of-trans (cons ϕ p) q)
+
+-- The direct subformula relation.
+-- ξ ⊐ ϕ means ϕ is a subformula of ξ, or equivalently, there is a path ξ ~~> ϕ in the SF tree
+data _⊏_ {At : Set} {n m : ℕ} {Γ : Scope At n} {Δ : Scope At m} : (ψ : μMLε Δ) → (ϕ : μMLε Γ) → {{p : Γ prefix-of Δ}} → Set where
+  down  : ∀ op {{p : Γ prefix-of Δ}} {ψ : μMLε Δ} {ϕ : μMLε Γ}       → (ψ ⊏ ϕ)  → (ψ ⊏ (μML₁ op ϕ))
+  left  : ∀ op {{p : Γ prefix-of Δ}} {ψ : μMLε Δ} {ϕˡ ϕʳ : μMLε Γ}   → (ψ ⊏ ϕˡ) → (ψ ⊏ (μML₂ op ϕˡ ϕʳ))
+  right : ∀ op {{p : Γ prefix-of Δ}} {ψ : μMLε Δ} {ϕˡ ϕʳ : μMLε Γ}   → (ψ ⊏ ϕʳ) → (ψ ⊏ (μML₂ op ϕˡ ϕʳ))
+  under : ∀ op {ψ : μMLε Δ} {ϕ' : μML At (suc n)} {ϕ : μMLε (Γ -, μMLη op ϕ')} {{p : (Γ -, μMLη op ϕ') prefix-of Δ}}  {q : ϕ' ≈ ϕ} → (ψ ⊏ ϕ) → (ψ ⊏ (μMLη op ϕ q)) {{prefix-of-weaken p}}
+
+data _∈SF_ {At : Set} : {n m : ℕ} {Γ : Scope At n} {Δ : Scope At m} → (ϕ : μMLε Δ) → (ξ : μMLε Γ) → {{p : Γ prefix-of Δ}} → Set where
+  ε : ∀ {n} {Γ : Scope At n} {ϕ : μMLε Γ} → (ϕ ∈SF ϕ) {{ε refl}}
+  _◅_ : ∀ {i j k} {Γ : Scope At i} {Δ : Scope At j} {Θ : Scope At k} {{p : Γ prefix-of Δ}} {{q : Δ prefix-of Θ}} {ϕ : μMLε Γ} {ψ : μMLε Δ} {ξ : μMLε Θ}
+      → (ξ ⊏ ψ) → (ψ ∈SF ϕ) → (ξ ∈SF ϕ) {{prefix-of-trans p q}}
 
 ------------------------------------------
 -- Correctness of the Closure Algorithm --
@@ -386,7 +420,7 @@ closure-unfold : ∀ {At} {op} {ξ' : μML At 1} (ξ : μMLε ([] -, μMLη op �
 closure-unfold (var x) ϕ (here₀ refl) = {!here₀!}
 closure-unfold (μML₀ op) ϕ (here₀ refl) = (here₀ refl)
 closure-unfold (μML₁ op ξ) ϕ (here₁ refl) = {!here₁!}
-closure-unfold (μML₁ op ξ) ϕ (down p) = down {!!} -- recursive call doesnt really fit here, need to find the more correct inductive structure
+closure-unfold (μML₁ op ξ) ϕ (down p) = down {!closure-unfold ξ ϕ p!} -- recursive call doesnt fit. need to generalise!
 closure-unfold (μML₂ op ξ ξ₁) ϕ (here₂ refl) = {!here₂!}
 closure-unfold (μML₂ op ξ ξ₁) ϕ (left p) = left {!!}
 closure-unfold (μML₂ op ξ ξ₁) ϕ (right p) = right {!!}
@@ -418,7 +452,7 @@ closure-sound (μMLη op {ψ} ξ x) ϕ (hereη refl)
     eq x rewrite (≈⇒≡∘forget x) = refl
 
 closure-sound (μMLη op ξ x) ϕ (thru p)
-  = thru (μMLη op ξ x) Star.◅ {! closure-sound (unfold (μMLη op ξ x)) ϕ (closure-unfold p) !}
+  = thru (μMLη op ξ x) Star.◅ {! closure-sound (unfold (μMLη op ξ x)) ϕ (closure-unfold ξ ϕ p) !}
   -- termination checker obviously dislikes this. it feels wrong that we're going to all the trouble of having graph-like terms,
   -- yet we still can't keep track of the fact that unfolding = following a back-edge
 

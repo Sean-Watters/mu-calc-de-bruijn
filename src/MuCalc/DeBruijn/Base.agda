@@ -136,6 +136,8 @@ rescope-preserves-fp (μMLη op ϕ) = fp
 -- Subformulas --
 -----------------
 
+{-
+
 -- The direct subformula relation.
 data _⊏_ {At : Set} : {i j : ℕ} → (ψ : μML At i) (ϕ : μML At j) → {{i ≤ j}} → Set where
   down  : ∀ op {i j} {p : i ≤ j} {ψ : μML At i} {ϕ : μML At j} → (ψ ⊏ ϕ) {{p}} → (ψ ⊏ (μML₁ op ϕ)) {{p}}
@@ -153,3 +155,5 @@ data _∈SF_ {At : Set} : {i j : ℕ} → (ψ : μML At i) (ϕ : μML At j) → 
 -- We need to carry around a bunch of indices to form the subformula set, unfortunately (unless we want the...i≤n-indexed suformula family...?)
 Sfor : {At : Set} {n : ℕ} → μML At n → Set
 Sfor {At} {n} ϕ = Σ[ i ∈ ℕ ] Σ[ p ∈ i ≤ n ] Σ[ ψ ∈ μML At i ] ((ψ ∈SF ϕ) {{p}})
+
+-}
