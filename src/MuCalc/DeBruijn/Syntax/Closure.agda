@@ -9,7 +9,7 @@ open import Data.Product
 -- open import Data.Tree.Backedges
 open import Data.Empty using () renaming (⊥ to Zero)
 open import Function using (_∘_; flip)
-open import MuCalc.DeBruijn.Base renaming (unfold to unfold')
+open import MuCalc.DeBruijn.Base renaming (unfold to unfold'; _[_] to _[_]')
 open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Binary.Isomorphism
 open import Relation.Binary.Construct.Closure.ReflexiveTransitive as Star using (Star)
@@ -292,17 +292,13 @@ module Sub where
 -- Definition of the Closure --
 -------------------------------
 
--- If we were to try to naively replicate the implementation of substitution here, we'd be
--- restricted (specifically in the implementation of subst extension) by how prescriptive our scopes are.
--- (TODO: I'm not 100% convinced this is true; I probably just missed something.)
--- So instead, we just directly use the isomorphism.
-unfold : ∀ {At n} {Γ : Scope At n} (ϕ : μMLε Γ) → {{_ : IsFPε ϕ}} → μMLε Γ
-unfold {Γ = Γ} ϕ {{isFp}} = recompute-scope Γ (unfold' (forget-scope ϕ) {{forget-scope-fp ϕ}})
+-- We define substitution via the iso, because its too painful to do directly
+_[_] : ∀ {At n} {Γ : Scope At n} {ϕ : μML At n} {{_ : IsFP ϕ}} → μMLε (Γ -, ϕ) → μML At n → μMLε Γ
+_[_] {Γ = Γ} ϕ δ = recompute-scope Γ (sub (sub₀ δ) (forget-scope ϕ) )
 
--- instad of saying (unfold μϕ), lets try (unfold ϕ) where ϕ has at least 1 free var, and we
--- unfold that outermost var. may be neater
-unfoldsf : ∀ {At n} {Γ : Scope At n} {ψ : μML At n} {{_ : IsFP ψ}} → (ϕ : μMLε (Γ -, ψ)) → μMLε Γ
-unfoldsf {Γ = Γ} {ψ = ψ} ϕ = recompute-scope Γ ((forget-scope ϕ) [ ψ ])
+unfold : ∀ {At n} {Γ : Scope At n} (ϕ : μMLε Γ) → {{_ : IsFPε ϕ}} → μMLε Γ
+unfold {Γ = Γ} (μMLη op ϕ x) = ϕ [ μMLη op (forget-scope ϕ) ]
+
 
 -- The one-step closure relation.
 -- This is the foundation of the correctness criteria for the algorithm.
@@ -349,7 +345,7 @@ data _∈T_ {X : Set} : X → Tree X → Set where
 -- that's where substitution is easy.
 expand : ∀ {n At} → Scope At n → μML At n → μML At 0
 expand [] ϕ = ϕ
-expand (Γ -, Γ₀) ϕ = expand Γ (ϕ [ Γ₀ ])
+expand (Γ -, Γ₀) ϕ = expand Γ (ϕ [ Γ₀ ]')
 
 -- The expansion map for sublimely-scoped formulas.
 expandε : ∀ {At n} {Γ : Scope At n} → μMLε Γ → μMLε {At} []
@@ -383,18 +379,18 @@ private module _ where
 
 -- Context extension. Δ is an extension of Γ if it has Γ as a prefix
 data _prefix-of_ {At : Set} {n : ℕ} (Γ : Scope At n) : {m : ℕ} (Δ : Scope At m) → Set where
-  ε : {Δ : Scope At n} → Γ ≡ Δ → Γ prefix-of Δ
+  instance ε : Γ prefix-of Γ
   cons : ∀ {m : ℕ} {Δ : Scope At m} → (ϕ : μML At m) {{q : IsFP ϕ}} → Γ prefix-of Δ → Γ prefix-of (Δ -, ϕ)
 
 prefix-of-weaken : ∀ {At n m} {Γ : Scope At n} {Δ : Scope At m} {ϕ : μML At n} {{p : IsFP ϕ}}
                  → (Γ -, ϕ) prefix-of Δ → Γ prefix-of Δ
-prefix-of-weaken (ε refl) = cons _ (ε refl)
+prefix-of-weaken ε = cons _ ε
 prefix-of-weaken (cons ϕ p) = cons _ (prefix-of-weaken p)
 
 prefix-of-trans : ∀ {At i j k} {Γ : Scope At i} {Δ : Scope At j} {Θ : Scope At k}
                 → Γ prefix-of Δ → Δ prefix-of Θ → Γ prefix-of Θ
-prefix-of-trans (ε refl) q = q
-prefix-of-trans p (ε refl) = p
+prefix-of-trans ε q = q
+prefix-of-trans p ε = p
 prefix-of-trans (cons ϕ p) (cons ψ q) = cons ψ (prefix-of-trans (cons ϕ p) q)
 
 -- The direct subformula relation.
@@ -406,7 +402,7 @@ data _⊏_ {At : Set} {n m : ℕ} {Γ : Scope At n} {Δ : Scope At m} : (ψ : μ
   under : ∀ op {ψ : μMLε Δ} {ϕ' : μML At (suc n)} {ϕ : μMLε (Γ -, μMLη op ϕ')} {{p : (Γ -, μMLη op ϕ') prefix-of Δ}}  {q : ϕ' ≈ ϕ} → (ψ ⊏ ϕ) → (ψ ⊏ (μMLη op ϕ q)) {{prefix-of-weaken p}}
 
 data _∈SF_ {At : Set} : {n m : ℕ} {Γ : Scope At n} {Δ : Scope At m} → (ϕ : μMLε Δ) → (ξ : μMLε Γ) → {{p : Γ prefix-of Δ}} → Set where
-  ε : ∀ {n} {Γ : Scope At n} {ϕ : μMLε Γ} → (ϕ ∈SF ϕ) {{ε refl}}
+  ε : ∀ {n} {Γ : Scope At n} {ϕ : μMLε Γ} → (ϕ ∈SF ϕ)
   _◅_ : ∀ {i j k} {Γ : Scope At i} {Δ : Scope At j} {Θ : Scope At k} {{p : Γ prefix-of Δ}} {{q : Δ prefix-of Θ}} {ϕ : μMLε Γ} {ψ : μMLε Δ} {ξ : μMLε Θ}
       → (ξ ⊏ ψ) → (ψ ∈SF ϕ) → (ξ ∈SF ϕ) {{prefix-of-trans p q}}
 
@@ -414,13 +410,25 @@ data _∈SF_ {At : Set} : {n m : ℕ} {Γ : Scope At n} {Δ : Scope At m} → (�
 -- Correctness of the Closure Algorithm --
 ------------------------------------------
 
+-- the key lemma that characterises the interaction of the closure and substitution.
+-- this generalises the below unfolding lemma
+closure-lemma : ∀ {At} {op} {ξ' : μML At 1} (ξ ψ : μMLε ([] -, μMLη op ξ')) {x : ξ' ≈ ξ} (ϕ : μMLε [])
+              → ψ ∈SF ξ
+              → ϕ ∈T closure ξ → ϕ ∈T (closure (ψ [ μMLη op (forget-scope ξ) ]))
+closure-lemma ξ (var x) ϕ p q = {!!} -- really need substitution to compute here
+closure-lemma ξ (μML₀ op) ϕ p q = {!!}
+closure-lemma ξ (μML₁ op ψ) ϕ p q = {!!}
+closure-lemma ξ (μML₂ op ψ ψ₁) ϕ p q = {!!}
+closure-lemma ξ (μMLη op ψ x) ϕ p q = {!!}
+
+
 -- An important lemma; if ϕ ∈ closure ξ, then ϕ ∈ closure (unfold (μ ξ))
 closure-unfold : ∀ {At} {op} {ξ' : μML At 1} (ξ : μMLε ([] -, μMLη op ξ')) {x : ξ' ≈ ξ} (ϕ : μMLε [])
                → ϕ ∈T closure ξ → ϕ ∈T closure (unfold (μMLη op ξ x))
 closure-unfold (var x) ϕ (here₀ refl) = {!here₀!}
 closure-unfold (μML₀ op) ϕ (here₀ refl) = (here₀ refl)
 closure-unfold (μML₁ op ξ) ϕ (here₁ refl) = {!here₁!}
-closure-unfold (μML₁ op ξ) ϕ (down p) = down {!closure-unfold ξ ϕ p!} -- recursive call doesnt fit. need to generalise!
+closure-unfold (μML₁ op ξ) ϕ (down p) = down {!closure-unfold ξ ϕ p!} -- recursive call doesnt fit. need to generalise! talk about subs in some arbitrary sf, rather than insisting on the *direct* sf
 closure-unfold (μML₂ op ξ ξ₁) ϕ (here₂ refl) = {!here₂!}
 closure-unfold (μML₂ op ξ ξ₁) ϕ (left p) = left {!!}
 closure-unfold (μML₂ op ξ ξ₁) ϕ (right p) = right {!!}
