@@ -2,14 +2,15 @@
 module MuCalc.DeBruijn.Syntax.Closure where
 
 open import Algebra.Structures.Propositional
-open import Data.Nat
+open import Data.Nat hiding (_≟_)
 open import Data.Nat.Properties using (m≤n⇒m≤1+n; ≤-refl)
 open import Data.Fin using (Fin; fromℕ; fold; toℕ; _ℕ-_) renaming (zero to fzero; suc to fsuc; inject₁ to finject₁)
+open import Data.Fin.Properties using (_≟_)
 open import Data.Product
 -- open import Data.Tree.Backedges
 open import Data.Empty using () renaming (⊥ to Zero)
 open import Function using (_∘_; flip)
-open import MuCalc.DeBruijn.Base renaming (unfold to unfold'; _[_] to _[_]')
+open import MuCalc.DeBruijn.Base
 open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Binary.Isomorphism
 open import Relation.Binary.Construct.Closure.ReflexiveTransitive as Star using (Star)
@@ -66,12 +67,12 @@ pattern ν' ϕ p = μMLη nu ϕ p
 -- Machinery for Scopes --
 --------------------------
 
--- Lookup has a wrinkle; beacuse the elements of the scope all live at different
--- indices, we have to inject the element we're looking up up to the same level as
--- the head. Otherwise the result index would need to depend on x, and it'd be awful
-lookup : ∀ {At n} → (Γ : Scope At n) → (x : Fin n) → μML At n
-lookup (Γ -, ϕ) fzero = inject₁ ϕ
-lookup (Γ -, ϕ) (fsuc x) = inject₁ (lookup Γ x)
+-- -- Lookup has a wrinkle; beacuse the elements of the scope all live at different
+-- -- indices, we have to inject the element we're looking up up to the same level as
+-- -- the head. Otherwise the result index would need to depend on x, and it'd be awful
+-- lookup : ∀ {At n} → (Γ : Scope At n) → (x : Fin n) → μML At n
+-- lookup (Γ -, ϕ) fzero = inject₁ ϕ
+-- lookup (Γ -, ϕ) (fsuc x) = inject₁ (lookup Γ x)
 
 ----------------------------
 -- Machinery for Formulas --
@@ -179,11 +180,20 @@ from (sublime-iso Γ) = forget-scope
 from-to (sublime-iso Γ) = forget-recompute Γ
 to-from (sublime-iso Γ) = recompute-forget Γ
 
-------------------------------------------------------------------
--- The example family of formulas (prop 10 of the LIPICS paper) --
-------------------------------------------------------------------
-formulafam-β₀ : (At : Set) (n : ℕ) → μML At n
-formulafam-β₀ At n = μMLη mu (fold (μML At) (λ {n = n} ϕ → μML₂ and (var (fromℕ n)) (inject₁ ϕ)) (var fzero) (fromℕ n))
+-- Structural equivalance of formulas with potentially different scopes.
+-- Strengthening and weakening are hard here. What we really care about is
+-- whether the formulas are syntactically the same, with the analogous vars
+-- pointing to the same binders, regardless of whether there are extra or
+-- superfluous binders in scope.
+data _≅_ {At : Set} {i j : ℕ} {Γ : Scope At i} {Δ : Scope At j} : μMLε Γ → μMLε Δ → Set where
+  var : {x : Fin i} {y : Fin j} → {!lookup Γ x!} → var x ≅ var y
+ 
+
+-- ------------------------------------------------------------------
+-- -- The example family of formulas (prop 10 of the LIPICS paper) --
+-- ------------------------------------------------------------------
+-- formulafam-β₀ : (At : Set) (n : ℕ) → μML At n
+-- formulafam-β₀ At n = μMLη mu (fold (μML At) (λ {n = n} ϕ → μML₂ and (var (fromℕ n)) (inject₁ ϕ)) (var fzero) (fromℕ n))
 
 
 -- formulafam-α : (At : Set) (n : ℕ) (i j : Fin n) → μML At n
@@ -199,6 +209,7 @@ formulafam-β₀ At n = μMLη mu (fold (μML At) (λ {n = n} ϕ → μML₂ and
 ------------------
 
 {-
+
 -- In this setting, the coherence proofs required in the fixpoint cases make life harder.
 -- We need to prove a fair few extra lemmas as we go, some mutually.
 module Sub where
@@ -283,8 +294,8 @@ module Sub where
   sub₀' ϕ fzero = ϕ -- at 0 we substitute
   sub₀' ϕ (fsuc x) = var x -- elsewhere we leave step the variable
 
-  _[_]' : ∀ {At n} {Γ : Scope At n} {ϕ : μML At n} {{_ : IsFP ϕ}} → μMLε (Γ -, ϕ) → μMLε Γ → μMLε Γ
-  _[_]' {n} {At} ϕ δ =  sub' (sub₀' δ) ϕ
+  _[_] : ∀ {At n} {Γ : Scope At n} {ϕ : μML At n} {{_ : IsFP ϕ}} → μMLε (Γ -, ϕ) → μMLε Γ → μMLε Γ
+  _[_] {n} {At} ϕ δ =  sub' (sub₀' δ) ϕ
 
 -}
 
@@ -292,6 +303,7 @@ module Sub where
 -- Definition of the Closure --
 -------------------------------
 
+{-
 -- We define substitution via the iso, because its too painful to do directly
 _[_] : ∀ {At n} {Γ : Scope At n} {ϕ : μML At n} {{_ : IsFP ϕ}} → μMLε (Γ -, ϕ) → μML At n → μMLε Γ
 _[_] {Γ = Γ} ϕ δ = recompute-scope Γ (sub (sub₀ δ) (forget-scope ϕ) )
@@ -318,6 +330,25 @@ _∈-Closure_ : {At : Set} → (ϕ ξ : μMLε {At} []) → Set
 Closure : {At : Set} → μMLε {At} [] → Set
 Closure {At} ϕ = Σ[ ψ ∈ μMLε [] ] (ψ ∈-Closure ϕ)
 
+-}
+
+-- The one-step closure relation.
+-- This is the foundation of the correctness criteria for the algorithm.
+data _~C~>_ {At : Set} : (ϕ ψ : μML At 0) → Set where
+  down  : ∀ op ϕ → μML₁ op ϕ ~C~> ϕ
+  left  : ∀ op ϕ ψ → μML₂ op ϕ ψ ~C~> ϕ
+  right : ∀ op ϕ ψ → μML₂ op ϕ ψ ~C~> ψ
+  thru  : ∀ ϕ → {{_ : IsFP ϕ}} → ϕ ~C~> unfold ϕ
+
+-- ϕ is in the closure of ξ if there is a path ξ ~...~> ϕ.
+-- That is, the membership relation for the Fischer-Ladner closure set is the transitive reflexive
+-- closure of _<~C~_
+_∈-Closure_ : {At : Set} → (ϕ ξ : μML At 0) → Set
+ϕ ∈-Closure ξ = Star (_~C~>_) ξ ϕ
+
+-- The closure of ϕ is defined as the set of all formulas reachable in this way from ϕ.
+Closure : {At : Set} → μML At 0 → Set
+Closure {At} ϕ = Σ[ ψ ∈ μML At 0 ] (ψ ∈-Closure ϕ)
 
 ---------------------------
 -- Computing the Closure --
@@ -345,8 +376,16 @@ data _∈T_ {X : Set} : X → Tree X → Set where
 -- that's where substitution is easy.
 expand : ∀ {n At} → Scope At n → μML At n → μML At 0
 expand [] ϕ = ϕ
-expand (Γ -, Γ₀) ϕ = expand Γ (ϕ [ Γ₀ ]')
+expand (Γ -, Γ₀) ϕ = expand Γ (ϕ [ Γ₀ ])
 
+closure : ∀ {At n} (Γ : Scope At n) → (ϕ : μML At n) → Tree (μML At 0)
+closure Γ α@(var x) = lf (expand Γ α)
+closure Γ α@(μML₀ op) = lf (expand Γ α)
+closure {At} Γ α@(μML₁ op ϕ) = n1 op (expand Γ α) (closure Γ ϕ)
+closure {At} Γ α@(μML₂ op ϕ ψ) = n2 op (expand Γ α) (closure Γ ϕ) (closure Γ ψ)
+closure {At} Γ α@(μMLη op ϕ) = nη op (expand Γ α) (closure (Γ -, μMLη op ϕ) ϕ)
+
+{-
 -- The expansion map for sublimely-scoped formulas.
 expandε : ∀ {At n} {Γ : Scope At n} → μMLε Γ → μMLε {At} []
 expandε {Γ = Γ} ϕ = recompute-scope [] (expand Γ (forget-scope ϕ))
@@ -361,6 +400,8 @@ closure {At} {Γ = Γ} α@(μML₁ op ϕ) = n1 op (expandε α) (closure ϕ)
 closure {At} {Γ = Γ} α@(μML₂ op ϕ ψ) = n2 op (expandε α) (closure ϕ) (closure ψ)
 closure {At} {Γ = Γ} α@(μMLη op ϕ p) = nη op (expandε α) (closure ϕ)
 
+-}
+
 -- Some illustrative examples of both types of membership proof
 private module _ where
   test1 : _∈-Closure_ {Zero} ⊤ (■ (■ (■ ⊤)))
@@ -369,7 +410,7 @@ private module _ where
     Star.◅ down box ⊤
     Star.◅ Star.ε
 
-  test2 : ⊤ ∈T closure {Zero} {Γ = []} (■ (■ (■ ⊤)))
+  test2 : ⊤ ∈T closure {Zero} [] (■ (■ (■ ⊤)))
   test2 = down (down (down (here₀ refl)))
 
 
@@ -380,64 +421,130 @@ private module _ where
 -- Context extension. Δ is an extension of Γ if it has Γ as a prefix
 data _prefix-of_ {At : Set} {n : ℕ} (Γ : Scope At n) : {m : ℕ} (Δ : Scope At m) → Set where
   instance ε : Γ prefix-of Γ
-  cons : ∀ {m : ℕ} {Δ : Scope At m} → (ϕ : μML At m) {{q : IsFP ϕ}} → Γ prefix-of Δ → Γ prefix-of (Δ -, ϕ)
+  cons : ∀ {m : ℕ} {Δ : Scope At m} {ϕ : μML At m} {{q : IsFP ϕ}} → Γ prefix-of Δ → Γ prefix-of (Δ -, ϕ)
 
 prefix-of-weaken : ∀ {At n m} {Γ : Scope At n} {Δ : Scope At m} {ϕ : μML At n} {{p : IsFP ϕ}}
                  → (Γ -, ϕ) prefix-of Δ → Γ prefix-of Δ
-prefix-of-weaken ε = cons _ ε
-prefix-of-weaken (cons ϕ p) = cons _ (prefix-of-weaken p)
+prefix-of-weaken ε = cons ε
+prefix-of-weaken (cons p) = cons (prefix-of-weaken p)
 
 prefix-of-trans : ∀ {At i j k} {Γ : Scope At i} {Δ : Scope At j} {Θ : Scope At k}
                 → Γ prefix-of Δ → Δ prefix-of Θ → Γ prefix-of Θ
 prefix-of-trans ε q = q
-prefix-of-trans p ε = p
-prefix-of-trans (cons ϕ p) (cons ψ q) = cons ψ (prefix-of-trans (cons ϕ p) q)
+prefix-of-trans (cons p) ε = cons p
+prefix-of-trans (cons p) (cons q) = cons (prefix-of-trans (cons p) q)
 
--- The direct subformula relation.
--- ξ ⊐ ϕ means ϕ is a subformula of ξ, or equivalently, there is a path ξ ~~> ϕ in the SF tree
-data _⊏_ {At : Set} {n m : ℕ} {Γ : Scope At n} {Δ : Scope At m} : (ψ : μMLε Δ) → (ϕ : μMLε Γ) → {{p : Γ prefix-of Δ}} → Set where
-  down  : ∀ op {{p : Γ prefix-of Δ}} {ψ : μMLε Δ} {ϕ : μMLε Γ}       → (ψ ⊏ ϕ)  → (ψ ⊏ (μML₁ op ϕ))
-  left  : ∀ op {{p : Γ prefix-of Δ}} {ψ : μMLε Δ} {ϕˡ ϕʳ : μMLε Γ}   → (ψ ⊏ ϕˡ) → (ψ ⊏ (μML₂ op ϕˡ ϕʳ))
-  right : ∀ op {{p : Γ prefix-of Δ}} {ψ : μMLε Δ} {ϕˡ ϕʳ : μMLε Γ}   → (ψ ⊏ ϕʳ) → (ψ ⊏ (μML₂ op ϕˡ ϕʳ))
-  under : ∀ op {ψ : μMLε Δ} {ϕ' : μML At (suc n)} {ϕ : μMLε (Γ -, μMLη op ϕ')} {{p : (Γ -, μMLη op ϕ') prefix-of Δ}}  {q : ϕ' ≈ ϕ} → (ψ ⊏ ϕ) → (ψ ⊏ (μMLη op ϕ q)) {{prefix-of-weaken p}}
+-- -- The direct subformula relation.
+-- -- ξ ⊐ ϕ means ϕ is a subformula of ξ, or equivalently, there is a path ξ ~~> ϕ in the SF tree
+-- data _⊏_ {At : Set} {n m : ℕ} {Γ : Scope At n} {Δ : Scope At m} : (ψ : μMLε Δ) → (ϕ : μMLε Γ) → {{p : Γ prefix-of Δ}} → Set where
+--   down  : ∀ op {{p : Γ prefix-of Δ}} {ψ : μMLε Δ} {ϕ : μMLε Γ}       → (ψ ⊏ ϕ)  → (ψ ⊏ (μML₁ op ϕ))
+--   left  : ∀ op {{p : Γ prefix-of Δ}} {ψ : μMLε Δ} {ϕˡ ϕʳ : μMLε Γ}   → (ψ ⊏ ϕˡ) → (ψ ⊏ (μML₂ op ϕˡ ϕʳ))
+--   right : ∀ op {{p : Γ prefix-of Δ}} {ψ : μMLε Δ} {ϕˡ ϕʳ : μMLε Γ}   → (ψ ⊏ ϕʳ) → (ψ ⊏ (μML₂ op ϕˡ ϕʳ))
+--   under : ∀ op {ψ : μMLε Δ} {ϕ' : μML At (suc n)} {ϕ : μMLε (Γ -, μMLη op ϕ')} {{p : (Γ -, μMLη op ϕ') prefix-of Δ}}  {q : ϕ' ≈ ϕ} → (ψ ⊏ ϕ) → (ψ ⊏ (μMLη op ϕ q)) {{prefix-of-weaken p}}
 
-data _∈SF_ {At : Set} : {n m : ℕ} {Γ : Scope At n} {Δ : Scope At m} → (ϕ : μMLε Δ) → (ξ : μMLε Γ) → {{p : Γ prefix-of Δ}} → Set where
-  ε : ∀ {n} {Γ : Scope At n} {ϕ : μMLε Γ} → (ϕ ∈SF ϕ)
-  _◅_ : ∀ {i j k} {Γ : Scope At i} {Δ : Scope At j} {Θ : Scope At k} {{p : Γ prefix-of Δ}} {{q : Δ prefix-of Θ}} {ϕ : μMLε Γ} {ψ : μMLε Δ} {ξ : μMLε Θ}
-      → (ξ ⊏ ψ) → (ψ ∈SF ϕ) → (ξ ∈SF ϕ) {{prefix-of-trans p q}}
+
+-- -- NB: this is a naive notion of subformula, which does not increment variables during traveral.
+-- -- In other words, it's usually *wrong* for when we want to ask whether some var appears in an open term.
+-- data _∈SF_ {At : Set} : {n m : ℕ} {Γ : Scope At n} {Δ : Scope At m} → (ϕ : μMLε Δ) → (ξ : μMLε Γ) → {{p : Γ prefix-of Δ}} → Set where
+--   ε : ∀ {n} {Γ : Scope At n} {ϕ : μMLε Γ} → (ϕ ∈SF ϕ)
+--   _◅_ : ∀ {i j k} {Γ : Scope At i} {Δ : Scope At j} {Θ : Scope At k} {{p : Γ prefix-of Δ}} {{q : Δ prefix-of Θ}} {ϕ : μMLε Γ} {ψ : μMLε Δ} {ξ : μMLε Θ}
+--       → (ξ ⊏ ψ) → (ψ ∈SF ϕ) → (ξ ∈SF ϕ) {{prefix-of-trans p q}}
+
+-- -- Version of ∈SF specific to vars, which does the appropriate traversal.
+-- data VarOccurs {At : Set} {n : ℕ} {Γ : Scope At (suc n)} (x : Fin (suc n)) : (ϕ : μMLε Γ) → Set where
+--   here  : VarOccurs x (var x)
+--   down  : ∀ {op ϕ} → VarOccurs x ϕ → VarOccurs x (μML₁ op ϕ)
+--   left  : ∀ {op ϕ ψ} → VarOccurs x ϕ → VarOccurs x (μML₂ op ϕ ψ)
+--   right : ∀ {op ϕ ψ} → VarOccurs x ψ → VarOccurs x (μML₂ op ϕ ψ)
+--   under : ∀ {op ϕ' ϕ} {p : ϕ' ≈ ϕ} → VarOccurs (fsuc x) ϕ → VarOccurs x (μMLη op ϕ p)
+
+-- OutermostVarOccurs : {At : Set} {n : ℕ} {Γ : Scope At (suc n)} → (ϕ : μMLε Γ) → Set
+-- OutermostVarOccurs = VarOccurs fzero
+
+-- -- We might hope to get some sort of notion of strengthening out of this, but
+-- -- when we traverse fixpoints, we have to think about how to pop binders from
+-- -- inside the scope, and it looks like it gets kindof hairy.
+-- strengthen : ∀ {At n} {Γ : Scope At n} {ψ : μML At n} {{_ : IsFP ψ}}
+--            → (ϕ : μMLε (Γ -, ψ)) → ¬ (OutermostVarOccurs ϕ) → μMLε Γ
+-- strengthen ϕ p = {!!}
+
+-- -- Thinnings!
+-- -- AKA order-preserving embeddings of Γ into Δ.
+-- -- AKA monotone injections of Fin i to Fin j, except with our richer scopes
+-- data Thin {At : Set} : {i j : ℕ} → Scope At i → Scope At j → Set where
+--   keep : ∀ {i j} {Γ : Scope At i} {Δ : Scope At j} {ϕ : μML At i} {{_ : IsFP ϕ}} {ψ : μML At j} {{_ : IsFP ψ}}
+--          → Thin Γ Δ → Thin (Γ -, ϕ) (Δ -, ψ)
+--   drop   : ∀ {i j} {Γ : Scope At i} {Δ : Scope At j} {ψ : μML At j} {{_ : IsFP ψ}}
+--          → Thin Γ Δ → Thin Γ (Δ -, ψ)
+--   end : Thin [] []
+
+-- -- Turning a thinning into an actual embedding of variables
+-- embed : {At : Set} {i j : ℕ} {Γ : Scope At i} {Δ : Scope At j} → Thin Γ Δ → Fin i → Fin j
+-- embed (keep θ) fzero = fzero
+-- embed (keep θ) (fsuc x) = fsuc (embed θ x)
+-- embed (drop θ) x = fsuc (embed θ x)
+
+-- weaken : ∀ {At i j} {Γ : Scope At i} {Δ : Scope At j} → Thin Γ Δ → μMLε Γ → μMLε Δ
+-- weaken θ (var x) = var (embed θ x)
+-- weaken θ (μML₀ op) = μML₀ op
+-- weaken θ (μML₁ op ϕ) = μML₁ op (weaken θ ϕ)
+-- weaken θ (μML₂ op ϕ ψ) = μML₂ op (weaken θ ϕ) (weaken θ ψ)
+-- weaken θ (μMLη op {ψ} ϕ x) = μMLη op {forget-scope (weaken (keep θ) ϕ)} (weaken (keep θ) ϕ) {!!}
+
+------------------------------
+-- Facts about Substitution --
+------------------------------
+
+-- -- Either a variable doesn't occur, or we can find a path to where it does.
+-- var-occurs? : ∀ {At n} {Γ : Scope At (suc n)} → (x : Fin (suc n)) (ϕ : μMLε Γ) → Dec (VarOccurs x ϕ)
+-- var-occurs? x (var y) = map′ (λ {refl → here}) (λ { here → refl}) (x ≟ y)
+-- var-occurs? x (μML₀ op) = no (λ ())
+-- var-occurs? x (μML₁ op ϕ) = map′ down (λ {(down p) → p}) (var-occurs? x ϕ)
+-- var-occurs? x (μML₂ op ϕ ψ) with var-occurs? x ϕ | var-occurs? x ψ
+-- ... | yes p | _ = yes (left p)
+-- ... | no ¬p | yes q = yes (right q)
+-- ... | no ¬p | no ¬q = no λ { (left p) → ¬p p ; (right q) → ¬q q}
+-- var-occurs? x (μMLη op ϕ p) = map′ under (λ {(under p) → p}) (var-occurs? (fsuc x) ϕ)
+
+
+-- -- Substitution is identity when the variable doesn't occur
+-- sub-trivial : ∀ {At n} {Γ : Scope At n} {ψ : μML At n} {{_ : IsFP ψ}}
+--             → (ϕ : μMLε (Γ -, ψ)) (δ : μML At n)
+--             → (p : ¬ (OutermostVarOccurs ϕ))
+--             → weaken (ϕ [ δ ]) ψ ≡ ϕ
+-- sub-trivial = {!!}
+
+
+-- When the variable does occur, the path to it becomes the path to the formula we are substituting
+-- (assuming the incrementation of variables goes nicely, or isnt needed because the formula is closed)
 
 ------------------------------------------
 -- Correctness of the Closure Algorithm --
 ------------------------------------------
 
--- the key lemma that characterises the interaction of the closure and substitution.
--- this generalises the below unfolding lemma
-closure-lemma : ∀ {At} {op} {ξ' : μML At 1} (ξ ψ : μMLε ([] -, μMLη op ξ')) {x : ξ' ≈ ξ} (ϕ : μMLε [])
-              → ψ ∈SF ξ
-              → ϕ ∈T closure ξ → ϕ ∈T (closure (ψ [ μMLη op (forget-scope ξ) ]))
-closure-lemma ξ (var x) ϕ p q = {!!} -- really need substitution to compute here
-closure-lemma ξ (μML₀ op) ϕ p q = {!!}
-closure-lemma ξ (μML₁ op ψ) ϕ p q = {!!}
-closure-lemma ξ (μML₂ op ψ ψ₁) ϕ p q = {!!}
-closure-lemma ξ (μMLη op ψ x) ϕ p q = {!!}
-
-
 -- An important lemma; if ϕ ∈ closure ξ, then ϕ ∈ closure (unfold (μ ξ))
-closure-unfold : ∀ {At} {op} {ξ' : μML At 1} (ξ : μMLε ([] -, μMLη op ξ')) {x : ξ' ≈ ξ} (ϕ : μMLε [])
-               → ϕ ∈T closure ξ → ϕ ∈T closure (unfold (μMLη op ξ x))
-closure-unfold (var x) ϕ (here₀ refl) = {!here₀!}
-closure-unfold (μML₀ op) ϕ (here₀ refl) = (here₀ refl)
-closure-unfold (μML₁ op ξ) ϕ (here₁ refl) = {!here₁!}
-closure-unfold (μML₁ op ξ) ϕ (down p) = down {!closure-unfold ξ ϕ p!} -- recursive call doesnt fit. need to generalise! talk about subs in some arbitrary sf, rather than insisting on the *direct* sf
-closure-unfold (μML₂ op ξ ξ₁) ϕ (here₂ refl) = {!here₂!}
-closure-unfold (μML₂ op ξ ξ₁) ϕ (left p) = left {!!}
-closure-unfold (μML₂ op ξ ξ₁) ϕ (right p) = right {!!}
-closure-unfold (μMLη op ξ x) ϕ (hereη refl) = {!!}
-closure-unfold (μMLη op ξ x) ϕ (thru p) = thru {!!}
+closure-unfold : ∀ {At} op → (ξ : μML At 1) (ϕ : μML At 0)
+               → ϕ ∈T closure ([] -, μMLη op ξ) ξ → ϕ ∈T closure [] (unfold (μMLη op ξ))
+closure-unfold op (var x) ϕ (here₀ x₁) = {!!}
+closure-unfold op (μML₀ op₁) ϕ p = {!!}
+closure-unfold op (μML₁ op₁ ξ) .(expand ([] -, μMLη op (μML₁ op₁ ξ)) (μML₁ op₁ ξ)) (here₁ refl) = {!!}
+closure-unfold op (μML₁ op₁ ξ) ϕ (down p) = {!!}
+closure-unfold op (μML₂ op₁ ξ ξ₁) ϕ p = {!!}
+closure-unfold op (μMLη op₁ ξ) ϕ p = {!!}
 
+closure-sound : ∀ {At} (ξ ϕ : μML At 0)
+                → (ϕ ∈T closure [] ξ) → (ϕ ∈-Closure ξ)
+closure-sound (μML₀ op) _ (here₀ refl) = Star.ε
+closure-sound (μML₁ op ξ) _ (here₁ refl) = Star.ε
+closure-sound (μML₁ op ξ) ϕ (down p) = (down op ξ) Star.◅ (closure-sound ξ ϕ p)
+closure-sound (μML₂ op ξ θ) _ (here₂ refl) = Star.ε
+closure-sound (μML₂ op ξ θ) ϕ (left p) = (left op ξ θ) Star.◅ (closure-sound ξ ϕ p)
+closure-sound (μML₂ op ξ θ) ϕ (right p) = (right op ξ θ) Star.◅ (closure-sound θ ϕ p)
+closure-sound (μMLη op ξ) _ (hereη refl) = Star.ε
+closure-sound (μMLη op ξ) ϕ (thru x) = (thru (μMLη op ξ)) Star.◅ {! closure-sound (unfold (μMLη op ξ)) ϕ (closure-unfold ξ ϕ) !}
+  -- termination checker obviously dislikes this, but that should be fixable with WFI
 
-closure-sound : ∀ {At} (ξ ϕ : μMLε {At} [])
-                → (ϕ ∈T closure ξ) → (ϕ ∈-Closure ξ)
+{-
 closure-sound (μML₀ op)   ϕ (here₀ refl)    = Star.ε
 closure-sound (μML₁ op ξ) ϕ (here₁ refl)
   rewrite sym (recompute-forget [] ξ)
@@ -461,11 +568,10 @@ closure-sound (μMLη op {ψ} ξ x) ϕ (hereη refl)
 
 closure-sound (μMLη op ξ x) ϕ (thru p)
   = thru (μMLη op ξ x) Star.◅ {! closure-sound (unfold (μMLη op ξ x)) ϕ (closure-unfold ξ ϕ p) !}
-  -- termination checker obviously dislikes this. it feels wrong that we're going to all the trouble of having graph-like terms,
-  -- yet we still can't keep track of the fact that unfolding = following a back-edge
 
+-}
 
 -- And the other direction
-closure-complete : ∀ {At} (ξ ϕ : μMLε {At} [])
-                 → (ϕ ∈-Closure ξ) → (ϕ ∈T closure ξ)
+closure-complete : ∀ {At} (ξ ϕ : μML At 0)
+                 → (ϕ ∈-Closure ξ) → (ϕ ∈T closure [] ξ)
 closure-complete = {!!}
