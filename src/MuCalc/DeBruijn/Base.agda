@@ -2,7 +2,7 @@ module MuCalc.DeBruijn.Base where
 
 open import Data.Nat hiding (_≟_)
 open import Data.Nat.Properties using (m≤n⇒m≤1+n; ≤-refl; ≤-trans)
-open import Data.Fin as F using (Fin; _≟_)
+open import Data.Fin as F using (Fin; _≟_) renaming (_ℕ-ℕ_ to _-_)
 open import Data.Empty renaming (⊥ to Zero)
 open import Data.Product
 open import Function
@@ -270,24 +270,42 @@ sub-trivial ϕ δ p = begin
 -- Subformulas --
 -----------------
 
-{-
+-- The proper (ie, irreflexive) subformula relation.
+-- ψ ⊐ ϕ ==> ϕ is a proper sf of ψ.
+data _⊐_ {At : Set} : {i j : ℕ} → (ψ : μML At i) (ϕ : μML At j) → {{i ≤ j}} → Set where
+  down  : ∀ op {i j} {p : i ≤ j} {ψ : μML At i} {ϕ : μML At j} → (ψ ⊐ ϕ) {{p}} → (ψ ⊐ (μML₁ op ϕ)) {{p}}
+  left  : ∀ op {i j} {p : i ≤ j} {ψ : μML At i} {ϕˡ ϕʳ : μML At j} → (ψ ⊐ ϕˡ) {{p}} → (ψ ⊐ (μML₂ op ϕˡ ϕʳ)) {{p}}
+  right : ∀ op {i j} {p : i ≤ j} {ψ : μML At i} {ϕˡ ϕʳ : μML At j} → (ψ ⊐ ϕʳ) {{p}} → (ψ ⊐ (μML₂ op ϕˡ ϕʳ)) {{p}}
+  under : ∀ op {i j} {p : i ≤ j} {ψ : μML At i} {ϕ : μML At (suc j)} → (ψ ⊐ ϕ) {{m≤n⇒m≤1+n p}} → (ψ ⊐ (μMLη op ϕ)) {{p}}
 
--- The direct subformula relation.
-data _⊏_ {At : Set} : {i j : ℕ} → (ψ : μML At i) (ϕ : μML At j) → {{i ≤ j}} → Set where
-  down  : ∀ op {i j} {p : i ≤ j} {ψ : μML At i} {ϕ : μML At j} → (ψ ⊏ ϕ) {{p}} → (ψ ⊏ (μML₁ op ϕ)) {{p}}
-  left  : ∀ op {i j} {p : i ≤ j} {ψ : μML At i} {ϕˡ ϕʳ : μML At j} → (ψ ⊏ ϕˡ) {{p}} → (ψ ⊏ (μML₂ op ϕˡ ϕʳ)) {{p}}
-  right : ∀ op {i j} {p : i ≤ j} {ψ : μML At i} {ϕˡ ϕʳ : μML At j} → (ψ ⊏ ϕʳ) {{p}} → (ψ ⊏ (μML₂ op ϕˡ ϕʳ)) {{p}}
-  under : ∀ op {i j} {p : i ≤ j} {ψ : μML At i} {ϕ : μML At (suc j)} → (ψ ⊏ ϕ) {{m≤n⇒m≤1+n p}} → (ψ ⊏ (μMLη op ϕ)) {{p}}
+-- -- The membership relation for the subformula set is the reflexive transitive closure of _⊐_.
+-- -- In other words, ⊐-paths. The stdlib version doesn't fit here because of the way we treat the indices.
+-- data _∈SF_ {At : Set} : {i j : ℕ} → (ψ : μML At i) (ϕ : μML At j) → {{i ≤ j}} → Set where
+--   ε : ∀ {i} {ϕ : μML At i} → (ϕ ∈SF ϕ) {{≤-refl}}
+--   _◅_ : ∀ {i j k} {p : i ≤ j} {q : j ≤ k} {ξ : μML At i} {ψ : μML At j} {ϕ : μML At k}
+--       → (ξ ⊐ ψ) {{p}} → (ψ ∈SF ϕ) {{q}} → (ξ ∈SF ϕ) {{≤-trans p q}}
 
--- The membership relation for the subformula set is the reflexive transitive closure of _⊏_.
--- In other words, ⊏-paths. The stdlib version doesn't fit here because of the way we treat the indices.
-data _∈SF_ {At : Set} : {i j : ℕ} → (ψ : μML At i) (ϕ : μML At j) → {{i ≤ j}} → Set where
-  ε : ∀ {i} {ϕ : μML At i} → (ϕ ∈SF ϕ) {{≤-refl}}
-  _◅_ : ∀ {i j k} {p : i ≤ j} {q : j ≤ k} {ξ : μML At i} {ψ : μML At j} {ϕ : μML At k}
-      → (ξ ⊏ ψ) {{p}} → (ψ ∈SF ϕ) {{q}} → (ξ ∈SF ϕ) {{≤-trans p q}}
+-- -- We need to carry around a bunch of indices to form the subformula set, unfortunately
+-- -- (unless we want the...i≤n-indexed suformula family...?)
+-- Sfor : {At : Set} {n : ℕ} → μML At n → Set
+-- Sfor {At} {n} ϕ = Σ[ i ∈ ℕ ] Σ[ p ∈ i ≤ n ] Σ[ ψ ∈ μML At i ] ((ψ ∈SF ϕ) {{p}})
 
--- We need to carry around a bunch of indices to form the subformula set, unfortunately (unless we want the...i≤n-indexed suformula family...?)
-Sfor : {At : Set} {n : ℕ} → μML At n → Set
-Sfor {At} {n} ϕ = Σ[ i ∈ ℕ ] Σ[ p ∈ i ≤ n ] Σ[ ψ ∈ μML At i ] ((ψ ∈SF ϕ) {{p}})
+-------------
+--  Scopes --
+-------------
 
--}
+-- Vectors of formulas, with two added tricks:
+-- * The index of the formula depends on its position in the vector
+-- * We allow the front of the scope to potentially coontain dummies. This is to faciliatate the definition of the expansion map,
+--   where we want to instantiate variables that were already free but leave previously bound variables alone.
+data Scope (At : Set) : ℕ → Set where
+  [] : Scope At zero
+  _,-_ : ∀ {n} → (ϕ : μML At n) (Γ : Scope At n) → Scope At (suc n)
+
+lookup : ∀ {At n} → (Γ : Scope At n) → (x : Fin n) → μML At (n - (F.suc x))
+lookup (ϕ ,- Γ) F.zero = ϕ
+lookup (ϕ ,- Γ) (F.suc x) = lookup Γ x
+
+unwind : ∀ {At n} → (Γ : Scope At n) → (x : Fin n) → Scope At (n - (F.suc x))
+unwind (ϕ ,- Γ) F.zero = Γ
+unwind (ϕ ,- Γ) (F.suc x) = unwind Γ x

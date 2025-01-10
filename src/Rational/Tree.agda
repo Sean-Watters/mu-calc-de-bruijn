@@ -25,7 +25,7 @@ data Tree (X : Set) (n : ℕ) : Set where
 -- This is *begging* for abstraction, look how similar it was to the scopes for formulas!
 data Scope (X : Set) : ℕ → Set where
   [] : Scope X zero
-  _-,_ : ∀ {n} → (Γ₀ : Scope X n) → (t : Tree X n) → Scope X (suc n)
+  _,-_ : ∀ {n} → (t : Tree X n) (Γ₀ : Scope X n) → Scope X (suc n)
 
 -- Scope extension
 ext : ∀ {n m} → (Fin n → Fin m)
@@ -42,21 +42,21 @@ rescope ρ (node2 op x l r) = node2 op x (rescope ρ l) (rescope ρ r)
 rescope ρ (nodeη op x t) = nodeη op x (rescope (ext ρ) t)
 
 lookup : ∀ {X n} → (Γ : Scope X n) → (x : Fin n) → Tree X n
-lookup (Γ -, t) zero = rescope suc t
-lookup (Γ -, t) (suc x) = rescope suc (lookup Γ x)
+lookup (t ,- Γ) zero = rescope suc t
+lookup (t ,- Γ) (suc x) = rescope suc (lookup Γ x)
 
 -- A more precise/unthinned version of lookup
 lookup' : ∀ {X n} → (Γ : Scope X n) → (x : Fin n) → Tree X (n - (suc x))
-lookup' (Γ -, t) zero = t
-lookup' (Γ -, t) (suc x) = lookup' Γ x
+lookup' (t ,- Γ) zero = t
+lookup' (t ,- Γ) (suc x) = lookup' Γ x
 
 -- "Unwinding" a scope back to some variable x.
 -- ie, popping off everything up to and including x,
 -- so that we're left with x's scope.
 -- Pairs very naturally with lookup'.
 unwind : ∀ {X n} → (Γ : Scope X n) → (x : Fin n) → Scope X (n - (suc x))
-unwind (Γ -, ϕ) zero = Γ
-unwind (Γ -, ϕ) (suc x) = unwind Γ x
+unwind (ϕ ,- Γ) zero = Γ
+unwind (ϕ ,- Γ) (suc x) = unwind Γ x
 
 --------------------
 -- Any/Eventually --
@@ -84,7 +84,7 @@ data Eventually {X : Set} (P : X → Set) : ∀ {n} → (Γ : Scope X n) → Tre
   there2l : ∀ {op x n} {Γ : Scope X n} {l r : Tree X n}     → Eventually P Γ l   → Eventually P Γ (node2 op x l r)
   there2r : ∀ {op x n} {Γ : Scope X n} {l r : Tree X n}     → Eventually P Γ r   → Eventually P Γ (node2 op x l r)
   hereη   : ∀ {op x n} {Γ : Scope X n} {t : Tree X (suc n)} → P x                → Eventually P Γ (nodeη op x t)
-  thereη  : ∀ {op x n} {Γ : Scope X n} {t : Tree X (suc n)} → Eventually P (Γ -, nodeη op x t) t → Eventually P Γ (nodeη op x t)
+  thereη  : ∀ {op x n} {Γ : Scope X n} {t : Tree X (suc n)} → Eventually P (nodeη op x t ,- Γ) t → Eventually P Γ (nodeη op x t)
 
 ----------------------------
 -- Unfolding to NWF Trees --
@@ -104,4 +104,4 @@ force (unfold Γ (loop x)) = force $ unfold (unwind Γ x) (lookup' Γ x)
 force (unfold Γ (leaf x)) = leaf x
 force (unfold Γ (node1 op x t)) = node1 op x (unfold Γ t)
 force (unfold Γ (node2 op x l r)) = node2 op x (unfold Γ l) (unfold Γ r)
-force (unfold Γ (nodeη op x t)) = nodeη op x (unfold (Γ -, nodeη op x t) t)
+force (unfold Γ (nodeη op x t)) = nodeη op x (unfold (nodeη op x t ,- Γ) t)
