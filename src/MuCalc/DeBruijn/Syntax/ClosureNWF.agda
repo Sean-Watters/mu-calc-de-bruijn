@@ -102,7 +102,7 @@ closure-complete (μML₂ op ξ ξ₁) ε = here2 refl
 closure-complete (μML₂ op ξl ξr) (left .op .ξl .ξr ◅ pxs) = there2l (closure-complete ξl pxs)
 closure-complete (μML₂ op ξl ξr) (right .op .ξl .ξr ◅ pxs) = there2r (closure-complete ξr pxs)
 closure-complete (μMLη op ξ) ε = hereη refl
-closure-complete (μMLη op ξ) (thru .(μMLη op ξ) ◅ pxs) = thereη (closure-complete _ pxs)
+closure-complete (μMLη op ξ) (thru .(μMLη op ξ) {{fp}} ◅ pxs) = thereη (closure-complete _ pxs )
 
 -------------------------------
 -- Finiteness of the Closure --
@@ -149,8 +149,8 @@ rational-closure-unfolding-bisim : ∀ {At n} {Γ : Scope At n} {Δ : R.Scope (�
 force (rational-closure-unfolding-bisim Γ (μML₀ op)) = leaf refl
 force (rational-closure-unfolding-bisim Γ (μML₁ op ϕ)) = node1 refl (rational-closure-unfolding-bisim Γ ϕ)
 force (rational-closure-unfolding-bisim Γ (μML₂ op ϕl ϕr)) = node2 refl (rational-closure-unfolding-bisim Γ ϕl) (rational-closure-unfolding-bisim Γ ϕr)
-force (rational-closure-unfolding-bisim {Γ = Γ} Γp (μMLη op ϕ)) = nodeη refl {!!}
-force (rational-closure-unfolding-bisim Γ (var x)) = {!!}
+force (rational-closure-unfolding-bisim {At} {n} {Γ} {Δ} p (μMLη op ϕ)) = nodeη refl {!rational-closure-unfolding-bisim!}
+force (rational-closure-unfolding-bisim Γ (var x)) = {!x!}
 
 -- If the context is empty, then the expansion map is the identity, so we get the statement we wanted all along.
 rational-closure-unfolding-bisim-sentence : ∀ {At} (ξ : μML At 0) → closure ξ ~ R.unfold R.[] (rational-closure [] ξ)
