@@ -4,43 +4,53 @@ module Codata.NWFTree.Properties where
 open import Level using (0ℓ)
 open import Relation.Binary
 open import Relation.Binary.PropositionalEquality
+
 open import Codata.NWFTree.Core
 open import MuCalc.DeBruijn.Base
 
---------------------------------
--- Properties of Bisimilarity --
---------------------------------
+private variable
+  X : Set
 
-~-reflexive : ∀ {X} {xs ys : ∞NWFTree X} → xs ≡ ys → xs ~ ys
-force (~-reflexive {xs = xs} refl) with force xs
-... | leaf x = leaf refl
-... | node1 op x s = node1 refl (~-reflexive {xs = s} refl)
-... | node2 op x s t = node2 refl (~-reflexive {xs = s} refl) (~-reflexive {xs = t} refl)
-... | nodeη op x s = nodeη refl (~-reflexive {xs = s} refl)
+-----------------------------
+-- The Bisimilarity Setoid --
+-----------------------------
 
-~-refl : ∀ {X} (xs : ∞NWFTree X) → xs ~ xs
+~-reflexive : ∀ {xs ys : ∞NWFTree X} → xs ≡ ys → xs ~ ys
+head (~-reflexive refl) = refl
+tree (~-reflexive {xs = xs} refl) with tree xs
+... | leaf = leaf
+... | node1 op rs = node1 (~-reflexive refl)
+... | node2 op rsl rsr = node2 (~-reflexive refl) (~-reflexive refl)
+... | nodeη op rs = nodeη (~-reflexive refl)
+
+
+~-refl : ∀ (xs : ∞NWFTree X) → xs ~ xs
 ~-refl xs = ~-reflexive {xs = xs} refl
 
-~-sym : ∀ {X} {xs ys : ∞NWFTree X} → xs ~ ys → ys ~ xs
-force (~-sym {X} {xs} {ys} b) with force ys | force xs | force b
-... | .(leaf _) | .(leaf _) | leaf p = leaf (sym p)
-... | (node1 _ _ s) | (node1 _ _ t) | node1 p q = node1 (sym p) (~-sym {X} {t} {s} q)
-... | (node2 _ _ sl sr) | (node2 _ _ tl tr) | node2 p q r = node2 (sym p) (~-sym {X} {tl} {sl} q) (~-sym {X} {tr} {sr} r)
-... | (nodeη _ _ s) | (nodeη _ _ t) | nodeη p q = nodeη (sym p) (~-sym {X} {t} {s} q)
+~-sym : ∀ {xs ys : ∞NWFTree X} → xs ~ ys → ys ~ xs
+head (~-sym rs) = sym (head rs)
+tree (~-sym {xs = xs} {ys} rs) with tree xs | tree ys | tree rs
+... | _ | _ | leaf = leaf
+... | _ | _ | node1 x = node1 (~-sym x)
+... | _ | _ | node2 x y = node2 (~-sym x) (~-sym y)
+... | _ | _ | nodeη x = nodeη (~-sym x)
 
-~-trans : ∀ {X} {xs ys zs : ∞NWFTree X} → xs ~ ys → ys ~ zs → xs ~ zs
-force (~-trans {X} {xs} {ys} {zs} bl br) with force xs | force ys | force zs | force bl | force br
-... | (leaf _) | (leaf _) | c | leaf p | leaf p' = leaf (trans p p')
-... | (node1 _ _ s) | (node1 _ _ t) | (node1 _ _ u) | node1 p q | node1 p' q'
-  = node1 (trans p p') (~-trans {X} {s} {t} {u} q q')
-... | (node2 _ _ sl sr) | (node2 _ _ tl tr) | (node2 _ _ ul ur) | node2 p q r | node2 p' q' r'
-  = node2 (trans p p') (~-trans {X} {sl} {tl} {ul} q q') (~-trans {X} {sr} {tr} {ur} r r')
-... | (nodeη _ _ s) | (nodeη _ _ t) | (nodeη _ _ u) | nodeη p q | nodeη p' q'
-  = nodeη (trans p p') (~-trans {X} {s} {t} {u} q q')
+~-trans : ∀ {xs ys zs : ∞NWFTree X} → xs ~ ys → ys ~ zs → xs ~ zs
+head (~-trans rsl rsr) = trans (head rsl) (head rsr)
+tree (~-trans {xs = xs} {ys} {zs} rsl rsr) with tree xs | tree ys | tree zs | tree rsl | tree rsr
+... | _ | _ | _ | leaf | v = v
+... | _ | _ | _ | node1 x | node1 y = node1 (~-trans x y)
+... | _ | _ | _ | node2 x u | node2 y v = node2 (~-trans x y) (~-trans u v)
+... | _ | _ | _ | nodeη x | nodeη y = nodeη (~-trans x y)
 
-~-isEquivalence : ∀ {X} → IsEquivalence (_~_ {X})
-IsEquivalence.refl (~-isEquivalence {X}) {x} = ~-refl x
-IsEquivalence.sym (~-isEquivalence {X}) {x} {y} p = ~-sym {X} {x} {y} p
-IsEquivalence.trans (~-isEquivalence {X}) = {!!}
+~-isEquivalence : IsEquivalence (_~_ {X})
+IsEquivalence.refl ~-isEquivalence {x} = ~-refl x
+IsEquivalence.sym ~-isEquivalence p = ~-sym p
+IsEquivalence.trans ~-isEquivalence p q = ~-trans p q
 
+~-Setoid : Set → Setoid 0ℓ 0ℓ
+Setoid.Carrier (~-Setoid X) = ∞NWFTree X
+Setoid._≈_ (~-Setoid X) = _~_
+Setoid.isEquivalence (~-Setoid X) = ~-isEquivalence
 
+module bisim-Reasoning X = pw-Reasoning (~-Setoid X)
