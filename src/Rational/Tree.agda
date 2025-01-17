@@ -1,4 +1,4 @@
-{-# OPTIONS --guardedness #-}
+{-# OPTIONS --safe --guardedness #-}
 module Rational.Tree where
 
 open import Data.Nat
@@ -6,7 +6,7 @@ open import Data.Fin hiding (_-_) renaming (_ℕ-ℕ_ to _-_)
 open import Function using (_$_)
 
 open import MuCalc.DeBruijn.Base using (Op₁; Op₂; Opη)
-open import Codata.NWFTree as T hiding (Eventually)
+open import Codata.NWFTree as T hiding (Eventually; head; tree)
 
 -- Rational trees, presented as a syntax with binding in the style of Hamana.
 -- Variables denote backedges.
@@ -90,18 +90,23 @@ data Eventually {X : Set} (P : X → Set) : ∀ {n} → (Γ : Scope X n) → Tre
 -- Unfolding to NWF Trees --
 ----------------------------
 
--- termination check failed, unguarded :(
--- inlining lookup in a mutual doesn't help, either way we end up with an
--- unguarded corecursive call
--- Is there something like "productive coinduction" analogous to wellfounded induction?
--- Lets try and figure it out. In sketchpad/Coinduction/Productive
--- I really don't want to go back to the thing with the maybes, it seems too janky.
--- Would rather do it once and for all.
+head : ∀ {X n} → (Γ : Scope X n) → Tree X n → X
+head Γ (leaf x) = x
+head Γ (node1 op x t) = x
+head Γ (node2 op x l r) = x
+head Γ (nodeη op x t) = x
+head (t ,- Γ) (loop zero) = head Γ t
+head (t ,- Γ) (loop (suc x)) = head Γ (loop x)
 
-{-# TERMINATING #-} -- honest, 'guv. (will hopefully be able to drop in the PCoI stuff when it's ready, without too much overhead...)
 unfold : ∀ {X n} → (Γ : Scope X n) → Tree X n → ∞NWFTree X
-force (unfold Γ (loop x)) = force $ unfold (unwind Γ x) (lookup' Γ x)
-force (unfold Γ (leaf x)) = leaf x
-force (unfold Γ (node1 op x t)) = node1 op x (unfold Γ t)
-force (unfold Γ (node2 op x l r)) = node2 op x (unfold Γ l) (unfold Γ r)
-force (unfold Γ (nodeη op x t)) = nodeη op x (unfold (nodeη op x t ,- Γ) t)
+tree : ∀ {X n} → (Γ : Scope X n) → Tree X n → NWFTree X
+
+tree Γ (leaf x) = leaf
+tree Γ (node1 op x t) = node1 op (unfold Γ t)
+tree Γ (node2 op x l r) = node2 op (unfold Γ l) (unfold Γ r)
+tree Γ (nodeη op x t) = nodeη op (unfold (nodeη op x t ,- Γ) t)
+tree (t ,- Γ) (loop zero) = tree Γ t
+tree (t ,- Γ) (loop (suc x)) = tree Γ (loop x)
+
+T.head (unfold Γ t) = head Γ t
+T.tree (unfold Γ t) = tree Γ t

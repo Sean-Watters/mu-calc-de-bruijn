@@ -1,3 +1,4 @@
+{-# OPTIONS --safe #-}
 module MuCalc.DeBruijn.Base where
 
 open import Data.Nat hiding (_≟_)

@@ -1,4 +1,4 @@
-{-# OPTIONS --guardedness #-}
+{-# OPTIONS --safe --guardedness #-}
 module Codata.NWFTree.Properties where
 
 open import Level using (0ℓ)

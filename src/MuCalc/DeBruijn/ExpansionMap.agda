@@ -1,3 +1,4 @@
+{-# OPTIONS --safe #-}
 module MuCalc.DeBruijn.ExpansionMap where
 
 open import Function
