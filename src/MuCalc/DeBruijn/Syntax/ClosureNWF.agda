@@ -25,20 +25,6 @@ open import Codata.NWFTree as T
 -- Tree Stuff --
 ----------------
 
--- Coherence between formulas and rational trees
--- This may not be strong enough? Take a 2nd look with `expand-lookup-here` in mind
-data Coh {At X : Set} : ∀ {n} → μML At n → R.Tree X n → Set where
-  var : ∀ {n x} → Coh {n = n} (var x) (loop x)
-  leaf : ∀ {op x n} → Coh {n = n} (μML₀ op) (leaf x) -- todo: it's almost certainly wrong that leaves don't have an op
-  node1 : ∀ {op x n} {ϕ : μML At n} {t : R.Tree X n} → Coh ϕ t → Coh (μML₁ op ϕ) (node1 op x t)
-  node2 : ∀ {op x n} {ϕ ψ : μML At n} {l r : R.Tree X n} → Coh ϕ l → Coh ψ r → Coh (μML₂ op ϕ ψ) (node2 op x l r)
-  nodeη : ∀ {op x n} {ϕ : μML At (suc n)} {t : R.Tree X (suc n)} → Coh ϕ t → Coh (μMLη op ϕ) (nodeη op x t)
-
--- Coherence between scopes of formulas and scopes of rational trees.
-data ScCoh {At : Set} : ∀ {n} → Scope At n → R.Scope (μML At 0) n → Set where
-  [] : ScCoh [] []
-  _,-_ : ∀ {n} {Γ : Scope At n} {Γ₀ : μML At n} {{_ : IsFP Γ₀}} {Δ : R.Scope (μML At 0) n} {Δ₀ : R.Tree (μML At 0) n}
-       →  Coh Γ₀ Δ₀ → ScCoh Γ Δ → ScCoh (Γ₀ ,- Γ) (Δ₀ ,- Δ)
 
 -------------------------------
 -- Definition of the Closure --
@@ -123,58 +109,103 @@ rational-closure Γ ξ@(μML₁ op ϕ) = node1 op (expand Γ ξ) (rational-closu
 rational-closure Γ ξ@(μML₂ op ϕl ϕr) = node2 op (expand Γ ξ) (rational-closure Γ ϕl) (rational-closure Γ ϕr)
 rational-closure Γ ξ@(μMLη op ϕ) = nodeη op (expand Γ ξ) (rational-closure (ξ ,- Γ) ϕ)
 
+-- A relation witnessing whether a rational tree represents the closure of a formula,
+-- via the expansion-of-subforumulas approach.
+data IsClosure {At : Set} {n : ℕ} (Γ : Scope At n) : μML At n → R.Tree (μML At 0) n → Set where
+  loop : (x : Fin n) → IsClosure Γ (var x) (loop x)
+  leaf : ∀ op → IsClosure Γ (μML₀ op) (leaf (μML₀ op))
+  node1 : ∀ op (ϕ : μML At n) (t : R.Tree (μML At 0) n) → IsClosure Γ ϕ t → IsClosure Γ (μML₁ op ϕ) (node1 op (expand Γ (μML₁ op ϕ)) t)
+  node2 : ∀ op (ϕl ϕr : μML At n) (tl tr : R.Tree (μML At 0) n) → IsClosure Γ ϕl tl → IsClosure Γ ϕr tr → IsClosure Γ (μML₂ op ϕl ϕr) (node2 op (expand Γ (μML₂ op ϕl ϕr)) tl tr)
+  nodeη : ∀ op (ϕ : μML At (suc n)) (t : R.Tree (μML At 0) (suc n)) → IsClosure ((μMLη op ϕ) ,- Γ) ϕ t → IsClosure Γ (μMLη op ϕ) (nodeη op (expand Γ (μMLη op ϕ)) t)
 
--- Properties --
-
-
+-- Coherence between scopes of formulas and scopes of rational trees.
+data ScCoh {At : Set} : ∀ {n} → Scope At n → R.Scope (μML At 0) n → Set where
+  [] : ScCoh [] []
+  _,-_ : ∀ {n} {Γ : Scope At n} {Γ₀ : μML At n} {{_ : IsFP Γ₀}} {Δ : R.Scope (μML At 0) n} {Δ₀ : R.Tree (μML At 0) n}
+       → IsClosure Γ Γ₀ Δ₀ → ScCoh Γ Δ → ScCoh (Γ₀ ,- Γ) (Δ₀ ,- Δ)
 
 -- The rational tree produced has the same shape as the formula
-rational-closure-coh : ∀ {At n} {Γ : Scope At n} (ϕ : μML At n) → Coh ϕ (rational-closure Γ ϕ)
-rational-closure-coh (var x) = var
-rational-closure-coh (μML₀ op) = leaf
-rational-closure-coh (μML₁ op ϕ) = node1 (rational-closure-coh ϕ)
-rational-closure-coh (μML₂ op ϕl ϕr) = node2 (rational-closure-coh ϕl) (rational-closure-coh ϕr)
-rational-closure-coh (μMLη op ϕ) = nodeη (rational-closure-coh ϕ)
+rational-closure-IsClosure : ∀ {At n} (Γ : Scope At n) (ϕ : μML At n) → IsClosure Γ ϕ (rational-closure Γ ϕ)
+rational-closure-IsClosure Γ (var x) = loop x
+rational-closure-IsClosure Γ (μML₀ op) = leaf op
+rational-closure-IsClosure Γ (μML₁ op ϕ) = node1 op ϕ (rational-closure Γ ϕ) (rational-closure-IsClosure Γ ϕ)
+rational-closure-IsClosure Γ (μML₂ op ϕl ϕr) = node2 op ϕl ϕr (rational-closure Γ ϕl) (rational-closure Γ ϕr)
+                                                (rational-closure-IsClosure Γ ϕl) (rational-closure-IsClosure Γ ϕr)
+rational-closure-IsClosure Γ (μMLη op ϕ) = nodeη op ϕ (rational-closure (μMLη op ϕ ,- Γ) ϕ)
+                                            (rational-closure-IsClosure (μMLη op ϕ ,- Γ) ϕ)
 
-expand-lookup-here : ∀ {At n} {ϕ : μML At n} {Γ : Scope At n} {t : Tree (μML At 0) n} {Δ : R.Scope (μML At 0) n}
-                  → (p : Coh ϕ t) (ps : ScCoh Γ Δ)
-                  → expand' Γ (injectL ϕ) ≡ R.head Δ t
-expand-lookup-here var ps = {!!}
-expand-lookup-here leaf ps = {!!}
-expand-lookup-here (node1 p) ps = {!!}
-expand-lookup-here (node2 p p₁) ps = {!!}
-expand-lookup-here (nodeη p) ps = {!!}
+
+
+expandvar-head : ∀ {At n} {Γ : Scope At n} {Δ : R.Scope (μML At 0) n} (p : Plus n 0 n) (x : Fin n)
+               → ScCoh Γ Δ
+               → expand-var Γ (split p (injectL p x)) ≡ R.head Δ (loop x)
+expandvar-head (sucl p) F.zero (nodeη op ϕ t q ,- qs)
+  = cong (μMLη op) (expand'-thin _ ϕ (plus _ 0) idr (sym $ +-identityʳ _) refl)
+expandvar-head {Γ = Γ₀ ,- Γ} (sucl p) (F.suc x) (x₁ ,- qs) = trans (expandvar-extend Γ Γ₀ (split p (injectL p x))) (expandvar-head p x qs)
 
 bisim-head : ∀ {At n} {Γ : Scope At n} {Δ : R.Scope (μML At 0) n}
-           → (ps : ScCoh Γ Δ) → (ξ : μML At n) → expand Γ ξ ≡ R.head Δ (rational-closure Γ ξ)
-bisim-head Γ≈Δ (μML₀ _) = refl
-bisim-head Γ≈Δ (μML₁ _ _) = refl
-bisim-head Γ≈Δ (μML₂ _ _ _) = refl
-bisim-head Γ≈Δ (μMLη _ _) = refl
-bisim-head {Γ = ϕ ,- Γ} {Δ = t ,- Δ} (p ,- ps) (var F.zero) = expand-lookup-here p ps
-bisim-head {Γ = ϕ ,- Γ} {Δ = t ,- Δ} (p ,- ps) (var (F.suc x)) = {!!}
+           → (ps : ScCoh Γ Δ) (p : Plus n 0 n) (ξ : μML At n) → expand' p Γ (thin p ξ) ≡ R.head Δ (rational-closure Γ ξ)
+bisim-head Γ≈Δ p (μML₀ op) = refl
+bisim-head Γ≈Δ p (μML₁ op ϕ)
+  rewrite Plus-irrelevant p idr = refl
+bisim-head Γ≈Δ p (μML₂ op ϕl ϕr)
+  rewrite Plus-irrelevant p idr = refl
+bisim-head Γ≈Δ p (μMLη op ϕ)
+  rewrite Plus-irrelevant p idr = refl
+bisim-head Γ≈Δ p (var x) = expandvar-head p x Γ≈Δ
 
 -- We can't get away with only considering empty contexts, because we do need to traverse binders.
 -- But the coinductive closure algorithm is only defined on sentences, so we cant plug arbitrary subformulas in there.
 -- Lets try with the expansion map...it may even work...
 rational-closure-unfolding-bisim : ∀ {At n} {Γ : Scope At n} {Δ : R.Scope (μML At 0) n}
-                                  → ScCoh Γ Δ → (ξ : μML At n) → closure (expand Γ ξ) ~ R.unfold Δ (rational-closure Γ ξ)
-T.head (rational-closure-unfolding-bisim Γ≈Δ ξ) = bisim-head Γ≈Δ ξ
-T.tree (rational-closure-unfolding-bisim Γ≈Δ ξ) = {!!}
+                                  → ScCoh Γ Δ → (p : Plus n 0 n) → (ξ : μML At n) → closure (expand' p Γ (thin p ξ)) ~ R.unfold Δ (rational-closure Γ ξ)
+rational-closure-unfolding-bisim Γ≈Δ p ξ               .∞Pointwise.head
+  = bisim-head Γ≈Δ p ξ
+rational-closure-unfolding-bisim Γ≈Δ p (μML₀ op)       .∞Pointwise.tree
+  = leaf
+rational-closure-unfolding-bisim Γ≈Δ p (μML₁ op ξ)     .∞Pointwise.tree
+  = node1 (rational-closure-unfolding-bisim Γ≈Δ p ξ)
+rational-closure-unfolding-bisim Γ≈Δ p (μML₂ op ξl ξr) .∞Pointwise.tree
+  = node2 (rational-closure-unfolding-bisim Γ≈Δ p ξl)
+          (rational-closure-unfolding-bisim Γ≈Δ p ξr)
+rational-closure-unfolding-bisim {At} {n} {Γ} {Δ} Γ≈Δ p (μMLη op ξ) .∞Pointwise.tree = nodeη pf where
+    open T.bisim-Reasoning (μML At 0)
+    pf =
+      begin
+        closure (unfold (μMLη op (expand' (sucr p) Γ (thin (sucl p) ξ))))
+      ≈⟨ {!!} ⟩
+        closure (expand' (sucl p) (μMLη op ξ ,- Γ) (thin (sucl p) ξ))
+      ≈⟨ rational-closure-unfolding-bisim (rational-closure-IsClosure Γ (μMLη op ξ) ,- Γ≈Δ) (sucl p) ξ ⟩
+        R.unfold (nodeη op (expand Γ (μMLη op ξ)) (rational-closure (μMLη op ξ ,- Γ) ξ) ,- Δ) (rational-closure (μMLη op ξ ,- Γ) ξ)
+      ∎
+rational-closure-unfolding-bisim Γ≈Δ p (var x) .∞Pointwise.tree = {!!}
 
--- force (rational-closure-unfolding-bisim Γ (μML₀ op)) = leaf refl
--- force (rational-closure-unfolding-bisim Γ (μML₁ op ϕ)) = node1 refl (rational-closure-unfolding-bisim Γ ϕ)
--- force (rational-closure-unfolding-bisim Γ (μML₂ op ϕl ϕr)) = node2 refl (rational-closure-unfolding-bisim Γ ϕl) (rational-closure-unfolding-bisim Γ ϕr)
--- force (rational-closure-unfolding-bisim {At} {n} {Γ} {Δ} p (μMLη op ϕ)) = nodeη refl {!rational-closure-unfolding-bisim!}
--- force (rational-closure-unfolding-bisim Γ (var x)) = {!x!}
 
 -- If the context is empty, then the expansion map is the identity, so we get the statement we wanted all along.
 rational-closure-unfolding-bisim-sentence : ∀ {At} (ξ : μML At 0) → closure ξ ~ R.unfold R.[] (rational-closure [] ξ)
-rational-closure-unfolding-bisim-sentence ξ = {!rational-closure-unfolding-bisim [] ξ!} -- rational-closure-unfolding-bisim [] ξ
+rational-closure-unfolding-bisim-sentence {At} ξ =
+  begin
+    closure ξ
+  ≡⟨ (cong closure (expand-empty ξ)) ⟩
+    closure (expand [] ξ)
+  ~⟨ (rational-closure-unfolding-bisim [] idr ξ) ⟩
+    R.unfold [] (rational-closure [] ξ)
+  ∎ where open T.bisim-Reasoning (μML At 0)
 
+-- The closure is bisimilar to the unfolding of a finite tree, so it must contain a finite number of unique formulas.
+-- (ie, exactly those that appear in the tree)
 
--- The set of formulas in the closure is finite. todo: might want a different notion of finiteness.
--- Hopefully this should follow via some reasoning about the above.
-closure-finite : ∀ {At} (ξ : μML At 0) → Σ[ n ∈ ℕ ] Closure ξ ≃ Fin n
+------------------
+-- Closure Size --
+------------------
+
+-- The closure size is the number of *unique* formulas in the rational closure tree-with-backedges.
+-- Note that because this is a tree with backedges, there is no cross-branch sharing, so there may be duplicate nodes.
+-- Counting these would (potentially exponentially) over-estimate the closure size.
+closure-size : ∀ {At} (ξ : μML At 0) → ℕ
+closure-size ξ = {!!}
+
+-- If we didn't over-estimate the closure size when counting the tree, then we can prove that this
+-- really is the size of the closure set.
+closure-finite : ∀ {At} (ξ : μML At 0) → Closure ξ ≃ Fin (closure-size ξ)
 closure-finite ξ = {!!}
-

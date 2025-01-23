@@ -53,4 +53,4 @@ Setoid.Carrier (~-Setoid X) = ∞NWFTree X
 Setoid._≈_ (~-Setoid X) = _~_
 Setoid.isEquivalence (~-Setoid X) = ~-isEquivalence
 
-module bisim-Reasoning X = pw-Reasoning (~-Setoid X)
+module bisim-Reasoning X = pw-Reasoning (setoid X)

@@ -11,7 +11,7 @@ private variable
   X : Set
 
 -- A type of nonwellfounded trees with nodes labelled
--- by ■/◆/∧/∨/μ/μ, storing data at both leaves and nodes
+-- by ■/◆/∧/∨/μ/ν, storing data at both leaves and nodes
 
 record ∞NWFTree (X : Set) : Set
 data NWFTree (X : Set) : Set
@@ -174,3 +174,23 @@ module pw-Reasoning (S : Setoid 0ℓ 0ℓ) where
   run-tree (node1 x) = node1 (run x)
   run-tree (node2 x y) = node2 (run x) (run y)
   run-tree (nodeη x) = nodeη (run x)
+
+  -- The equational reasoning syntax --
+
+  begin_ : ∀ {s t} → `PointwiseProof s t → ∞Pointwise _≈_ s t
+  begin_ = run
+
+  pattern _↺⟨_⟩_ s s∼t t∼u = `trans {s = s} (`step s∼t) t∼u
+  pattern _↺⟨_⟨_ s t∼s t∼u = `trans {s = s} (`sym (`step t∼s)) t∼u
+  pattern _~⟨_⟩_ s s∼t t∼u = `trans {s = s} (`lift s∼t) t∼u
+  pattern _~⟨_⟨_ s t∼s t∼u = `trans {s = s} (`sym (`lift t∼s)) t∼u
+  pattern _≈⟨_⟩_ s s∼t t∼u = `trans {s = s} (`bisim s∼t) t∼u
+  pattern _≈⟨_⟨_ s t∼s t∼u = `trans {s = s} (`sym (`bisim t∼s)) t∼u
+  pattern _≡⟨_⟩_ s s∼t t∼u = `trans {s = s} (`refl s∼t) t∼u
+  pattern _≡⟨_⟨_ s t∼s t∼u = `trans {s = s} (`sym (`refl t∼s)) t∼u
+  pattern _≡⟨⟩_  s s∼t     = `trans {s = s} (`refl refl) s∼t
+  pattern _∎    s          = `refl  {s = s} refl
+
+  infix  1 begin_
+  infixr 2 _↺⟨_⟩_ _↺⟨_⟨_ _~⟨_⟩_ _~⟨_⟨_ _≈⟨_⟩_ _≈⟨_⟨_ _≡⟨_⟩_ _≡⟨_⟨_ _≡⟨⟩_
+  infix  3 _∎
