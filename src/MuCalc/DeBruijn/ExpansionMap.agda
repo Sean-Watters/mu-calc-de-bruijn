@@ -74,6 +74,7 @@ Plus-irrelevant : ∀ {a b a+b} → Irrelevant (Plus a b a+b)
 Plus-irrelevant idl idl = refl
 Plus-irrelevant (sucl p) (sucl q) = cong sucl (Plus-irrelevant p q)
 
+
 expand'-thin : ∀ {At n n' n''} (Γ : Scope At n) (ϕ : μML At (suc n))
              → (p : Plus n 0 n') (q : Plus n 0 n'')
              → n ≡ n' → n ≡ n''
