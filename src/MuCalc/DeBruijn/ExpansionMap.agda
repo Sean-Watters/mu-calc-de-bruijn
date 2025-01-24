@@ -1,4 +1,4 @@
-{-# OPTIONS --safe #-}
+{-# OPTIONS --allow-unsolved-metas #-}
 module MuCalc.DeBruijn.ExpansionMap where
 
 open import Function
@@ -111,7 +111,21 @@ expandvar-extend : ∀ {At n m} (Γ : Scope At n) (ϕ : μML At n)
 expandvar-extend _ _ (inj₁ x) = refl
 expandvar-extend _ _ (inj₂ y) = refl
 
--- -- The unfolding of the expansion is an expansion
--- unfold-expand : ∀ {At n} op (Γ : Scope At n) (ϕ : μML' At n 1) → unfold (μMLη op (expand' Γ ϕ)) ≡ expand' (to-slime-flip (μMLη op ϕ) ,- Γ) (rescope' shiftSplitL ϕ)
--- unfold-expand = {!!}
+injectL-sucl : ∀ {n} (p : Plus n 0 n) (x : Fin (suc n)) → injectL (sucl p) x ≡ x
+injectL-sucl p F.zero = refl
+injectL-sucl p (F.suc x) = cong F.suc (sym (injectL-id p x))
 
+thin-sucl : ∀ {At n} (p : Plus n 0 n) (ϕ : μML At (suc n)) → thin (sucl p) ϕ ≡ ϕ
+thin-sucl p (var x) = cong var (injectL-sucl p x)
+thin-sucl p (μML₀ op) = refl
+thin-sucl p (μML₁ op ϕ) = cong (μML₁ op) (thin-sucl p ϕ)
+thin-sucl p (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (thin-sucl p ϕl) (thin-sucl p ϕr)
+thin-sucl p (μMLη op ϕ) = cong (μMLη op) (thin-sucl (sucl p) ϕ)
+
+unfold-expand : ∀ {At n} op (Γ : Scope At n) (ϕ : μML At (suc n)) (p : Plus n 1 (suc n)) (q : Plus (suc n) 0 (suc n))
+              → unfold (μMLη op (expand' p Γ ϕ)) ≡ expand' q (μMLη op ϕ ,- Γ) ϕ
+unfold-expand a Γ (var x) p q = {!!}
+unfold-expand a Γ (μML₀ b) p q = refl
+unfold-expand a Γ (μML₁ b ϕ) p q = cong (μML₁ b) {!unfold-expand a Γ ϕ p q!}
+unfold-expand a Γ (μML₂ b ϕl ϕr) p q = cong₂ (μML₂ b) {!!} {!!}
+unfold-expand a Γ (μMLη b ϕ) p q = cong (μMLη b) {!!}

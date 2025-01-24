@@ -3,7 +3,7 @@ module Codata.NWFTree.Core where
 
 open import Level using (0ℓ)
 open import Function using (id)
-open import Relation.Binary.PropositionalEquality
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import MuCalc.DeBruijn.Base
 open import Relation.Binary.Bundles using (Setoid)
 
@@ -194,3 +194,5 @@ module pw-Reasoning (S : Setoid 0ℓ 0ℓ) where
   infix  1 begin_
   infixr 2 _↺⟨_⟩_ _↺⟨_⟨_ _~⟨_⟩_ _~⟨_⟨_ _≈⟨_⟩_ _≈⟨_⟨_ _≡⟨_⟩_ _≡⟨_⟨_ _≡⟨⟩_
   infix  3 _∎
+
+

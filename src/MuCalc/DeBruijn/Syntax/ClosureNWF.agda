@@ -1,4 +1,4 @@
-{-# OPTIONS --safe --guardedness #-}
+{-# OPTIONS --guardedness #-}
 module MuCalc.DeBruijn.Syntax.ClosureNWF where
 
 open import Data.Bool using (Bool; true; false)
@@ -101,7 +101,8 @@ closure-complete (μMLη op ξ) (thru .(μMLη op ξ) {{fp}} ◅ pxs) = there (n
 -- The Rational-by-Construction Closure Algorithm --
 ----------------------------------------------------
 
-
+-- Computing the closure as a via the expansion map applied to the subformulas, represented as an
+-- inductive approximation of a rational tree.
 rational-closure : ∀ {At n} (Γ : Scope At n) (ϕ : μML At n) → R.Tree (μML At 0) n
 rational-closure Γ ξ@(var x) = loop x
 rational-closure Γ ξ@(μML₀ op) = leaf (expand Γ ξ)
@@ -143,52 +144,62 @@ expandvar-head (sucl p) F.zero (nodeη op ϕ t q ,- qs)
   = cong (μMLη op) (expand'-thin _ ϕ (plus _ 0) idr (sym $ +-identityʳ _) refl)
 expandvar-head {Γ = Γ₀ ,- Γ} (sucl p) (F.suc x) (x₁ ,- qs) = trans (expandvar-extend Γ Γ₀ (split p (injectL p x))) (expandvar-head p x qs)
 
-bisim-head : ∀ {At n} {Γ : Scope At n} {Δ : R.Scope (μML At 0) n}
+
+rclos-bisim-head : ∀ {At n} {Γ : Scope At n} {Δ : R.Scope (μML At 0) n}
            → (ps : ScCoh Γ Δ) (p : Plus n 0 n) (ξ : μML At n) → expand' p Γ (thin p ξ) ≡ R.head Δ (rational-closure Γ ξ)
-bisim-head Γ≈Δ p (μML₀ op) = refl
-bisim-head Γ≈Δ p (μML₁ op ϕ)
+rclos-bisim-head Γ≈Δ p (μML₀ op) = refl
+rclos-bisim-head Γ≈Δ p (μML₁ op ϕ)
   rewrite Plus-irrelevant p idr = refl
-bisim-head Γ≈Δ p (μML₂ op ϕl ϕr)
+rclos-bisim-head Γ≈Δ p (μML₂ op ϕl ϕr)
   rewrite Plus-irrelevant p idr = refl
-bisim-head Γ≈Δ p (μMLη op ϕ)
+rclos-bisim-head Γ≈Δ p (μMLη op ϕ)
   rewrite Plus-irrelevant p idr = refl
-bisim-head Γ≈Δ p (var x) = expandvar-head p x Γ≈Δ
+rclos-bisim-head Γ≈Δ p (var x) = expandvar-head p x Γ≈Δ
 
 -- We can't get away with only considering empty contexts, because we do need to traverse binders.
 -- But the coinductive closure algorithm is only defined on sentences, so we cant plug arbitrary subformulas in there.
 -- Lets try with the expansion map...it may even work...
-rational-closure-unfolding-bisim : ∀ {At n} {Γ : Scope At n} {Δ : R.Scope (μML At 0) n}
-                                  → ScCoh Γ Δ → (p : Plus n 0 n) → (ξ : μML At n) → closure (expand' p Γ (thin p ξ)) ~ R.unfold Δ (rational-closure Γ ξ)
-rational-closure-unfolding-bisim Γ≈Δ p ξ               .∞Pointwise.head
-  = bisim-head Γ≈Δ p ξ
-rational-closure-unfolding-bisim Γ≈Δ p (μML₀ op)       .∞Pointwise.tree
-  = leaf
-rational-closure-unfolding-bisim Γ≈Δ p (μML₁ op ξ)     .∞Pointwise.tree
-  = node1 (rational-closure-unfolding-bisim Γ≈Δ p ξ)
-rational-closure-unfolding-bisim Γ≈Δ p (μML₂ op ξl ξr) .∞Pointwise.tree
-  = node2 (rational-closure-unfolding-bisim Γ≈Δ p ξl)
-          (rational-closure-unfolding-bisim Γ≈Δ p ξr)
-rational-closure-unfolding-bisim {At} {n} {Γ} {Δ} Γ≈Δ p (μMLη op ξ) .∞Pointwise.tree = nodeη pf where
+rclos-bisim : ∀ {At n} {Γ : Scope At n} {Δ : R.Scope (μML At 0) n}
+            → ScCoh Γ Δ → (p : Plus n 0 n) → (ξ : μML At n)
+            → closure (expand' p Γ (thin p ξ)) ~ R.unfold Δ (rational-closure Γ ξ)
+rclos-bisim-tree : ∀ {At n} {Γ : Scope At n} {Δ : R.Scope (μML At 0) n}
+                 → ScCoh Γ Δ → (p : Plus n 0 n) → (ξ : μML At n)
+                 → Pointwise _≡_ (∞NWFTree.tree (closure (expand' p Γ (thin p ξ)))) (R.tree Δ (rational-closure Γ ξ))
+
+rclos-bisim-tree Γ≈Δ p (μML₀ op) = leaf
+rclos-bisim-tree Γ≈Δ p (μML₁ op ξ) = node1 (rclos-bisim Γ≈Δ p ξ)
+rclos-bisim-tree Γ≈Δ p (μML₂ op ξl ξr) = node2 (rclos-bisim Γ≈Δ p ξl) (rclos-bisim Γ≈Δ p ξr)
+rclos-bisim-tree {At} {n} {Γ} {Δ} Γ≈Δ p (μMLη op ξ) = nodeη pf where
     open T.bisim-Reasoning (μML At 0)
     pf =
       begin
         closure (unfold (μMLη op (expand' (sucr p) Γ (thin (sucl p) ξ))))
-      ≈⟨ {!!} ⟩
+      ≡⟨ cong closure
+              (unfold-expand op Γ (thin (sucl p) ξ) (sucr p) (sucl p)) ⟩ -- todo: unfold-expand not implemented yet
+        closure (expand' (sucl p) (μMLη op (thin (sucl p) ξ) ,- Γ) (thin (sucl p) ξ))
+      ≡⟨ cong (λ z → closure (expand' (sucl p) (μMLη op z ,- Γ) (thin (sucl p) ξ)))
+              (thin-sucl p ξ) ⟩
         closure (expand' (sucl p) (μMLη op ξ ,- Γ) (thin (sucl p) ξ))
-      ≈⟨ rational-closure-unfolding-bisim (rational-closure-IsClosure Γ (μMLη op ξ) ,- Γ≈Δ) (sucl p) ξ ⟩
+      ≈⟨ rclos-bisim (rational-closure-IsClosure Γ (μMLη op ξ) ,- Γ≈Δ) (sucl p) ξ ⟩
         R.unfold (nodeη op (expand Γ (μMLη op ξ)) (rational-closure (μMLη op ξ ,- Γ) ξ) ,- Δ) (rational-closure (μMLη op ξ ,- Γ) ξ)
       ∎
-rational-closure-unfolding-bisim Γ≈Δ p (var x) .∞Pointwise.tree = {!!}
+
+rclos-bisim-tree {Γ = ϕ ,- Γ} {t ,- Δ} (cl ,- Γ≈Δ) p (var F.zero) = {!!}
+rclos-bisim-tree {At} {Γ = ϕ ,- Γ} {t ,- Δ} (cl ,- Γ≈Δ) (sucl p) (var (F.suc x)) = {!rclos-bisim-tree Γ≈Δ p (var x)!} where open T.bisim-Reasoning (μML At 0)
+
+rclos-bisim Γ≈Δ p ξ .∞Pointwise.head = rclos-bisim-head Γ≈Δ p ξ
+rclos-bisim Γ≈Δ p ξ .∞Pointwise.tree = rclos-bisim-tree Γ≈Δ p ξ
+
 
 
 -- If the context is empty, then the expansion map is the identity, so we get the statement we wanted all along.
-rational-closure-unfolding-bisim-sentence : ∀ {At} (ξ : μML At 0) → closure ξ ~ R.unfold R.[] (rational-closure [] ξ)
-rational-closure-unfolding-bisim-sentence {At} ξ =
+rclos-bisim-sentence : ∀ {At} (ξ : μML At 0) → closure ξ ~ R.unfold R.[] (rational-closure [] ξ)
+rclos-bisim-sentence {At} ξ =
   begin
     closure ξ
   ≡⟨ (cong closure (expand-empty ξ)) ⟩
     closure (expand [] ξ)
-  ~⟨ (rational-closure-unfolding-bisim [] idr ξ) ⟩
+  ~⟨ (rclos-bisim [] idr ξ) ⟩
     R.unfold [] (rational-closure [] ξ)
   ∎ where open T.bisim-Reasoning (μML At 0)
 

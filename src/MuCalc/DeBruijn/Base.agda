@@ -120,9 +120,8 @@ _[_] : ∀ {At n} → μML At (suc n) → μML At n → μML At n
 ϕ [ δ ] = sub (sub₀ δ) ϕ
 
 -- And now fixpoint unfolding is a single substitution
-opaque -- opaque only temporarily to make some types easier to read
-  unfold : ∀ {At n} (ϕ : μML At n) → {{_ : IsFP ϕ}} → μML At n
-  unfold (μMLη op ψ) = ψ [ μMLη op ψ ]
+unfold : ∀ {At n} (ϕ : μML At n) → {{_ : IsFP ϕ}} → μML At n
+unfold (μMLη op ψ) = ψ [ μMLη op ψ ]
 
 
 ---------------------------------
