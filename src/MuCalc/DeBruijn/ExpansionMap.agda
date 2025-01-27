@@ -12,6 +12,7 @@ open import Relation.Nullary using (Irrelevant)
 
 
 open import MuCalc.DeBruijn.Base
+open import MuCalc.DeBruijn.Syntax.Subformula
 
 data Plus : ℕ → ℕ → ℕ → Set where
   idl : ∀ {n} → Plus zero n n
@@ -123,10 +124,25 @@ thin-sucl p (μML₁ op ϕ) = cong (μML₁ op) (thin-sucl p ϕ)
 thin-sucl p (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (thin-sucl p ϕl) (thin-sucl p ϕr)
 thin-sucl p (μMLη op ϕ) = cong (μMLη op) (thin-sucl (sucl p) ϕ)
 
+sub-expand : ∀ {At n b n+b} (Γ : Scope At n) (ϕ : μML At n+b)
+           → (p : Plus n (suc b) n+b) (q : Plus (suc n) b n+b)
+           → {ψ : μML At n} {r : n+b ≥ n} → SforNE r ϕ ψ
+           → (σ : Subst At (suc b) b)
+           -- todo - what invarients do we need for σ?
+           -- Needs to only substitute 1 var for ψ and everything else for a rescoping?
+           → sub σ (expand' p Γ ϕ) ≡ expand' q (ψ ,- Γ) ϕ
+sub-expand Γ (var x) p q sf σ = {!!}
+sub-expand Γ (μML₀ op) p q sf σ = refl
+sub-expand Γ (μML₁ op ϕ) p q {ψ} {r} sf σ = cong (μML₁ op) (sub-expand Γ ϕ p q (cons ≤-refl _ r (down op) sf) σ )
+sub-expand Γ (μML₂ op ϕl ϕr) p q sf σ = cong₂ (μML₂ op) {!!} {!!}
+sub-expand Γ (μMLη op ϕ) p q sf σ = cong (μMLη op) {!!}
+
 unfold-expand : ∀ {At n} op (Γ : Scope At n) (ϕ : μML At (suc n)) (p : Plus n 1 (suc n)) (q : Plus (suc n) 0 (suc n))
               → unfold (μMLη op (expand' p Γ ϕ)) ≡ expand' q (μMLη op ϕ ,- Γ) ϕ
-unfold-expand a Γ (var x) p q = {!!}
-unfold-expand a Γ (μML₀ b) p q = refl
-unfold-expand a Γ (μML₁ b ϕ) p q = cong (μML₁ b) {!unfold-expand a Γ ϕ p q!}
-unfold-expand a Γ (μML₂ b ϕl ϕr) p q = cong₂ (μML₂ b) {!!} {!!}
-unfold-expand a Γ (μMLη b ϕ) p q = cong (μMLη b) {!!}
+unfold-expand {At} {n} op Γ ϕ p q = {! sub-expand Γ ϕ p q (dsf (m≤n⇒m≤1+n ≤-refl) (under op)) (sub₀ (μMLη op (expand' p Γ ϕ))) !}
+
+-- unfold-expand a Γ (var x) p q = {!!}
+-- unfold-expand a Γ (μML₀ b) p q = refl
+-- unfold-expand a Γ (μML₁ b ϕ) p q = cong (μML₁ b) {!unfold-expand a Γ ϕ p q!}
+-- unfold-expand a Γ (μML₂ b ϕl ϕr) p q = cong₂ (μML₂ b) {!!} {!!}
+-- unfold-expand a Γ (μMLη b ϕ) p q = cong (μMLη b) {!!}
