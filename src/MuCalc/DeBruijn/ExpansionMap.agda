@@ -8,11 +8,12 @@ open import Data.Nat.Properties
 open import Data.Fin as F using (Fin) renaming (_ℕ-ℕ_ to _-_)
 open import Data.Sum
 open import Relation.Binary.PropositionalEquality
-open import Relation.Nullary using (Irrelevant)
+open import Relation.Nullary using (Irrelevant; Dec; yes; no)
 
 
 open import MuCalc.DeBruijn.Base
 open import MuCalc.DeBruijn.Syntax.Subformula
+open import MuCalc.DeBruijn.Syntax.Substitution
 
 data Plus : ℕ → ℕ → ℕ → Set where
   idl : ∀ {n} → Plus zero n n
@@ -124,6 +125,16 @@ thin-sucl p (μML₁ op ϕ) = cong (μML₁ op) (thin-sucl p ϕ)
 thin-sucl p (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (thin-sucl p ϕl) (thin-sucl p ϕr)
 thin-sucl p (μMLη op ϕ) = cong (μMLη op) (thin-sucl (sucl p) ϕ)
 
+_?=_ : ∀ {n m} → (x y : Fin n ⊎ Fin m) → Dec (x ≡ y)
+inj₁ x ?= inj₂ y = no (λ ())
+inj₂ y ?= inj₁ x = no (λ ())
+inj₁ x ?= inj₁ x' with x F.≟ x'
+... | yes p = yes (cong inj₁ p)
+... | no ¬p = no (λ {refl → ¬p refl})
+inj₂ y ?= inj₂ y' with y F.≟ y'
+... | yes p = yes (cong inj₂ p)
+... | no ¬p = no (λ {refl → ¬p refl})
+
 sub-expand : ∀ {At n b n+b} (Γ : Scope At n) (ϕ : μML At n+b)
            → (p : Plus n (suc b) n+b) (q : Plus (suc n) b n+b)
            → {ψ : μML At n} {r : n+b ≥ n} → SforNE r ϕ ψ
@@ -131,18 +142,24 @@ sub-expand : ∀ {At n b n+b} (Γ : Scope At n) (ϕ : μML At n+b)
            -- todo - what invarients do we need for σ?
            -- Needs to only substitute 1 var for ψ and everything else for a rescoping?
            → sub σ (expand' p Γ ϕ) ≡ expand' q (ψ ,- Γ) ϕ
-sub-expand Γ (var x) p q sf σ = {!!}
+
+sub-expand-var : ∀ {At n b n+b} (Γ : Scope At n) 
+               → (p : Plus n (suc b) n+b) (q : Plus (suc n) b n+b)
+               → (x : Fin n ⊎ Fin (suc b)) (x' : Fin (suc n) ⊎ Fin b)
+               → {ψ : μML At n}
+               → (σ : Subst At (suc b) b) → IsSingleSub σ
+               → sub σ (expand-var Γ x) ≡ expand-var (ψ ,- Γ) x'
+
+sub-expand Γ (var x) p q sf σ = {!sub-expand-var!}
 sub-expand Γ (μML₀ op) p q sf σ = refl
-sub-expand Γ (μML₁ op ϕ) p q {ψ} {r} sf σ = cong (μML₁ op) (sub-expand Γ ϕ p q (cons ≤-refl _ r (down op) sf) σ )
-sub-expand Γ (μML₂ op ϕl ϕr) p q sf σ = cong₂ (μML₂ op) {!!} {!!}
-sub-expand Γ (μMLη op ϕ) p q sf σ = cong (μMLη op) {!!}
+sub-expand Γ (μML₁ op ϕ) p q {r = r} sf σ = cong (μML₁ op) (sub-expand Γ ϕ p q (cons ≤-refl _ r (down op) sf) σ )
+sub-expand Γ (μML₂ op ϕl ϕr) p q {r = r} sf σ = cong₂ (μML₂ op) (sub-expand Γ ϕl p q (cons ≤-refl _ r (left op) sf) σ) (sub-expand Γ ϕr p q (cons ≤-refl _ r (right op) sf) σ)
+sub-expand Γ (μMLη op ϕ) p q {r = r} sf σ = cong (μMLη op) (sub-expand Γ ϕ (sucr p) (sucr q) (cons (m≤n⇒m≤1+n ≤-refl) _ (m≤n⇒m≤1+n r) (under op) sf) (exts σ) )
+
+sub-expand-var Γ p q x x' σ (aye y refl ifne) = {!todo -graphify expand-var!}
+
 
 unfold-expand : ∀ {At n} op (Γ : Scope At n) (ϕ : μML At (suc n)) (p : Plus n 1 (suc n)) (q : Plus (suc n) 0 (suc n))
               → unfold (μMLη op (expand' p Γ ϕ)) ≡ expand' q (μMLη op ϕ ,- Γ) ϕ
-unfold-expand {At} {n} op Γ ϕ p q = {! sub-expand Γ ϕ p q (dsf (m≤n⇒m≤1+n ≤-refl) (under op)) (sub₀ (μMLη op (expand' p Γ ϕ))) !}
+unfold-expand {At} {n} op Γ ϕ p q = sub-expand Γ ϕ p q (dsf (m≤n⇒m≤1+n ≤-refl) (under op)) (sub₀ (μMLη op (expand' p Γ ϕ)))
 
--- unfold-expand a Γ (var x) p q = {!!}
--- unfold-expand a Γ (μML₀ b) p q = refl
--- unfold-expand a Γ (μML₁ b ϕ) p q = cong (μML₁ b) {!unfold-expand a Γ ϕ p q!}
--- unfold-expand a Γ (μML₂ b ϕl ϕr) p q = cong₂ (μML₂ b) {!!} {!!}
--- unfold-expand a Γ (μMLη b ϕ) p q = cong (μMLη b) {!!}

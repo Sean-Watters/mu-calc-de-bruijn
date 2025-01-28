@@ -4,7 +4,7 @@ module MuCalc.DeBruijn.Syntax.Subformula where
 open import Data.Nat
 open import Data.Nat.Properties using (m≤n⇒m≤1+n; ≤-refl; ≤-trans)
 
-open import MuCalc.DeBruijn.Base hiding (_[_])
+open import MuCalc.DeBruijn.Base
 
 
 -- The direct subformula relation
