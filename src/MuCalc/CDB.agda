@@ -1,6 +1,6 @@
-module MuCalc.DeBruijn.CDB where
+module MuCalc.CDB where
 
-open import MuCalc.DeBruijn.Base using (Op₀; Op₁; Op₂; Opη)
+open import MuCalc.Base using (Op₀; Op₁; Op₂; Opη)
 open import Data.Nat
 open import Data.Fin as F using (Fin)
 open import Data.Bool using (Bool; true; false; T)

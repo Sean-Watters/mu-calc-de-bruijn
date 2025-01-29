@@ -5,7 +5,7 @@ open import Data.Nat
 open import Data.Fin hiding (_-_) renaming (_ℕ-ℕ_ to _-_)
 open import Function using (_$_)
 
-open import MuCalc.DeBruijn.Base using (Op₁; Op₂; Opη)
+open import MuCalc.Base using (Op₁; Op₂; Opη)
 open import Codata.NWFTree as T hiding (Eventually; head; tree)
 
 -- Rational trees, presented as a syntax with binding in the style of Hamana.

@@ -1,10 +1,10 @@
 {-# OPTIONS --safe #-}
-module MuCalc.DeBruijn.Syntax.Subformula where
+module MuCalc.Syntax.Subformula where
 
 open import Data.Nat
 open import Data.Nat.Properties using (m≤n⇒m≤1+n; ≤-refl; ≤-trans)
 
-open import MuCalc.DeBruijn.Base
+open import MuCalc.Base
 
 
 -- The direct subformula relation

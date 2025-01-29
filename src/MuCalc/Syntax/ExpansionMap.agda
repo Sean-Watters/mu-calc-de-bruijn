@@ -1,5 +1,5 @@
 {-# OPTIONS --allow-unsolved-metas #-}
-module MuCalc.DeBruijn.ExpansionMap where
+module MuCalc.Syntax.ExpansionMap where
 
 open import Function
 
@@ -11,9 +11,9 @@ open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary using (Irrelevant; Dec; yes; no)
 
 
-open import MuCalc.DeBruijn.Base
-open import MuCalc.DeBruijn.Syntax.Subformula
-open import MuCalc.DeBruijn.Syntax.Substitution
+open import MuCalc.Base
+open import MuCalc.Syntax.Subformula
+open import MuCalc.Syntax.Substitution
 
 data Plus : ℕ → ℕ → ℕ → Set where
   idl : ∀ {n} → Plus zero n n

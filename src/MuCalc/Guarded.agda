@@ -1,5 +1,5 @@
 
-module MuCalc.DeBruijn.Guarded where
+module MuCalc.Guarded where
 
 open import Data.Nat hiding (_≟_)
 open import Data.Fin using (Fin; zero; suc; _≟_) renaming (inject₁ to fin-inject₁)
@@ -9,7 +9,7 @@ open import Data.Vec
 open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary.Decidable
 
-open import MuCalc.DeBruijn.Base
+open import MuCalc.Base hiding (lookup)
 
 ones : ∀ {n} → Vec ℕ n
 ones {zero} = []
@@ -54,4 +54,3 @@ pattern ν ϕ = μMLη nu ϕ
 -- todo:
 -- * DNF is much easier with guardedness
 -- * Q: Is guarded actually equivalent to non-guarded with constructive/container semantics?
--- * Q: Does this make computing the closure and proving correctness easier?!

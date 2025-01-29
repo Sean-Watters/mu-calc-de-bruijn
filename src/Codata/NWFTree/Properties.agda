@@ -6,7 +6,7 @@ open import Relation.Binary
 open import Relation.Binary.PropositionalEquality
 
 open import Codata.NWFTree.Core
-open import MuCalc.DeBruijn.Base
+open import MuCalc.Base
 
 private variable
   X : Set

@@ -1,7 +1,7 @@
 
-module MuCalc.DeBruijn.Latex where
+module MuCalc.Latex where
 
-open import MuCalc.DeBruijn.Base
+open import MuCalc.Base
 open import Data.String
 open import Data.Fin as Fin using (Fin; toℕ) renaming (zero to fzero; suc to fsuc)
 open import Data.Nat

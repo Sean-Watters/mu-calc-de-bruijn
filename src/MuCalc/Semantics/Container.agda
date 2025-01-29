@@ -6,7 +6,7 @@ open import Data.Kripke
 
 -- The type-theoretic semantics of the modal mu calculus, realised by containers.
 -- We chose Sized Types as the foundation for coinduction.
-module MuCalc.DeBruijn.Semantics.Container
+module MuCalc.Semantics.Container
   {At : Set}
   {_<A_ : At → At → Set}
   (<A-STO : IsPropStrictTotalOrder _≡_ _<A_)
@@ -27,7 +27,7 @@ open import Data.Container.Indexed.Fam.Correctness
 open import Function
 open import Relation.Nullary
 open import Relation.Binary.Isomorphism
-open import MuCalc.DeBruijn.Base renaming (⊤ to ⊤'; ⊥ to ⊥') hiding (¬)
+open import MuCalc.Base renaming (⊤ to ⊤'; ⊥ to ⊥') hiding (lookup)
 
 private
   open Kripke renaming (S to S'; _~>_ to R; V to V')

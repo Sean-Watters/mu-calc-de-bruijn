@@ -2,7 +2,7 @@
 
 open import Data.Kripke
 open import Data.Nat
-module MuCalc.DeBruijn.Metatheory (M : Kripke ℕ) where
+module MuCalc.Metatheory (M : Kripke ℕ) where
 
 open import Algebra.Structures.Propositional
 open import Data.Container.Indexed.Fam renaming (⟦_⟧ to ⟦_⟧c)
@@ -22,9 +22,9 @@ private
   IsPropStrictTotalOrder.≈-prop <-STO = ≡-irrelevant
   IsPropStrictTotalOrder.<-prop <-STO = <-irrelevant
 
-open import MuCalc.DeBruijn.Base renaming (⊤ to ⊤'; ⊥ to ⊥')
-open import MuCalc.DeBruijn.Proof.Kozen <-STO
-open import MuCalc.DeBruijn.Semantics.Container <-STO M
+open import MuCalc.Base renaming (⊤ to ⊤'; ⊥ to ⊥')
+open import MuCalc.Proof.Kozen <-STO
+open import MuCalc.Semantics.Container <-STO M
 
 open Kripke
 open Container

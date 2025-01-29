@@ -4,7 +4,7 @@ open import Algebra.Structures.Propositional
 open import Relation.Binary.PropositionalEquality
 open import Data.Kripke
 
-module MuCalc.DeBruijn.Semantics.Container.Correctness
+module MuCalc.Semantics.Container.Correctness
   {At : Set}
   {_<A_ : At → At → Set}
   (<A-STO : IsPropStrictTotalOrder _≡_ _<A_)
@@ -29,8 +29,8 @@ open import Data.Container.Indexed.Fam.Correctness
 open import Function
 open import Relation.Nullary
 open import Relation.Binary.Isomorphism
-open import MuCalc.DeBruijn.Base renaming (⊤ to ⊤'; ⊥ to ⊥') hiding (¬)
-open import MuCalc.DeBruijn.Semantics.Container <A-STO Mo
+open import MuCalc.Base renaming (⊤ to ⊤'; ⊥ to ⊥') hiding (¬)
+open import MuCalc.Semantics.Container <A-STO Mo
 
 private
   open Kripke renaming (S to S'; _~>_ to R; V to V')

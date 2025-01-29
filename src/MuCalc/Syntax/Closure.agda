@@ -1,5 +1,5 @@
-{-# OPTIONS --guardedness #-}
-module MuCalc.DeBruijn.Syntax.ClosureNWF where
+{-# OPTIONS --guardedness --allow-unsolved-metas #-}
+module MuCalc.Syntax.Closure where
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat hiding (_≟_)
@@ -14,18 +14,12 @@ open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Binary.Isomorphism
 open import Relation.Binary.Construct.Closure.ReflexiveTransitive as Star
 
-open import MuCalc.DeBruijn.Base
-open import MuCalc.DeBruijn.Syntax.ExpansionMap
-open import MuCalc.DeBruijn.Syntax.Substitution
+open import MuCalc.Base
+open import MuCalc.Syntax.ExpansionMap
+open import MuCalc.Syntax.Substitution
 
 open import Rational.Tree as R hiding (Scope; ext; rescope; lookup; unwind; unfold)
 open import Codata.NWFTree as T
-
-
-----------------
--- Tree Stuff --
-----------------
-
 
 -------------------------------
 -- Definition of the Closure --

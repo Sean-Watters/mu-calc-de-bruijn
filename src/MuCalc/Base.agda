@@ -1,5 +1,5 @@
 {-# OPTIONS --safe #-}
-module MuCalc.DeBruijn.Base where
+module MuCalc.Base where
 
 open import Data.Nat hiding (_≟_)
 open import Data.Fin as F using (Fin; _≟_) renaming (_ℕ-ℕ_ to _-_)

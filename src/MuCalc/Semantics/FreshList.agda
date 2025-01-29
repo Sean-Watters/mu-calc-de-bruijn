@@ -2,13 +2,13 @@
 open import Algebra.Structures.Propositional
 open import Relation.Binary.PropositionalEquality
 
-module MuCalc.DeBruijn.Semantics.FreshList
+module MuCalc.Semantics.FreshList
   {At : Set}
   {_<A_ : At → At → Set}
   (<A-STO : IsPropStrictTotalOrder _≡_ _<A_)
   where
 
-open import MuCalc.DeBruijn.Base renaming (⊤ to ⊤'; ⊥ to ⊥')
+open import MuCalc.Base renaming (⊤ to ⊤'; ⊥ to ⊥') hiding (lookup)
 
 open import Level
 open import Function

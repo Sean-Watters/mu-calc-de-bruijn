@@ -1,5 +1,5 @@
 {-# OPTIONS --safe #-}
-module MuCalc.DeBruijn.Syntax.Substitution where
+module MuCalc.Syntax.Substitution where
 
 open import Data.Nat
 open import Data.Fin as F using (Fin)
@@ -8,7 +8,7 @@ open import Data.Empty
 open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Nullary
 
-open import MuCalc.DeBruijn.Base
+open import MuCalc.Base
 
 -- Scope extension
 ext : ∀ {n m} → (Fin n → Fin m)
