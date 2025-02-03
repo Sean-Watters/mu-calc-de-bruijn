@@ -156,7 +156,7 @@ sub-expand Γ (μML₁ op ϕ) p q {r = r} sf σ = cong (μML₁ op) (sub-expand 
 sub-expand Γ (μML₂ op ϕl ϕr) p q {r = r} sf σ = cong₂ (μML₂ op) (sub-expand Γ ϕl p q (cons ≤-refl _ r (left op) sf) σ) (sub-expand Γ ϕr p q (cons ≤-refl _ r (right op) sf) σ)
 sub-expand Γ (μMLη op ϕ) p q {r = r} sf σ = cong (μMLη op) (sub-expand Γ ϕ (sucr p) (sucr q) (cons (m≤n⇒m≤1+n ≤-refl) _ (m≤n⇒m≤1+n r) (under op) sf) (exts σ) )
 
-sub-expand-var Γ p q x x' σ (aye y refl ifne) = {!todo -graphify expand-var!}
+sub-expand-var Γ p q x x' σ (aye y refl ifne) = {!todo -graphify expand-var !}
 
 
 unfold-expand : ∀ {At n} op (Γ : Scope At n) (ϕ : μML At (suc n)) (p : Plus n 1 (suc n)) (q : Plus (suc n) 0 (suc n))

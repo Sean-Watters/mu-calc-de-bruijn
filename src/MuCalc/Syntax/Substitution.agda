@@ -8,26 +8,37 @@ open import Data.Empty
 open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Nullary
 
+open import Function using (_∘_)
+
 open import MuCalc.Base
 
--- Scope extension
-ext : ∀ {n m} → (Fin n → Fin m)
-    → Fin (suc n) → Fin (suc m)
+---------------------------
+-- Parallel Substitution --
+---------------------------
+
+-- This section directly follows PLFA (Wadler, Kokke, and Siek, 2020).
+
+-- Rescopings are maps of variables
+Rescope : ℕ → ℕ → Set
+Rescope n m = Fin n → Fin m
+
+-- Parallel substitutions are maps from variables to formulae
+Subst : Set → ℕ → ℕ → Set
+Subst At n m = Fin n → μML At m
+
+-- Rescoping extension
+ext : ∀ {n m} → Rescope n m → Rescope (suc n) (suc m)
 ext ρ F.zero = F.zero
 ext ρ (F.suc x) = F.suc (ρ x)
 
--- Rescoping
-rescope : ∀ {At n m} → (Fin n → Fin m) -- if we have an mapping of i vars to j vars...
-        → μML At n → μML At m -- then we can rescope i-terms to be j-terms.
+-- Executing a rescoping
+rescope : ∀ {At n m} → Rescope n m -- if we have an mapping of n vars to m vars...
+        → μML At n → μML At m -- then we can rescope n-terms to be m-terms.
 rescope ρ (var x) = var (ρ x)
 rescope ρ (μML₀ op) = μML₀ op
 rescope ρ (μML₁ op ϕ) = μML₁ op (rescope ρ ϕ)
 rescope ρ (μML₂ op ϕ ψ) = μML₂ op (rescope ρ ϕ) (rescope ρ ψ)
 rescope ρ (μMLη op ϕ) = μMLη op (rescope (ext ρ) ϕ)
-
--- Parallel substitutions are maps from variables to formulae
-Subst : Set → ℕ → ℕ → Set
-Subst At n m = Fin n → μML At m
 
 -- Substitution extension
 exts : ∀ {At n m} → Subst At n m → Subst At (suc n) (suc m)
@@ -53,6 +64,47 @@ _[_] : ∀ {At n} → μML At (suc n) → μML At n → μML At n
 -- And now fixpoint unfolding is a single substitution
 unfold : ∀ {At n} (ϕ : μML At n) → {{_ : IsFP ϕ}} → μML At n
 unfold (μMLη op ψ) = ψ [ μMLη op ψ ]
+
+
+-----------------------------------
+-- The σ-Algebra of Substitution --
+-----------------------------------
+
+-- This section directly follws PLFA (Wadler, Kokke, and Siek, 2020).
+
+-----
+-- The 4 operations of the σ-Algebra:
+-----
+
+-- The identity substitution.
+ids : ∀ {At n} → Subst At n n
+ids x = var x
+
+-- The "shift" substitution, which increments all the variables.
+↑ : ∀ {At n} → Subst At n (suc n)
+↑ x = var (F.suc x)
+
+-- The "cons" substitution, which substitutes the head at zero and the tail elsewhere.
+_•_ : ∀ {At n m} → μML At m → Subst At n m → Subst At (suc n) m
+(ϕ • σ) F.zero = ϕ
+(ϕ • σ) (F.suc x) = σ x
+
+-- Substitution composition
+_⨟_ : ∀ {At i j k} → Subst At i j → Subst At j k → Subst At i k
+σ ⨟ τ = (sub τ) ∘ σ
+
+
+-------------------------------------
+-- Barendregt's Susbtitution Lemma --
+-------------------------------------
+
+-- This section directly follows PLFA (Wadler, Kokke, and Siek, 2020).
+
+-- The substitution lemma, generalised a little. Substitution commutes with itself.
+sub-commutes : ∀ {At n m} → (σ : Subst At n m) (ϕ : μML At (suc n)) (ψ : μML At n)
+             → sub σ (ϕ [ ψ ]) ≡ (sub (exts σ) ϕ) [ sub σ ψ ]
+sub-commutes = {!!}
+
 
 
 ---------------------------------
@@ -134,12 +186,12 @@ strengthen = {!!}
 
 -}
 
---------------------------------
--- Properties of Substitution --
---  (and related machinery)   --
---------------------------------
+--------------------------------------
+-- Other Properties of Substitution --
+--     (and related machinery)      --
+--------------------------------------
 
-rescope-preserves-fp : ∀ {At n m} → {ρ : Fin n → Fin m} → (ϕ : μML At n) → {{_ : IsFP ϕ}} → IsFP (rescope ρ ϕ)
+rescope-preserves-fp : ∀ {At n m} → {ρ : Rescope n m} → (ϕ : μML At n) → {{_ : IsFP ϕ}} → IsFP (rescope ρ ϕ)
 rescope-preserves-fp (μMLη op ϕ) = fp
 
 subs-agree : ∀ {At n m}
@@ -153,25 +205,21 @@ subs-agree σ θ (μML₁ op ϕ) eq = cong (μML₁ op) (subs-agree σ θ ϕ (λ
 subs-agree σ θ (μML₂ op ϕ ψ) eq = cong₂ (μML₂ op) (subs-agree σ θ ϕ (λ [x] → eq (left [x]))) (subs-agree σ θ ψ λ [x] → eq (right [x]))
 subs-agree σ θ (μMLη op ϕ) eq = cong (μMLη op) (subs-agree (exts σ) (exts θ) ϕ (λ { {F.zero} [x] → refl ; {F.suc x} [x] → cong (rescope F.suc) (eq (under [x]))}))
 
--- The identity substitution
-IdSubst : ∀ {At n} → Subst At n n
-IdSubst = var
-
-IdSubst-ext : ∀ {At n} {σ : Subst At n n} → σ ≗ IdSubst → (exts σ ≗ IdSubst)
-IdSubst-ext eq F.zero = refl
-IdSubst-ext {At} {n} {σ} eq (F.suc x) = cong (rescope F.suc) (eq x)
+ids-ext : ∀ {At n} {σ : Subst At n n} → σ ≗ ids → (exts σ ≗ ids)
+ids-ext eq F.zero = refl
+ids-ext {At} {n} {σ} eq (F.suc x) = cong (rescope F.suc) (eq x)
 
 -- The identity substitution (up to potintwise-equality) really is identity
-sub-id : ∀ {At n σ} → (ϕ : μML At n) → (σ ≗ IdSubst) → sub σ ϕ ≡ ϕ
+sub-id : ∀ {At n σ} → (ϕ : μML At n) → (σ ≗ ids) → sub σ ϕ ≡ ϕ
 sub-id (var x) eq = eq x
 sub-id (μML₀ op) eq = refl
 sub-id (μML₁ op ϕ) eq = cong (μML₁ op) (sub-id ϕ eq)
 sub-id (μML₂ op ϕ ψ) eq = cong₂ (μML₂ op) (sub-id ϕ eq) (sub-id ψ eq)
-sub-id (μMLη op ϕ) eq = cong (μMLη op) (sub-id ϕ (IdSubst-ext eq))
+sub-id (μMLη op ϕ) eq = cong (μMLη op) (sub-id ϕ (ids-ext eq))
 
 -- Weakened id substitutions
-WeakIdSubst : ∀ {At i j} → Thin i j → Subst At i j
-WeakIdSubst θ x = weaken θ (var x)
+Weakids : ∀ {At i j} → Thin i j → Subst At i j
+Weakids θ x = weaken θ (var x)
 
 {-
 -- Weakening (by 1) and substitution commute.
@@ -190,17 +238,13 @@ sub-trivial ϕ δ p = begin
   ≡⟨ (sym $ sub-weaken (sub₀ δ) ϕ) ⟩
   sub (exts (sub₀ δ)) (weaken₁ ϕ)
   ≡⟨ {!subs-agree!} ⟩
-  sub {!IdSubst!} (weaken₁ ϕ) -- does there exist an identityish subst with this type? If not, need a version of subs-agree for weakenings which would subsume these two steps
+  sub {!ids!} (weaken₁ ϕ) -- does there exist an identityish subst with this type? If not, need a version of subs-agree for weakenings which would subsume these two steps
   ≡⟨ {!substid-weaken!} ⟩
-  sub IdSubst ϕ
+  sub ids ϕ
   ≡⟨ sub-id ϕ (λ _ → refl) ⟩
   ϕ
   ∎ where open ≡-Reasoning
 -}
-
--------------------------
--- Single Substitution --
--------------------------
 
 data IsSingleSub {At : Set} {n m : ℕ} (σ : Subst At n m) : Set where
   aye : (x : Fin n) → {ϕ : μML At m} → σ x ≡ ϕ               -- There's one variable that goes to whatever ϕ you like...
