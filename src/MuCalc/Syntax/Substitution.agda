@@ -8,7 +8,7 @@ open import Data.Empty
 open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Nullary
 
-open import Function using (_∘_)
+open import Function using (_∘_; _$_)
 
 open import MuCalc.Base
 
@@ -16,34 +16,32 @@ open import MuCalc.Base
 -- Parallel Substitution --
 ---------------------------
 
--- This section directly follows PLFA (Wadler, Kokke, and Siek, 2020).
-
 -- Rescopings are maps of variables
-Rescope : ℕ → ℕ → Set
-Rescope n m = Fin n → Fin m
+Rename : ℕ → ℕ → Set
+Rename n m = Fin n → Fin m
 
 -- Parallel substitutions are maps from variables to formulae
 Subst : Set → ℕ → ℕ → Set
 Subst At n m = Fin n → μML At m
 
 -- Rescoping extension
-ext : ∀ {n m} → Rescope n m → Rescope (suc n) (suc m)
+ext : ∀ {n m} → Rename n m → Rename (suc n) (suc m)
 ext ρ F.zero = F.zero
 ext ρ (F.suc x) = F.suc (ρ x)
 
 -- Executing a rescoping
-rescope : ∀ {At n m} → Rescope n m -- if we have an mapping of n vars to m vars...
-        → μML At n → μML At m -- then we can rescope n-terms to be m-terms.
-rescope ρ (var x) = var (ρ x)
-rescope ρ (μML₀ op) = μML₀ op
-rescope ρ (μML₁ op ϕ) = μML₁ op (rescope ρ ϕ)
-rescope ρ (μML₂ op ϕ ψ) = μML₂ op (rescope ρ ϕ) (rescope ρ ψ)
-rescope ρ (μMLη op ϕ) = μMLη op (rescope (ext ρ) ϕ)
+rename : ∀ {At n m} → Rename n m -- if we have an mapping of n vars to m vars...
+        → μML At n → μML At m -- then we can rename n-terms to be m-terms.
+rename ρ (var x) = var (ρ x)
+rename ρ (μML₀ op) = μML₀ op
+rename ρ (μML₁ op ϕ) = μML₁ op (rename ρ ϕ)
+rename ρ (μML₂ op ϕ ψ) = μML₂ op (rename ρ ϕ) (rename ρ ψ)
+rename ρ (μMLη op ϕ) = μMLη op (rename (ext ρ) ϕ)
 
 -- Substitution extension
 exts : ∀ {At n m} → Subst At n m → Subst At (suc n) (suc m)
 exts σ F.zero = var F.zero
-exts σ (F.suc x) = rescope F.suc (σ x)
+exts σ (F.suc x) = rename F.suc (σ x)
 
 -- Executing a parallel substitution
 sub : ∀ {At n m} → Subst At n m → μML At n → μML At m
@@ -53,11 +51,16 @@ sub σ (μML₁ op ϕ) = μML₁ op (sub σ ϕ)
 sub σ (μML₂ op ϕ ψ) = μML₂ op (sub σ ϕ) (sub σ ψ)
 sub σ (μMLη op ϕ) = μMLη op (sub (exts σ) ϕ)
 
--- Single substitution is a special case of parallel substitution
+-------------------------
+-- Single Substitution --
+-------------------------
+
+-- Single substitution: sub in ϕ at 0, and decrement all other variables by 1
 sub₀ : ∀ {At n} → μML At n → Subst At (suc n) n
 sub₀ ϕ F.zero = ϕ -- at 0 we substitute
 sub₀ ϕ (F.suc x) = var x
 
+-- Single substitution is a special case of parallel substitution
 _[_] : ∀ {At n} → μML At (suc n) → μML At n → μML At n
 ϕ [ δ ] = sub (sub₀ δ) ϕ
 
@@ -66,21 +69,15 @@ unfold : ∀ {At n} (ϕ : μML At n) → {{_ : IsFP ϕ}} → μML At n
 unfold (μMLη op ψ) = ψ [ μMLη op ψ ]
 
 
------------------------------------
--- The σ-Algebra of Substitution --
------------------------------------
-
--- This section directly follws PLFA (Wadler, Kokke, and Siek, 2020).
-
------
--- The 4 operations of the σ-Algebra:
------
+-------------------------------
+-- Some Useful Substitutions --
+-------------------------------
 
 -- The identity substitution.
 ids : ∀ {At n} → Subst At n n
 ids x = var x
 
--- The "shift" substitution, which increments all the variables.
+-- The "shift" substitution, which increments all the variables by 1.
 ↑ : ∀ {At n} → Subst At n (suc n)
 ↑ x = var (F.suc x)
 
@@ -90,20 +87,129 @@ _•_ : ∀ {At n m} → μML At m → Subst At n m → Subst At (suc n) m
 (ϕ • σ) (F.suc x) = σ x
 
 -- Substitution composition
-_⨟_ : ∀ {At i j k} → Subst At i j → Subst At j k → Subst At i k
-σ ⨟ τ = (sub τ) ∘ σ
+_⨾_ : ∀ {At i j k} → Subst At i j → Subst At j k → Subst At i k
+σ ⨾ τ = (sub τ) ∘ σ
 
 
--------------------------------------
--- Barendregt's Susbtitution Lemma --
--------------------------------------
+----------------------------
+-- Properties of Renaming --
+----------------------------
 
--- This section directly follows PLFA (Wadler, Kokke, and Siek, 2020).
+ext-eq : ∀ {i j} {ρ ρ' : Rename i j}
+       → ρ ≗ ρ'
+       → ext ρ ≗ ext ρ'
+ext-eq eq F.zero = refl
+ext-eq eq (F.suc x) = cong F.suc (eq x)
 
--- The substitution lemma, generalised a little. Substitution commutes with itself.
-sub-commutes : ∀ {At n m} → (σ : Subst At n m) (ϕ : μML At (suc n)) (ψ : μML At n)
+rename-cong : ∀ {At i j} {ρ ρ' : Rename i j}
+            → ρ ≗ ρ'
+            → rename {At} ρ ≗ rename ρ'
+rename-cong eq (var x) = cong var (eq x)
+rename-cong eq (μML₀ op) = refl
+rename-cong eq (μML₁ op ϕ) = cong (μML₁ op) (rename-cong eq ϕ)
+rename-cong eq (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (rename-cong eq ϕl) (rename-cong eq ϕr)
+rename-cong eq (μMLη op ϕ) = cong (μMLη op) (rename-cong (ext-eq eq) ϕ)
+
+ext-fusion : ∀ {i j k} {ρ1 : Rename j k} {ρ2 : Rename i j} {ρ3 : Rename i k}
+           → ρ1 ∘ ρ2 ≗ ρ3
+           → (ext ρ1) ∘ (ext ρ2) ≗ ext ρ3
+ext-fusion eq F.zero = refl
+ext-fusion eq (F.suc x) = cong F.suc (eq x)
+
+rename-fusion : ∀ {At i j k} {ρ1 : Rename j k} {ρ2 : Rename i j} {ρ3 : Rename i k}
+              → ρ1 ∘ ρ2 ≗ ρ3
+              → (rename {At} ρ1) ∘ (rename ρ2) ≗ rename ρ3
+rename-fusion eq (var x) = cong var (eq x)
+rename-fusion eq (μML₀ op) = refl
+rename-fusion eq (μML₁ op ϕ) = cong (μML₁ op) (rename-fusion eq ϕ)
+rename-fusion eq (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (rename-fusion eq ϕl) (rename-fusion eq ϕr)
+rename-fusion eq (μMLη op ϕ) = cong (μMLη op) (rename-fusion (λ x → trans (ext-fusion (λ _ → refl) x) (ext-eq eq x)) ϕ)
+
+rename-ext : ∀ {At i j} (ρ : Rename i j)
+            → rename {At} F.suc ∘ rename ρ ≗ rename (ext ρ) ∘ rename F.suc
+rename-ext ρ ϕ =
+  begin
+    (rename F.suc ∘ rename ρ) ϕ
+  ≡⟨ rename-fusion (λ _ → refl) ϕ ⟩
+    rename (F.suc ∘ ρ) ϕ
+  ≡⟨ rename-cong (λ _ → refl) ϕ ⟩
+    rename (ext ρ ∘ F.suc) ϕ
+  ≡⟨ (sym $ rename-fusion (λ _ → refl) ϕ) ⟩
+    (rename (ext ρ) ∘ rename F.suc) ϕ
+  ∎ where open ≡-Reasoning
+
+
+-----------------------------------------
+-- Properties of Parallel Substitution --
+-----------------------------------------
+
+exts-eq : ∀ {At i j} {σ σ' : Subst At i j}
+        → σ ≗ σ'
+        → exts σ ≗ exts σ'
+exts-eq eq F.zero = refl
+exts-eq eq (F.suc x) = cong (rename F.suc) (eq x)
+
+sub-cong : ∀ {At i j} {σ σ' : Subst At i j}
+         → σ ≗ σ'
+         → sub σ ≗ sub σ'
+sub-cong eq (var x) = eq x
+sub-cong eq (μML₀ op) = refl
+sub-cong eq (μML₁ op ϕ) = cong (μML₁ op) (sub-cong eq ϕ)
+sub-cong eq (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (sub-cong eq ϕl) (sub-cong eq ϕr)
+sub-cong eq (μMLη op ϕ) = cong (μMLη op) (sub-cong (exts-eq eq) ϕ)
+
+exts-rename : ∀ {At} {i} {j} {σ : Subst At i j} {ρ1 : Rename i (suc i)} {ρ2 : Rename j (suc j)}
+            → exts σ ∘ ρ1 ≗ rename ρ2 ∘ σ
+            → exts (exts σ) ∘ ext ρ1 ≗ rename (ext ρ2) ∘ exts σ
+exts-rename eq F.zero = refl
+exts-rename {σ = σ} {ρ2 = ρ2} eq (F.suc x) = trans (cong (rename F.suc) (eq x)) (rename-ext ρ2 (σ x))
+
+sub-rename-comm : ∀ {At i j} {σ : Subst At i j} {ρ1 : Rename i (suc i)} {ρ2 : Rename j (suc j)}
+                → exts σ ∘ ρ1 ≗ rename ρ2 ∘ σ
+                → sub (exts σ) ∘ rename ρ1 ≗ rename ρ2 ∘ sub σ
+sub-rename-comm eq (var x) = eq x
+sub-rename-comm eq (μML₀ op) = refl
+sub-rename-comm eq (μML₁ op ϕ) = cong (μML₁ op) (sub-rename-comm eq ϕ)
+sub-rename-comm eq (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (sub-rename-comm eq ϕl) (sub-rename-comm eq ϕr)
+sub-rename-comm eq (μMLη op ϕ) = cong (μMLη op) (sub-rename-comm (exts-rename eq) ϕ)
+
+exts-fusion : ∀ {At i j k} {σ1 : Subst At j k} {σ2 : Subst At i j} {σ3 : Subst At i k}
+            → σ2 ⨾ σ1 ≗ σ3
+            → exts σ2 ⨾ exts σ1 ≗ exts σ3
+exts-fusion eq F.zero = refl
+exts-fusion {σ1 = σ1} {σ2} {σ3} eq (F.suc x) = trans (sub-rename-comm (λ _ → refl) (σ2 x)) (cong (rename F.suc) (eq x))
+
+sub-fusion : ∀ {At i j k} {σ1 : Subst At j k} {σ2 : Subst At i j} {σ3 : Subst At i k}
+           → σ2 ⨾ σ1 ≗ σ3
+           → sub σ1 ∘ sub σ2 ≗ sub σ3
+sub-fusion eq (var x) = eq x
+sub-fusion eq (μML₀ op) = refl
+sub-fusion eq (μML₁ op ϕ) = cong (μML₁ op) (sub-fusion eq ϕ)
+sub-fusion eq (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (sub-fusion eq ϕl) (sub-fusion eq ϕr)
+sub-fusion eq (μMLη op ϕ) = cong (μMLη op) (sub-fusion (exts-fusion eq) ϕ)
+
+---------------------------------------
+-- Properties of Single Substitution --
+---------------------------------------
+
+sub₀-compose : ∀ {At n m} → (σ : Subst At n m) (ϕ : μML At (suc n)) (ψ : μML At n)
+             → sub₀ ψ ⨾ σ ≗ exts σ ⨾ sub₀ (sub σ ψ)
+sub₀-compose σ ϕ ψ F.zero = refl
+sub₀-compose σ ϕ ψ (F.suc x) = {!!}
+
+-- Barendregt's substitution lemma, generalised a little. Substitution commutes with itself.
+sub-comm : ∀ {At n m} → (σ : Subst At n m) (ϕ : μML At (suc n)) (ψ : μML At n)
              → sub σ (ϕ [ ψ ]) ≡ (sub (exts σ) ϕ) [ sub σ ψ ]
-sub-commutes = {!!}
+sub-comm σ ϕ ψ =
+  begin
+    sub σ (sub (sub₀ ψ) ϕ)
+  ≡⟨ sub-fusion (λ _ → refl) ϕ ⟩
+    sub (sub₀ ψ ⨾ σ) ϕ
+  ≡⟨ sub-cong (sub₀-compose σ ϕ ψ) ϕ ⟩
+    sub (exts σ ⨾ sub₀ (sub σ ψ)) ϕ
+  ≡⟨ (sym $ sub-fusion (λ _ → refl) ϕ) ⟩
+    sub (sub₀ (sub σ ψ)) (sub (exts σ) ϕ)
+  ∎ where open ≡-Reasoning
 
 
 
@@ -136,7 +242,7 @@ embed-full F.zero = refl
 embed-full (F.suc x) = cong F.suc (embed-full x)
 
 weaken : ∀ {At i j} → Thin i j → μML At i → μML At j
-weaken θ = rescope (embed θ)
+weaken θ = rename (embed θ)
 
 weaken₁ : ∀ {At i} → μML At i → μML At (suc i)
 weaken₁ = weaken (drop full)
@@ -191,8 +297,8 @@ strengthen = {!!}
 --     (and related machinery)      --
 --------------------------------------
 
-rescope-preserves-fp : ∀ {At n m} → {ρ : Rescope n m} → (ϕ : μML At n) → {{_ : IsFP ϕ}} → IsFP (rescope ρ ϕ)
-rescope-preserves-fp (μMLη op ϕ) = fp
+rename-preserves-fp : ∀ {At n m} → {ρ : Rename n m} → (ϕ : μML At n) → {{_ : IsFP ϕ}} → IsFP (rename ρ ϕ)
+rename-preserves-fp (μMLη op ϕ) = fp
 
 subs-agree : ∀ {At n m}
            → (σ θ : Subst At n m) -- Given two substitutions...
@@ -203,11 +309,11 @@ subs-agree σ θ (var x) eq = eq here
 subs-agree σ θ (μML₀ op) eq = refl
 subs-agree σ θ (μML₁ op ϕ) eq = cong (μML₁ op) (subs-agree σ θ ϕ (λ [x] → eq (down [x])))
 subs-agree σ θ (μML₂ op ϕ ψ) eq = cong₂ (μML₂ op) (subs-agree σ θ ϕ (λ [x] → eq (left [x]))) (subs-agree σ θ ψ λ [x] → eq (right [x]))
-subs-agree σ θ (μMLη op ϕ) eq = cong (μMLη op) (subs-agree (exts σ) (exts θ) ϕ (λ { {F.zero} [x] → refl ; {F.suc x} [x] → cong (rescope F.suc) (eq (under [x]))}))
+subs-agree σ θ (μMLη op ϕ) eq = cong (μMLη op) (subs-agree (exts σ) (exts θ) ϕ (λ { {F.zero} [x] → refl ; {F.suc x} [x] → cong (rename F.suc) (eq (under [x]))}))
 
 ids-ext : ∀ {At n} {σ : Subst At n n} → σ ≗ ids → (exts σ ≗ ids)
 ids-ext eq F.zero = refl
-ids-ext {At} {n} {σ} eq (F.suc x) = cong (rescope F.suc) (eq x)
+ids-ext {At} {n} {σ} eq (F.suc x) = cong (rename F.suc) (eq x)
 
 -- The identity substitution (up to potintwise-equality) really is identity
 sub-id : ∀ {At n σ} → (ϕ : μML At n) → (σ ≗ ids) → sub σ ϕ ≡ ϕ
