@@ -16,7 +16,7 @@ open import MuCalc.Base
 -- Parallel Substitution --
 ---------------------------
 
--- Rescopings are maps of variables
+-- Renamings are maps of variables
 Rename : ℕ → ℕ → Set
 Rename n m = Fin n → Fin m
 
@@ -24,12 +24,12 @@ Rename n m = Fin n → Fin m
 Subst : Set → ℕ → ℕ → Set
 Subst At n m = Fin n → μML At m
 
--- Rescoping extension
+-- Renaming extension
 ext : ∀ {n m} → Rename n m → Rename (suc n) (suc m)
 ext ρ F.zero = F.zero
 ext ρ (F.suc x) = F.suc (ρ x)
 
--- Executing a rescoping
+-- Executing a renaming
 rename : ∀ {At n m} → Rename n m -- if we have an mapping of n vars to m vars...
         → μML At n → μML At m -- then we can rename n-terms to be m-terms.
 rename ρ (var x) = var (ρ x)
@@ -64,6 +64,10 @@ sub₀ ϕ (F.suc x) = var x
 _[_] : ∀ {At n} → μML At (suc n) → μML At n → μML At n
 ϕ [ δ ] = sub (sub₀ δ) ϕ
 
+-- Single substitution at index 1
+_[_]' : ∀ {At n} → μML At (2+ n) → μML At n → μML At (suc n)
+ϕ [ δ ]' = sub (exts (sub₀ δ)) ϕ
+
 -- And now fixpoint unfolding is a single substitution
 unfold : ∀ {At n} (ϕ : μML At n) → {{_ : IsFP ϕ}} → μML At n
 unfold (μMLη op ψ) = ψ [ μMLη op ψ ]
@@ -76,15 +80,6 @@ unfold (μMLη op ψ) = ψ [ μMLη op ψ ]
 -- The identity substitution.
 ids : ∀ {At n} → Subst At n n
 ids x = var x
-
--- The "shift" substitution, which increments all the variables by 1.
-↑ : ∀ {At n} → Subst At n (suc n)
-↑ x = var (F.suc x)
-
--- The "cons" substitution, which substitutes the head at zero and the tail elsewhere.
-_•_ : ∀ {At n m} → μML At m → Subst At n m → Subst At (suc n) m
-(ϕ • σ) F.zero = ϕ
-(ϕ • σ) (F.suc x) = σ x
 
 -- Substitution composition
 _⨾_ : ∀ {At i j k} → Subst At i j → Subst At j k → Subst At i k
@@ -228,7 +223,10 @@ sub-comm σ ϕ ψ =
     sub (sub₀ (sub σ ψ)) (sub (exts σ) ϕ)
   ∎ where open ≡-Reasoning
 
-
+-- Barendregt's substitution lemma
+substitution-lemma : ∀ {At i} (ϕ : μML At (2+ i)) (ψ : μML At (suc i)) (ξ : μML At i)
+                   → (ϕ [ ψ ]) [ ξ ] ≡ (ϕ [ ξ ]') [ ψ [ ξ ] ]
+substitution-lemma ϕ ψ ξ = sub-comm (sub₀ ξ) ϕ ψ
 
 ---------------------------------
 -- Weakening and Strengthening --

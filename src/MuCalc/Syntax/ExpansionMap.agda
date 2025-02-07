@@ -7,7 +7,7 @@ open import Data.Nat
 open import Data.Nat.Properties
 open import Data.Fin as F using (Fin) renaming (_ℕ-ℕ_ to _-_)
 open import Data.Sum
-open import Relation.Binary.PropositionalEquality
+open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Nullary using (Irrelevant; Dec; yes; no)
 
 
@@ -96,17 +96,62 @@ thin-idl p (μML₁ op ϕ) = cong (μML₁ op) (thin-idl p ϕ)
 thin-idl p (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (thin-idl p ϕl) (thin-idl p ϕr)
 thin-idl p (μMLη op ϕ) = cong (μMLη op) (thin-idl (sucl p) ϕ)
 
-expand-empty' : ∀ {At b} → (p : Plus 0 b b) → (ϕ : μML At b) → ϕ ≡ expand' p [] ϕ
-expand-empty' p (μML₀ op) = refl
-expand-empty' p (μML₁ op ϕ) = cong (μML₁ op) (expand-empty' p ϕ)
-expand-empty' p (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (expand-empty' p ϕl) (expand-empty' p ϕr)
-expand-empty' p (μMLη op ϕ) = cong (μMLη op) (expand-empty' (sucr p) ϕ)
-expand-empty' idl (var x) = refl
+----------------------------------------------
+-- The Characteristic Equations of `expand` --
+----------------------------------------------
 
-expand-empty : ∀ {At} (ϕ : μML At 0) → ϕ ≡ expand [] ϕ
-expand-empty ϕ = trans (expand-empty' idl ϕ) (cong (expand' idl []) {ϕ} {thin idl ϕ} (thin-idl idl ϕ))
+{-
 
----
+The "morally correct" definition of the expansion map is:
+
+```
+expand : ∀ {At n} → Scope At n → μML At n → μML At 0
+expand []       ϕ = ϕ
+expand (ψ ,- Γ) ϕ = expand Γ (ϕ [ ψ ])
+```
+
+However, this made proofs harder, because everything else computes by induction on the
+formula, not the scope. So we moved to the above more complex definition which does proceed by
+induction on the formula.
+
+We now prove that the equations of the original definition hold for the new one as theorems.
+
+-}
+
+
+expand-nil' : ∀ {At b} → (p : Plus 0 b b) → (ϕ : μML At b) → ϕ ≡ expand' p [] ϕ
+expand-nil' p (μML₀ op) = refl
+expand-nil' p (μML₁ op ϕ) = cong (μML₁ op) (expand-nil' p ϕ)
+expand-nil' p (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (expand-nil' p ϕl) (expand-nil' p ϕr)
+expand-nil' p (μMLη op ϕ) = cong (μMLη op) (expand-nil' (sucr p) ϕ)
+expand-nil' idl (var x) = refl
+
+expand-nil : ∀ {At} (ϕ : μML At 0) → ϕ ≡ expand [] ϕ
+expand-nil ϕ = trans (expand-nil' idl ϕ) (cong (expand' idl []) {ϕ} {thin idl ϕ} (thin-idl idl ϕ))
+
+
+expand-cons' : ∀ {At n b n+b} (p : Plus n b n+b) (Γ : Scope At n) (ψ : μML At n) (ϕ : μML At (suc n+b))
+             → expand' (sucl p) (ψ ,- Γ) ϕ ≡ expand' p Γ (ϕ [ thin p ψ ])
+expand-cons' p Γ ψ ϕ = {!!}
+
+expand-cons : ∀ {At n} (Γ : Scope At n) (ψ : μML At n) (ϕ : μML At (suc n))
+            → expand (ψ ,- Γ) ϕ ≡ expand Γ (ϕ [ ψ ])
+expand-cons Γ ψ ϕ =
+  begin
+    expand' (sucl idr) (ψ ,- Γ) (thin (sucl idr) ϕ)
+  ≡⟨ cong (expand' (sucl idr) (ψ ,- Γ)) (sym $ thin-idl (sucl idr) ϕ) ⟩
+    expand' (sucl idr) (ψ ,- Γ) ϕ
+  ≡⟨ expand-cons' idr Γ ψ ϕ ⟩
+    expand' idr Γ (ϕ [ thin idr ψ ])
+  ≡⟨ cong (λ a → expand' idr Γ (ϕ [ a ])) (sym $ thin-idl idr ψ) ⟩
+    expand' idr Γ (ϕ [ ψ ])
+  ≡⟨ cong (expand' idr Γ) (thin-idl idr (ϕ [ ψ ])) ⟩
+    expand' idr Γ (thin idr (sub (sub₀ ψ) ϕ))
+  ∎ where open ≡-Reasoning
+
+----------------------------------
+-- Other Properties of `expand` --
+----------------------------------
 
 expandvar-extend : ∀ {At n m} (Γ : Scope At n) (ϕ : μML At n)
                  → (x : Fin n ⊎ Fin m)
@@ -135,31 +180,44 @@ inj₂ y ?= inj₂ y' with y F.≟ y'
 ... | yes p = yes (cong inj₂ p)
 ... | no ¬p = no (λ {refl → ¬p refl})
 
-sub-expand : ∀ {At n b n+b} (Γ : Scope At n) (ϕ : μML At n+b)
-           → (p : Plus n (suc b) n+b) (q : Plus (suc n) b n+b)
-           → {ψ : μML At n} {r : n+b ≥ n} → SforNE r ϕ ψ
-           → (σ : Subst At (suc b) b)
-           -- todo - what invarients do we need for σ?
-           -- Needs to only substitute 1 var for ψ and everything else for a rescoping?
-           → sub σ (expand' p Γ ϕ) ≡ expand' q (ψ ,- Γ) ϕ
 
-sub-expand-var : ∀ {At n b n+b} (Γ : Scope At n) 
-               → (p : Plus n (suc b) n+b) (q : Plus (suc n) b n+b)
-               → (x : Fin n ⊎ Fin (suc b)) (x' : Fin (suc n) ⊎ Fin b)
-               → {ψ : μML At n}
-               → (σ : Subst At (suc b) b) → IsSingleSub σ
-               → sub σ (expand-var Γ x) ≡ expand-var (ψ ,- Γ) x'
+expand-sub : ∀ {At n} op (Γ : Scope At n) (ϕ : μML At (suc n)) (p : Plus n 1 (suc n))
+           → (expand' p Γ ϕ) [ μMLη op (expand' p Γ ϕ) ] ≡ expand Γ (ϕ [ μMLη op ϕ ])
+expand-sub op [] ϕ p =
+  let lem1 = expand-nil' p ϕ
+      lem2 = expand-nil (ϕ [ μMLη op ϕ ])
+  in begin
+    (expand' p [] ϕ) [ μMLη op (expand' p [] ϕ) ]
+  ≡⟨ cong₂ (λ a b → a [ μMLη op b ]) (sym lem1) (sym lem1) ⟩
+    (ϕ [ μMLη op ϕ ])
+  ≡⟨ lem2 ⟩
+    expand [] (ϕ [ μMLη op ϕ ])
+  ∎ where open ≡-Reasoning
+expand-sub op (ψ ,- Γ) ϕ (sucl p) =
+  let lem1 = expand-cons' p Γ ψ ϕ
+      lem2 = expand-cons Γ ψ (ϕ [ μMLη op ϕ ])
+  in begin
+    (expand' _ (ψ ,- Γ) ϕ) [ μMLη op (expand' _ (ψ ,- Γ) ϕ) ]
+  ≡⟨ cong (λ a → a [ μMLη op a ]) lem1 ⟩
+    (expand' _ Γ (ϕ [ thin p ψ ])) [ μMLη op (expand' _ Γ (ϕ [ thin p ψ ])) ]
+  ≡⟨ expand-sub op Γ (ϕ [ thin p ψ ]) p  ⟩
+    expand Γ ((ϕ [ thin p ψ ]) [ μMLη op (ϕ [ thin p ψ ]) ])
+  ≡⟨ cong (λ a → expand' idr Γ (thin idr (sub (sub₀ (μMLη op (sub a ϕ))) (sub a ϕ))))
+          {!this is false!!! most likely expand-cons is wrong. Come back to this once it's proven!} ⟩
+    expand Γ ((ϕ [ ψ ]') [ μMLη op ϕ [ ψ ] ])
+  ≡⟨ cong (expand Γ) (sym $ substitution-lemma ϕ (μMLη op ϕ) ψ) ⟩
+    expand Γ ((ϕ [ μMLη op ϕ ]) [ ψ ])
+  ≡⟨ sym lem2 ⟩
+    expand (ψ ,- Γ) (ϕ [ μMLη op ϕ ])
+  ∎ where open ≡-Reasoning
 
-sub-expand Γ (var x) p q sf σ = {!sub-expand-var!}
-sub-expand Γ (μML₀ op) p q sf σ = refl
-sub-expand Γ (μML₁ op ϕ) p q {r = r} sf σ = cong (μML₁ op) (sub-expand Γ ϕ p q (cons ≤-refl _ r (down op) sf) σ )
-sub-expand Γ (μML₂ op ϕl ϕr) p q {r = r} sf σ = cong₂ (μML₂ op) (sub-expand Γ ϕl p q (cons ≤-refl _ r (left op) sf) σ) (sub-expand Γ ϕr p q (cons ≤-refl _ r (right op) sf) σ)
-sub-expand Γ (μMLη op ϕ) p q {r = r} sf σ = cong (μMLη op) (sub-expand Γ ϕ (sucr p) (sucr q) (cons (m≤n⇒m≤1+n ≤-refl) _ (m≤n⇒m≤1+n r) (under op) sf) (exts σ) )
-
-sub-expand-var Γ p q x x' σ (aye y refl ifne) = {!todo -graphify expand-var !}
-
-
-unfold-expand : ∀ {At n} op (Γ : Scope At n) (ϕ : μML At (suc n)) (p : Plus n 1 (suc n)) (q : Plus (suc n) 0 (suc n))
-              → unfold (μMLη op (expand' p Γ ϕ)) ≡ expand' q (μMLη op ϕ ,- Γ) ϕ
-unfold-expand {At} {n} op Γ ϕ p q = sub-expand Γ ϕ p q (dsf (m≤n⇒m≤1+n ≤-refl) (under op)) (sub₀ (μMLη op (expand' p Γ ϕ)))
-
+unfold-expand : ∀ {At n} op (Γ : Scope At n) (ϕ : μML At (suc n)) (p : Plus n 1 (suc n))
+              → unfold (μMLη op (expand' p Γ ϕ)) ≡ expand (μMLη op ϕ ,- Γ) ϕ
+unfold-expand {At} {n} op Γ ϕ p =
+  begin
+    (expand' p Γ ϕ) [ μMLη op (expand' p Γ ϕ) ]
+  ≡⟨ expand-sub op Γ ϕ p ⟩
+    expand Γ (ϕ [ μMLη op ϕ ])
+  ≡⟨ (sym $ expand-cons Γ (μMLη op ϕ) ϕ) ⟩
+    expand (μMLη op ϕ ,- Γ) ϕ
+  ∎ where open ≡-Reasoning
