@@ -8,7 +8,7 @@ open import Data.Empty
 open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Nullary
 
-open import Function using (_∘_; _$_)
+open import Function using (_∘_; _$_; id)
 
 open import MuCalc.Base
 
@@ -91,9 +91,9 @@ _⨾_ : ∀ {At i j k} → Subst At i j → Subst At j k → Subst At i k
 σ ⨾ τ = (sub τ) ∘ σ
 
 
-----------------------------
--- Properties of Renaming --
-----------------------------
+-----------------------------------
+-- The Fusion Lemma for Renaming --
+-----------------------------------
 
 ext-eq : ∀ {i j} {ρ ρ' : Rename i j}
        → ρ ≗ ρ'
@@ -125,23 +125,11 @@ rename-fusion eq (μML₁ op ϕ) = cong (μML₁ op) (rename-fusion eq ϕ)
 rename-fusion eq (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (rename-fusion eq ϕl) (rename-fusion eq ϕr)
 rename-fusion eq (μMLη op ϕ) = cong (μMLη op) (rename-fusion (λ x → trans (ext-fusion (λ _ → refl) x) (ext-eq eq x)) ϕ)
 
-rename-ext : ∀ {At i j} (ρ : Rename i j)
-            → rename {At} F.suc ∘ rename ρ ≗ rename (ext ρ) ∘ rename F.suc
-rename-ext ρ ϕ =
-  begin
-    (rename F.suc ∘ rename ρ) ϕ
-  ≡⟨ rename-fusion (λ _ → refl) ϕ ⟩
-    rename (F.suc ∘ ρ) ϕ
-  ≡⟨ rename-cong (λ _ → refl) ϕ ⟩
-    rename (ext ρ ∘ F.suc) ϕ
-  ≡⟨ (sym $ rename-fusion (λ _ → refl) ϕ) ⟩
-    (rename (ext ρ) ∘ rename F.suc) ϕ
-  ∎ where open ≡-Reasoning
 
 
------------------------------------------
--- Properties of Parallel Substitution --
------------------------------------------
+------------------------------------------------
+-- The Fusion Lemma for Parallel Substitution --
+------------------------------------------------
 
 exts-eq : ∀ {At i j} {σ σ' : Subst At i j}
         → σ ≗ σ'
@@ -157,6 +145,21 @@ sub-cong eq (μML₀ op) = refl
 sub-cong eq (μML₁ op ϕ) = cong (μML₁ op) (sub-cong eq ϕ)
 sub-cong eq (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (sub-cong eq ϕl) (sub-cong eq ϕr)
 sub-cong eq (μMLη op ϕ) = cong (μMLη op) (sub-cong (exts-eq eq) ϕ)
+
+-- Commutativity of renaming by suc.
+rename-ext : ∀ {At i j} (ρ : Rename i j)
+            → rename {At} F.suc ∘ rename ρ ≗ rename (ext ρ) ∘ rename F.suc
+rename-ext ρ ϕ =
+  begin
+    (rename F.suc ∘ rename ρ) ϕ
+  ≡⟨ rename-fusion (λ _ → refl) ϕ ⟩
+    rename (F.suc ∘ ρ) ϕ
+  ≡⟨ rename-cong (λ _ → refl) ϕ ⟩
+    rename (ext ρ ∘ F.suc) ϕ
+  ≡⟨ (sym $ rename-fusion (λ _ → refl) ϕ) ⟩
+    (rename (ext ρ) ∘ rename F.suc) ϕ
+  ∎ where open ≡-Reasoning
+
 
 exts-rename : ∀ {At} {i} {j} {σ : Subst At i j} {ρ1 : Rename i (suc i)} {ρ2 : Rename j (suc j)}
             → exts σ ∘ ρ1 ≗ rename ρ2 ∘ σ
@@ -188,14 +191,28 @@ sub-fusion eq (μML₁ op ϕ) = cong (μML₁ op) (sub-fusion eq ϕ)
 sub-fusion eq (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (sub-fusion eq ϕl) (sub-fusion eq ϕr)
 sub-fusion eq (μMLη op ϕ) = cong (μMLη op) (sub-fusion (exts-fusion eq) ϕ)
 
----------------------------------------
--- Properties of Single Substitution --
----------------------------------------
+
+----------------------------------------------
+-- Barendregt's (Single) Substitution Lemma --
+----------------------------------------------
+
+sub-rename-id : ∀ {At i j} (ρ : Rename i j) (σ : Subst At j i)
+              → var ≗ σ ∘ ρ -- If σ ∘ ρ maps to a var...
+              → (ϕ : μML At i) → ϕ ≡ sub σ (rename ρ ϕ) -- ...then applying σ after ρ is the identity.
+sub-rename-id ρ σ f (var y) = f y
+sub-rename-id ρ σ f (μML₀ op) = refl
+sub-rename-id ρ σ f (μML₁ op ϕ) = cong (μML₁ op) (sub-rename-id ρ σ f ϕ)
+sub-rename-id ρ σ f (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (sub-rename-id ρ σ f ϕl) (sub-rename-id ρ σ f ϕr)
+sub-rename-id ρ σ f (μMLη op ϕ) = cong (μMLη op) (sub-rename-id (ext ρ) (exts σ) ext-lem ϕ) where
+  ext-lem : var ≗ exts σ ∘ ext ρ
+  ext-lem F.zero = refl
+  ext-lem (F.suc x) = cong (rename F.suc) (f x)
+
 
 sub₀-compose : ∀ {At n m} → (σ : Subst At n m) (ϕ : μML At (suc n)) (ψ : μML At n)
              → sub₀ ψ ⨾ σ ≗ exts σ ⨾ sub₀ (sub σ ψ)
 sub₀-compose σ ϕ ψ F.zero = refl
-sub₀-compose σ ϕ ψ (F.suc x) = {!!}
+sub₀-compose σ ϕ ψ (F.suc x) = sub-rename-id F.suc (sub₀ (sub σ ψ)) (λ _ → refl) (σ x)
 
 -- Barendregt's substitution lemma, generalised a little. Substitution commutes with itself.
 sub-comm : ∀ {At n m} → (σ : Subst At n m) (ϕ : μML At (suc n)) (ψ : μML At n)
@@ -352,14 +369,3 @@ sub-trivial ϕ δ p = begin
   ∎ where open ≡-Reasoning
 -}
 
-data IsSingleSub {At : Set} {n m : ℕ} (σ : Subst At n m) : Set where
-  aye : (x : Fin n) → {ϕ : μML At m} → σ x ≡ ϕ               -- There's one variable that goes to whatever ϕ you like...
-      → (∀ (y : Fin n) → y ≢ x → Σ[ z ∈ Fin m ] σ y ≡ var z) -- ...meanwhile the others all go to variables.
-      → IsSingleSub σ
-
--- Single substitution is a single substitution. Duh.
-singlesub : ∀ {At n} → (ϕ : μML At n) → IsSingleSub (sub₀ ϕ)
-singlesub {At} {n} ϕ = aye F.zero refl v where
-  v : (y : Fin (suc n)) → y ≢ F.zero → Σ[ z ∈ Fin n ] (sub₀ ϕ y ≡ var z)
-  v F.zero ne = ⊥-elim (ne refl)
-  v (F.suc y) ne = y , refl
