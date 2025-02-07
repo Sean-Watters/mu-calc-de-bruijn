@@ -132,7 +132,12 @@ expand-nil ϕ = trans (expand-nil' idl ϕ) (cong (expand' idl []) {ϕ} {thin idl
 
 expand-cons' : ∀ {At n b n+b} (p : Plus n b n+b) (Γ : Scope At n) (ψ : μML At n) (ϕ : μML At (suc n+b))
              → expand' (sucl p) (ψ ,- Γ) ϕ ≡ expand' p Γ (ϕ [ thin p ψ ])
-expand-cons' p Γ ψ ϕ = {!!}
+expand-cons' p Γ ψ (μML₀ op) = refl
+expand-cons' p Γ ψ (μML₁ op ϕ) = cong (μML₁ op) (expand-cons' p Γ ψ ϕ)
+expand-cons' p Γ ψ (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (expand-cons' p Γ ψ ϕl) (expand-cons' p Γ ψ ϕr)
+expand-cons' p Γ ψ (μMLη op ϕ) = cong (μMLη op) (trans (expand-cons' (sucr p) Γ ψ ϕ)
+                                                       {!!})
+expand-cons' p Γ ψ (var x) = {!!}
 
 expand-cons : ∀ {At n} (Γ : Scope At n) (ψ : μML At n) (ϕ : μML At (suc n))
             → expand (ψ ,- Γ) ϕ ≡ expand Γ (ϕ [ ψ ])
@@ -202,8 +207,7 @@ expand-sub op (ψ ,- Γ) ϕ (sucl p) =
     (expand' _ Γ (ϕ [ thin p ψ ])) [ μMLη op (expand' _ Γ (ϕ [ thin p ψ ])) ]
   ≡⟨ expand-sub op Γ (ϕ [ thin p ψ ]) p  ⟩
     expand Γ ((ϕ [ thin p ψ ]) [ μMLη op (ϕ [ thin p ψ ]) ])
-  ≡⟨ cong (λ a → expand' idr Γ (thin idr (sub (sub₀ (μMLη op (sub a ϕ))) (sub a ϕ))))
-          {!this is false!!! most likely expand-cons is wrong. Come back to this once it's proven!} ⟩
+  ≡⟨ {!!} ⟩
     expand Γ ((ϕ [ ψ ]') [ μMLη op ϕ [ ψ ] ])
   ≡⟨ cong (expand Γ) (sym $ substitution-lemma ϕ (μMLη op ϕ) ψ) ⟩
     expand Γ ((ϕ [ μMLη op ϕ ]) [ ψ ])
