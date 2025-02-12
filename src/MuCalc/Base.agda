@@ -79,13 +79,12 @@ pattern ν ϕ = μMLη nu ϕ
 --  Scopes --
 -------------
 
--- Vectors of formulas, with two added tricks:
--- * The index of the formula depends on its position in the vector
--- * We allow the front of the scope to potentially coontain dummies. This is to faciliatate the definition of the expansion map,
---   where we want to instantiate variables that were already free but leave previously bound variables alone.
+-- Vectors of formulas, where the index of the formula depends on its position in the vector.
 data Scope (At : Set) : ℕ → Set where
   [] : Scope At zero
   _,-_ : ∀ {n} → (ϕ : μML At n) (Γ : Scope At n) → Scope At (suc n)
+
+infixr 10 _,-_
 
 lookup : ∀ {At n} → (Γ : Scope At n) → (x : Fin n) → μML At (n - (F.suc x))
 lookup (ϕ ,- Γ) F.zero = ϕ

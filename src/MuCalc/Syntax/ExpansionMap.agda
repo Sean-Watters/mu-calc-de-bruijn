@@ -7,6 +7,7 @@ open import Data.Nat
 open import Data.Nat.Properties
 open import Data.Fin as F using (Fin) renaming (_ℕ-ℕ_ to _-_)
 open import Data.Sum
+open import Data.Vec as V using (Vec; []; _∷_)
 open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Nullary using (Irrelevant; Dec; yes; no)
 
@@ -47,7 +48,54 @@ plus : ∀ n m → Plus n m (n + m)
 plus zero m = idl
 plus (suc n) m = sucl (plus n m)
 
+data IsThinnedVar : {n m n+m : ℕ} (p : Plus n m n+m) → Fin n → Fin n+m → Set where
+  zero : ∀ {n m n+m} {p : Plus n m n+m} → IsThinnedVar (sucl p) F.zero F.zero
+  suc  : ∀ {n m n+m} {p : Plus n m n+m} {x : Fin n} {y : Fin n+m} → IsThinnedVar p x y → IsThinnedVar (sucl p) (F.suc x) (F.suc y)
 
+data IsThinned {At : Set} {n m n+m : ℕ} (p : Plus n m n+m) : μML At n → μML At n+m → Set where
+  var : ∀ {x y} → IsThinnedVar p x y → IsThinned p (var x) (var y)
+  μML₀ : ∀ op → IsThinned p (μML₀ op) (μML₀ op)
+  μML₁ : ∀ op {ϕ : μML At n} {ϕ' : μML At n+m} → IsThinned p ϕ ϕ' → IsThinned p (μML₁ op ϕ) (μML₁ op ϕ')
+  μML₂ : ∀ op {ϕl ϕr : μML At n} {ϕl' ϕr' : μML At n+m} → IsThinned p ϕl ϕl' → IsThinned p ϕr ϕr' → IsThinned p (μML₂ op ϕl ϕr) (μML₂ op ϕl' ϕr')
+  μMLη : ∀ op {ϕ : μML At n} {ϕ' : μML At n+m} → IsThinned p ϕ ϕ' → IsThinned p (μML₁ op ϕ) (μML₁ op ϕ')
+
+data Join : {n m n+m : ℕ} → (Fin n ⊎ Fin m) → Fin n+m → Set where
+  lz : ∀ {n m n+m} → Join {suc n} {m} {suc n+m} (inj₁ F.zero) (F.zero)
+  ls : ∀ {n m n+m} {x : Fin n} {y : Fin n+m} → Join {m = m} (inj₁ x) y → Join {m = m} (inj₁ (F.suc x)) (F.suc y)
+  rz : ∀ {n m n+m} → Join {n} {suc m} {suc n+m} (inj₂ F.zero) (F.fromℕ n+m)
+  rs : ∀ {n m n+m} {x : Fin m} {y : Fin n+m} → Join {n} (inj₂ x) y → Join {n} (inj₂ (F.suc x)) (F.suc y)
+
+injectL-thins : ∀ {n m n+m} → (p : Plus n m n+m) → (x : Fin n) → IsThinnedVar p x (injectL p x)
+injectL-thins (sucl p) F.zero = zero
+injectL-thins (sucl p) (F.suc x) = suc (injectL-thins p x)
+
+-- The expansion map, by induction on the formula.
+-- Ran into trouble trying to prove the 2nd characteristic equation, but this bit of
+-- wisdom from Guillaume helped - use pre-thinned scopes and thin every time you traverse a
+-- binder, rather than telescopes with the thinning at the leaves.
+-- Unfortunately, this means the termination checker can't see that Γ is getting smaller any more,
+-- through the V.map. So we need some WFI.
+expand' : ∀ {At n b n+b} → Plus n b n+b → (Γ : Vec (μML At n+b) n) → μML At n+b → μML At b
+expand-var : ∀ {At n b n+b} → Plus n b n+b → (Γ : Vec (μML At n+b) n) → (x : Fin n ⊎ Fin b) → μML At b
+expand-var-lookup : ∀ {At n b n+b} → {p : Plus n b n+b} → (Γ : Vec (μML At n+b) n)
+                  → {x : Fin n} {x' : Fin n+b} → IsThinnedVar p x x' → μML At b
+
+expand' p Γ (μML₀ op) = μML₀ op
+expand' p Γ (μML₁ op ϕ) = μML₁ op (expand' p Γ ϕ)
+expand' p Γ (μML₂ op ϕl ϕr) = μML₂ op (expand' p Γ ϕl) (expand' p Γ ϕr)
+expand' p Γ (μMLη op ϕ) = μMLη op (expand' (sucr p) (V.map (thin (sucr idr)) Γ) ϕ)
+expand' p Γ (var x) = expand-var p Γ (split p x)
+
+expand-var p Γ (inj₁ x) = expand-var-lookup Γ (injectL-thins p x)
+expand-var p Γ (inj₂ x) = var x -- bound vars are left alone
+
+expand-var-lookup {At} {suc n} {b} {suc n+b} {sucl p} (ϕ ∷ Γ) {x} {x'} zero = expand' {!p -- but why :(!} Γ ϕ
+expand-var-lookup {At} {suc n} {b} {suc n+b} {sucl p} (ϕ ∷ Γ) {x} {x'} (suc xth) = expand-var-lookup Γ {!!}
+
+expand : ∀ {At n} → Scope At n → μML At n → μML At 0
+expand Γ ϕ = expand' idr {!!} (thin idr ϕ)
+
+{-
 -- The expansion map, by induction on the formula.
 expand' : ∀ {At n b n+b} → Plus n b n+b → Scope At n → μML At n+b → μML At b
 expand-var : ∀ {At n b} → (Γ : Scope At n) → (x : Fin n ⊎ Fin b) → μML At b
@@ -66,7 +114,22 @@ expand-var (ϕ ,- Γ) (inj₁ (F.suc x)) = expand-var Γ (inj₁ x)
 expand : ∀ {At n} → Scope At n → μML At n → μML At 0
 expand Γ ϕ = expand' idr Γ (thin idr ϕ)
 
+-- Unit test for expand --
 
+phi3 : μML ℕ 3
+phi3 = (var F.zero ∧ var (F.suc F.zero)) ∧ var (F.suc (F.suc F.zero))
+
+phi2 : μML ℕ 2
+phi2 = μ (■ phi3)
+
+phi1 : μML ℕ 1
+phi1 = ν (◆ phi2)
+
+phi0 : μML ℕ 0
+phi0 = μ (◆ phi1)
+
+test : expand (phi2 ,- phi1 ,- phi0 ,- []) phi3 ≡ expand (phi1 ,- phi0 ,- []) (phi3 [ phi2 ])
+test = refl
 
 -----------------------------
 -- Properties of Expansion --
@@ -76,6 +139,9 @@ Plus-irrelevant : ∀ {a b a+b} → Irrelevant (Plus a b a+b)
 Plus-irrelevant idl idl = refl
 Plus-irrelevant (sucl p) (sucl q) = cong sucl (Plus-irrelevant p q)
 
+Plus-to-eq : ∀ {a b a+b} → Plus a b a+b → a + b ≡ a+b
+Plus-to-eq idl = refl
+Plus-to-eq (sucl x) = cong suc (Plus-to-eq x)
 
 expand'-thin : ∀ {At n n' n''} (Γ : Scope At n) (ϕ : μML At (suc n))
              → (p : Plus n 0 n') (q : Plus n 0 n'')
@@ -135,8 +201,7 @@ expand-cons' : ∀ {At n b n+b} (p : Plus n b n+b) (Γ : Scope At n) (ψ : μML 
 expand-cons' p Γ ψ (μML₀ op) = refl
 expand-cons' p Γ ψ (μML₁ op ϕ) = cong (μML₁ op) (expand-cons' p Γ ψ ϕ)
 expand-cons' p Γ ψ (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (expand-cons' p Γ ψ ϕl) (expand-cons' p Γ ψ ϕr)
-expand-cons' p Γ ψ (μMLη op ϕ) = cong (μMLη op) (trans (expand-cons' (sucr p) Γ ψ ϕ)
-                                                       {!!})
+expand-cons' p Γ ψ (μMLη op ϕ) = cong (μMLη op) (trans (expand-cons' (sucr p) Γ ψ ϕ) {!!} )
 expand-cons' p Γ ψ (var x) = {!!}
 
 expand-cons : ∀ {At n} (Γ : Scope At n) (ψ : μML At n) (ϕ : μML At (suc n))
@@ -186,6 +251,7 @@ inj₂ y ?= inj₂ y' with y F.≟ y'
 ... | no ¬p = no (λ {refl → ¬p refl})
 
 
+
 expand-sub : ∀ {At n} op (Γ : Scope At n) (ϕ : μML At (suc n)) (p : Plus n 1 (suc n))
            → (expand' p Γ ϕ) [ μMLη op (expand' p Γ ϕ) ] ≡ expand Γ (ϕ [ μMLη op ϕ ])
 expand-sub op [] ϕ p =
@@ -225,3 +291,4 @@ unfold-expand {At} {n} op Γ ϕ p =
   ≡⟨ (sym $ expand-cons Γ (μMLη op ϕ) ϕ) ⟩
     expand (μMLη op ϕ ,- Γ) ϕ
   ∎ where open ≡-Reasoning
+-}
