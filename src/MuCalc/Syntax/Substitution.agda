@@ -3,8 +3,9 @@ module MuCalc.Syntax.Substitution where
 
 open import Data.Nat
 open import Data.Fin as F using (Fin)
-open import Data.Product
+open import Data.Product hiding (map)
 open import Data.Empty
+open import Data.Sum
 open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Nullary
 
@@ -51,6 +52,79 @@ sub σ (μML₁ op ϕ) = μML₁ op (sub σ ϕ)
 sub σ (μML₂ op ϕ ψ) = μML₂ op (sub σ ϕ) (sub σ ψ)
 sub σ (μMLη op ϕ) = μMLη op (sub (exts σ) ϕ)
 
+----------------------------------------
+-- Some kit for type-level arithmetic --
+----------------------------------------
+
+data Plus : ℕ → ℕ → ℕ → Set where
+  idl : ∀ {n} → Plus zero n n
+  sucl : ∀ {n m r} → Plus n m r → Plus (suc n) m (suc r)
+
+idr : ∀ {n} → Plus n zero n
+idr {zero} = idl
+idr {suc n} = sucl idr
+
+sucr : ∀ {a b a+b} → Plus a b a+b → Plus a (suc b) (suc a+b)
+sucr idl = idl
+sucr (sucl x) = sucl (sucr x)
+
+split : ∀ {a b a+b} → Plus a b a+b → Fin a+b → Fin a ⊎ Fin b
+split idl x = inj₂ x
+split (sucl p) F.zero = inj₁ F.zero
+split (sucl p) (F.suc x) = map F.suc id (split p x)
+
+injectL : ∀ {n m n+m} → Plus n m n+m → Fin n → Fin n+m
+injectL (sucl p) F.zero = F.zero
+injectL (sucl p) (F.suc x) = F.suc (injectL p x)
+
+thin : ∀ {At n m n+m} → Plus n m n+m → μML At n → μML At n+m
+thin p (var x) = var (injectL p x)
+thin p (μML₀ op) = μML₀ op
+thin p (μML₁ op ϕ) = μML₁ op (thin p ϕ)
+thin p (μML₂ op ϕl ϕr) = μML₂ op (thin p ϕl) (thin p ϕr)
+thin p (μMLη op ϕ) = μMLη op (thin (sucl p) ϕ)
+
+plus : ∀ n m → Plus n m (n + m)
+plus zero m = idl
+plus (suc n) m = sucl (plus n m)
+
+-- Properties --
+
+Plus-irrelevant : ∀ {a b a+b} → Irrelevant (Plus a b a+b)
+Plus-irrelevant idl idl = refl
+Plus-irrelevant (sucl p) (sucl q) = cong sucl (Plus-irrelevant p q)
+
+Plus-comm : ∀ {a b a+b} → Plus a b a+b → Plus b a a+b
+Plus-comm idl = idr
+Plus-comm (sucl x) = sucr (Plus-comm x)
+
+Plus-to-eq : ∀ {a b a+b} → Plus a b a+b → a + b ≡ a+b
+Plus-to-eq idl = refl
+Plus-to-eq (sucl x) = cong suc (Plus-to-eq x)
+
+injectL-id : ∀ {n} (p : Plus n 0 n) (x : Fin n) → x ≡ injectL p x
+injectL-id (sucl p) F.zero = refl
+injectL-id (sucl p) (F.suc x) = cong F.suc (injectL-id p x)
+
+thin-idl : ∀ {At n} (p : Plus n 0 n) (ϕ : μML At n) → ϕ ≡ thin p ϕ
+thin-idl p (var x) = cong var (injectL-id p x)
+thin-idl p (μML₀ op) = refl
+thin-idl p (μML₁ op ϕ) = cong (μML₁ op) (thin-idl p ϕ)
+thin-idl p (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (thin-idl p ϕl) (thin-idl p ϕr)
+thin-idl p (μMLη op ϕ) = cong (μMLη op) (thin-idl (sucl p) ϕ)
+
+injectL-sucl : ∀ {n} (p : Plus n 0 n) (x : Fin (suc n)) → injectL (sucl p) x ≡ x
+injectL-sucl p F.zero = refl
+injectL-sucl p (F.suc x) = cong F.suc (sym (injectL-id p x))
+
+thin-sucl : ∀ {At n} (p : Plus n 0 n) (ϕ : μML At (suc n)) → thin (sucl p) ϕ ≡ ϕ
+thin-sucl p (var x) = cong var (injectL-sucl p x)
+thin-sucl p (μML₀ op) = refl
+thin-sucl p (μML₁ op ϕ) = cong (μML₁ op) (thin-sucl p ϕ)
+thin-sucl p (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (thin-sucl p ϕl) (thin-sucl p ϕr)
+thin-sucl p (μMLη op ϕ) = cong (μMLη op) (thin-sucl (sucl p) ϕ)
+
+
 -------------------------
 -- Single Substitution --
 -------------------------
@@ -60,17 +134,36 @@ sub₀ : ∀ {At n} → μML At n → Subst At (suc n) n
 sub₀ ϕ F.zero = ϕ -- at 0 we substitute
 sub₀ ϕ (F.suc x) = var x
 
+-- Single substitutions at higher indices
+sub-n : ∀ {At k n k+n} → Plus k n k+n → μML At n → Subst At (suc k+n) k+n
+sub-n idl = sub₀
+sub-n (sucl p) = exts ∘ sub-n p
+
 -- Single substitution is a special case of parallel substitution
 _[_] : ∀ {At n} → μML At (suc n) → μML At n → μML At n
 ϕ [ δ ] = sub (sub₀ δ) ϕ
 
 -- Single substitution at index 1
 _[_]' : ∀ {At n} → μML At (2+ n) → μML At n → μML At (suc n)
-ϕ [ δ ]' = sub (exts (sub₀ δ)) ϕ
+ϕ [ δ ]' = sub (sub-n (sucl idl) δ) ϕ
 
 -- And now fixpoint unfolding is a single substitution
 unfold : ∀ {At n} (ϕ : μML At n) → {{_ : IsFP ϕ}} → μML At n
 unfold (μMLη op ψ) = ψ [ μMLη op ψ ]
+
+
+--------------------------------------
+-- Single Substitution from Scratch --
+--------------------------------------
+
+{-
+
+Almost always, it's nicer to work with parallel substitutions. However, for the `expand-cons`
+lemma of the expansion map, we need a way of talking about single substitutions at arbitrary
+indices (rather than exactly 0). It makes the most sense to do this from scratch and then prove
+its relationship to parallel substitutions after the fact.
+
+-}
 
 
 -------------------------------
