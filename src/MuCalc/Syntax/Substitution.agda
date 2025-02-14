@@ -88,6 +88,7 @@ plus : ∀ n m → Plus n m (n + m)
 plus zero m = idl
 plus (suc n) m = sucl (plus n m)
 
+
 -- Properties --
 
 Plus-irrelevant : ∀ {a b a+b} → Irrelevant (Plus a b a+b)
@@ -124,6 +125,13 @@ thin-sucl p (μML₁ op ϕ) = cong (μML₁ op) (thin-sucl p ϕ)
 thin-sucl p (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (thin-sucl p ϕl) (thin-sucl p ϕr)
 thin-sucl p (μMLη op ϕ) = cong (μMLη op) (thin-sucl (sucl p) ϕ)
 
+split-idr : ∀ {n} → (p : Plus n 0 n) → (x : Fin n) → split p x ≡ inj₁ x
+split-idr (sucl p) F.zero = refl
+split-idr (sucl p) (F.suc x) rewrite split-idr p x = refl
+
+-- If we know that the left is nonzero, then the first var definitely gets mapped there
+split-zero : ∀ {a b a+b} → (p : Plus (suc a) b (suc a+b)) → split p F.zero ≡ inj₁ F.zero
+split-zero (sucl p) = refl
 
 -------------------------
 -- Single Substitution --
