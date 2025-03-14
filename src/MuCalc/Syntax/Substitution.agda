@@ -133,6 +133,11 @@ split-idr (sucl p) (F.suc x) rewrite split-idr p x = refl
 split-zero : ∀ {a b a+b} → (p : Plus (suc a) b (suc a+b)) → split p F.zero ≡ inj₁ F.zero
 split-zero (sucl p) = refl
 
+ext-injectL : ∀ {a b a+b} → (p : Plus a b a+b) (q : Plus (suc a) b (suc a+b) )
+            → ext (injectL p) ≗ injectL q
+ext-injectL p (sucl q) F.zero = refl
+ext-injectL p (sucl q) (F.suc x) = cong (λ a → F.suc (injectL a x)) (Plus-irrelevant p q)
+
 -------------------------
 -- Single Substitution --
 -------------------------
@@ -147,6 +152,11 @@ sub-n : ∀ {At k n k+n} → Plus k n k+n → μML At n → Subst At (suc k+n) k
 sub-n idl = sub₀
 sub-n (sucl p) = exts ∘ sub-n p
 
+-- Single substitution at higher indices, with type-level arithmetic
+sub-n' : ∀ {At n} k → μML At n → Subst At ((suc k) + n) (k + n)
+sub-n' zero = sub₀
+sub-n' (suc k) = exts ∘ sub-n' k
+
 -- Single substitution is a special case of parallel substitution
 _[_] : ∀ {At n} → μML At (suc n) → μML At n → μML At n
 ϕ [ δ ] = sub (sub₀ δ) ϕ
@@ -159,19 +169,6 @@ _[_]' : ∀ {At n} → μML At (2+ n) → μML At n → μML At (suc n)
 unfold : ∀ {At n} (ϕ : μML At n) → {{_ : IsFP ϕ}} → μML At n
 unfold (μMLη op ψ) = ψ [ μMLη op ψ ]
 
-
---------------------------------------
--- Single Substitution from Scratch --
---------------------------------------
-
-{-
-
-Almost always, it's nicer to work with parallel substitutions. However, for the `expand-cons`
-lemma of the expansion map, we need a way of talking about single substitutions at arbitrary
-indices (rather than exactly 0). It makes the most sense to do this from scratch and then prove
-its relationship to parallel substitutions after the fact.
-
--}
 
 
 -------------------------------
@@ -438,6 +435,8 @@ sub-id (μML₀ op) eq = refl
 sub-id (μML₁ op ϕ) eq = cong (μML₁ op) (sub-id ϕ eq)
 sub-id (μML₂ op ϕ ψ) eq = cong₂ (μML₂ op) (sub-id ϕ eq) (sub-id ψ eq)
 sub-id (μMLη op ϕ) eq = cong (μMLη op) (sub-id ϕ (ids-ext eq))
+
+
 
 -- Weakened id substitutions
 Weakids : ∀ {At i j} → Thin i j → Subst At i j

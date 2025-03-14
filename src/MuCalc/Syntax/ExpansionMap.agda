@@ -81,29 +81,48 @@ data Join : {n m n+m : ℕ} → (Fin n ⊎ Fin m) → Fin n+m → Set where
   rs : ∀ {n m n+m} {x : Fin m} {y : Fin n+m} → Join {n} (inj₂ x) y → Join {n} (inj₂ (F.suc x)) (F.suc y)
 
 
+
 split-Join : ∀ {n m n+m} (p : Plus n m n+m) (x : Fin n+m) → Join (split p x) x
 split-Join idl F.zero = rz idl zero
 split-Join idl (F.suc x) = rs (split-Join idl x)
 split-Join (sucl p) F.zero = lz
-split-Join (sucl p) (F.suc x) = {!!}
+split-Join (sucl p) (F.suc x) = {!!} where
+  map-Join : ∀ {n m n+m} → (x : Fin n ⊎ Fin m) (x' : Fin n+m) → Join x x' → Join (map F.suc id x) (F.suc x')
+  map-Join (inj₁ x) x' j = ls j
+  map-Join (inj₂ y) x' j = {!map-Join!}
 
-expand'-rename : ∀ {At n m n+m} → (f : ℕ → ℕ) (p : Plus n m n+m) (q : Plus n (f m) (f n+m))
-               → (ρ : ∀ k → Rename k (f k))
-               → (∀ k → f (suc k) ≡ suc (f k))
+expand'-rename : ∀ {At n m n+m k k+n+m k+m}
+               → (p1 : Plus m k k+m) (p2 : Plus n m n+m)
+               → (q1 : Plus n k+m k+n+m) (q2 : Plus n+m k k+n+m)
+               → (ρ : Rename n m)
                → (Γ : Scope At n) (ϕ : μML At n+m)
-               → rename (ρ m) (expand' p Γ ϕ) ≡ expand' q Γ (rename (ρ n+m) ϕ)
-expand'-rename f p q ρ eq Γ (var x) = {!!}
-expand'-rename f p q ρ eq Γ (μML₀ op) = refl
-expand'-rename f p q ρ eq Γ (μML₁ op ϕ) = cong (μML₁ op) (expand'-rename f p q ρ eq Γ ϕ)
-expand'-rename f p q ρ eq Γ (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (expand'-rename f p q ρ eq Γ ϕl) (expand'-rename f p q ρ eq Γ ϕr)
-expand'-rename {At} {n} {m} {n+m} f p q ρ eq Γ (μMLη op ϕ)
-  = let ρ' k = subst (Rename (suc k)) (eq k) (ρ (suc k))
-    in cong (μMLη op) $
-      begin
-        rename (ext (ρ m)) (expand' (sucr p) Γ ϕ)
-      ≡⟨ {!!} ⟩
-        expand' (sucr q) Γ (rename (ext (ρ n+m)) ϕ)
-      ∎ where open ≡-Reasoning
+               → rename (injectL p1) (expand' p2 Γ ϕ)
+               ≡ expand' q1 Γ (rename (injectL q2) ϕ)
+expand-var-rename : ∀ {At n m n+m k k+n+m k+m}
+                  → (p1 : Plus m k k+m) (p2 : Plus m n n+m)
+                  → (q1 : Plus k+m n k+n+m) (q2 : Plus n+m k k+n+m)
+                  → (ρ : Rename n m)
+                  → (Γ : Scope At n) (x : Fin n+m)
+                  → rename (injectL p1) (expand-var Γ (split p2 x))
+                  ≡ expand-var Γ (split q1 (injectL q2 x))
+
+
+expand'-rename p1 p2 q1 q2 ρ Γ (var x) = {!(injectL p1)!}
+expand'-rename p1 p2 q1 q2 ρ Γ (μML₀ op) = refl
+expand'-rename p1 p2 q1 q2 ρ Γ (μML₁ op ϕ) = cong (μML₁ op) (expand'-rename p1 p2 q1 q2 ρ Γ ϕ)
+expand'-rename p1 p2 q1 q2 ρ Γ (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (expand'-rename p1 p2 q1 q2 ρ Γ ϕl) (expand'-rename p1 p2 q1 q2 ρ Γ ϕr)
+expand'-rename p1 p2 q1 q2 ρ Γ (μMLη op ϕ) = cong (μMLη op) $
+  begin
+    rename (ext (injectL p1)) (expand' (sucr p2) Γ ϕ)
+  ≡⟨ rename-cong (ext-injectL p1 (sucl p1)) (expand' (sucr p2) Γ ϕ) ⟩
+    rename (injectL (sucl p1)) (expand' (sucr p2) Γ ϕ)
+  ≡⟨ expand'-rename (sucl p1) (sucr p2) (sucr q1) (sucl q2) (F.suc ∘ ρ) Γ ϕ ⟩
+    expand' (sucr q1) Γ (rename (injectL (sucl q2)) ϕ)
+  ≡⟨ sym $ cong (expand' (sucr q1) Γ) (rename-cong (ext-injectL q2 (sucl q2)) ϕ) ⟩
+    expand' (sucr q1) Γ (rename (ext (injectL q2)) ϕ)
+  ∎ where open ≡-Reasoning
+
+expand-var-rename = {!!}
 
 ----------------------------------------------
 -- The Characteristic Equations of `expand` --
@@ -157,36 +176,13 @@ expand-cons-var p (sucl q) Γ ψ {inj₁ (F.suc x)} {F.suc x'} (ls z) = --{!cong
     var (F.suc x)
   ≡⟨ cong (rename F.suc) (expand-cons-var (Plus-comm q) q Γ ψ z) ⟩
     rename F.suc (expand' (Plus-comm q) Γ (sub-n q ψ x'))
-  ≡⟨ {!expand'-rename!} ⟩
+  ≡⟨ {!sub-n q ψ x'!} ⟩
     expand' p Γ (rename F.suc (sub-n q ψ x'))
   ∎ where open ≡-Reasoning
-expand-cons-var p q Γ ψ (rz p₁ x) = {!!}
+expand-cons-var {n = n} {b} p q Γ ψ (rz p₁ x) = {!cong₂ (λ a b → expand' a Γ b) (Plus-irrelevant (plus n b) p)!}
 expand-cons-var p q Γ ψ (rs z) = {!!}
 
--- expand-cons-var {At} {n} {0} {n} p idl Γ ψ F.zero
---   = expand'-cong (plus n 0) p refl refl (+-identityʳ n) Γ Γ refl (thin (plus n 0) ψ) ψ (trans {!Plus-irrelevant (plus n 0)!} (sym $ thin-idl p ψ))
--- expand-cons-var p idl Γ ψ (F.suc x) = expand-var-extend Γ ψ (split p x)
--- expand-cons-var idl      (sucl q) [] ψ F.zero    = {!!}
--- expand-cons-var (sucl p) (sucl q) Γ  ψ F.zero    = {!!}
--- expand-cons-var idl      (sucl q) Γ  ψ (F.suc x) = {!!}
--- expand-cons-var (sucl p) (sucl q) Γ  ψ (F.suc x) = {!!}
 
-  -- begin
-  --   expand' (plus n b) Γ (thin (plus n b) ψ)
-  -- ≡⟨ expand'-cong (plus n b) p refl refl (Plus-to-eq p) Γ Γ refl (thin (plus n b) ψ) (thin p ψ) (unsubst ψ p (plus n b) (Plus-to-eq p)) ⟩
-  --   expand' p Γ (thin p ψ)
-  -- ≡⟨ {!cong (expand' p Γ)!} ⟩
-  --   expand' p Γ (sub-n q ψ F.zero)
-  -- ∎ where
-  --   open ≡-Reasoning
-  --   unsubst : ∀ {At n b n+b} (ψ : μML At n) (p : Plus n b n+b) (q : Plus n b (n + b))
-  --           → (eq : n + b ≡ n+b)
-  --           → subst (μML At) eq (thin q ψ) ≡ thin p ψ
-  --   unsubst ψ p q refl rewrite Plus-irrelevant p q = refl
-
--- expand-cons-var p q Γ ψ (F.suc x) = {!!}
-
-{-
 
 expand-cons : ∀ {At n} (Γ : Scope At n) (ψ : μML At n) (ϕ : μML At (suc n))
             → expand (ψ ,- Γ) ϕ ≡ expand Γ (ϕ [ ψ ])
@@ -195,7 +191,9 @@ expand-cons Γ ψ ϕ =
     expand' (sucl idr) (ψ ,- Γ) (thin (sucl idr) ϕ)
   ≡⟨ cong (expand' (sucl idr) (ψ ,- Γ)) (sym $ thin-idl (sucl idr) ϕ) ⟩
     expand' (sucl idr) (ψ ,- Γ) ϕ
-  ≡⟨ expand-cons' idr Γ ψ ϕ ⟩
+  ≡⟨ expand-cons' idr idl Γ ψ ϕ ⟩
+    expand' idr Γ (sub (sub-n idl ψ) ϕ)
+  ≡⟨ cong (expand' idr Γ) (sub-cong (λ x → cong (λ z → sub₀ z x) (thin-idl idr ψ)) ϕ) ⟩
     expand' idr Γ (ϕ [ thin idr ψ ])
   ≡⟨ cong (λ a → expand' idr Γ (ϕ [ a ])) (sym $ thin-idl idr ψ) ⟩
     expand' idr Γ (ϕ [ ψ ])
@@ -220,9 +218,9 @@ inj₂ y ?= inj₂ y' with y F.≟ y'
 
 
 
-expand-sub : ∀ {At n} op (Γ : Scope At n) (ϕ : μML At (suc n)) (p : Plus n 1 (suc n))
+expand-sub : ∀ {At n} op (Γ : Scope At n) (ϕ : μML At (suc n)) (p : Plus n 1 (suc n)) (q : Plus 1 n (suc n))
            → (expand' p Γ ϕ) [ μMLη op (expand' p Γ ϕ) ] ≡ expand Γ (ϕ [ μMLη op ϕ ])
-expand-sub op [] ϕ p =
+expand-sub op [] ϕ p q =
   let lem1 = expand-nil' p ϕ
       lem2 = expand-nil (ϕ [ μMLη op ϕ ])
   in begin
@@ -232,14 +230,14 @@ expand-sub op [] ϕ p =
   ≡⟨ lem2 ⟩
     expand [] (ϕ [ μMLη op ϕ ])
   ∎ where open ≡-Reasoning
-expand-sub op (ψ ,- Γ) ϕ (sucl p) =
-  let lem1 = expand-cons' p Γ ψ ϕ
+expand-sub op (ψ ,- Γ) ϕ (sucl p) q =
+  let lem1 = expand-cons' p {!p!} Γ ψ ϕ
       lem2 = expand-cons Γ ψ (ϕ [ μMLη op ϕ ])
   in begin
     (expand' _ (ψ ,- Γ) ϕ) [ μMLη op (expand' _ (ψ ,- Γ) ϕ) ]
   ≡⟨ cong (λ a → a [ μMLη op a ]) lem1 ⟩
     (expand' _ Γ (ϕ [ thin p ψ ])) [ μMLη op (expand' _ Γ (ϕ [ thin p ψ ])) ]
-  ≡⟨ expand-sub op Γ (ϕ [ thin p ψ ]) p  ⟩
+  ≡⟨ expand-sub op Γ (ϕ [ thin p ψ ]) p ? ⟩
     expand Γ ((ϕ [ thin p ψ ]) [ μMLη op (ϕ [ thin p ψ ]) ])
   ≡⟨ {!!} ⟩
     expand Γ ((ϕ [ ψ ]') [ μMLη op ϕ [ ψ ] ])
@@ -254,10 +252,8 @@ unfold-expand : ∀ {At n} op (Γ : Scope At n) (ϕ : μML At (suc n)) (p : Plus
 unfold-expand {At} {n} op Γ ϕ p =
   begin
     (expand' p Γ ϕ) [ μMLη op (expand' p Γ ϕ) ]
-  ≡⟨ expand-sub op Γ ϕ p ⟩
+  ≡⟨ expand-sub op Γ ϕ p ? ⟩
     expand Γ (ϕ [ μMLη op ϕ ])
   ≡⟨ (sym $ expand-cons Γ (μMLη op ϕ) ϕ) ⟩
     expand (μMLη op ϕ ,- Γ) ϕ
   ∎ where open ≡-Reasoning
-
--}
