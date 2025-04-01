@@ -8,8 +8,8 @@ open import Data.Kripke
 -- We chose Sized Types as the foundation for coinduction.
 module MuCalc.Semantics.Container
   {At : Set}
-  {_<A_ : At → At → Set}
-  (<A-STO : IsPropStrictTotalOrder _≡_ _<A_)
+  -- {_<A_ : At → At → Set}
+  -- (<A-STO : IsPropStrictTotalOrder _≡_ _<A_)
   (Mo : Kripke At)
   where
 
@@ -69,7 +69,7 @@ interpret-vec xs (s , m) = lookup xs m s
 --
 -- The final detail is that for indexed containers, functoriality in the left index
 -- is contravariant. So the direction we actually need is:
-dist-fin : ∀ {n} → S × Fin n ⊎ S → S × Fin (suc n)
+dist-fin : ∀ {n} → (S × Fin n) ⊎ S → S × Fin (suc n)
 dist-fin {n} (inj₁ (s , m)) = s , fsuc m
 dist-fin {n} (inj₂ s) = s , fzero
 

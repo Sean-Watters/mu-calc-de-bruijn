@@ -233,11 +233,12 @@ expand-sub op [] ϕ p q =
 expand-sub op (ψ ,- Γ) ϕ (sucl p) q =
   let lem1 = expand-cons' p {!p!} Γ ψ ϕ
       lem2 = expand-cons Γ ψ (ϕ [ μMLη op ϕ ])
+      q' = {!!}
   in begin
     (expand' _ (ψ ,- Γ) ϕ) [ μMLη op (expand' _ (ψ ,- Γ) ϕ) ]
   ≡⟨ cong (λ a → a [ μMLη op a ]) lem1 ⟩
     (expand' _ Γ (ϕ [ thin p ψ ])) [ μMLη op (expand' _ Γ (ϕ [ thin p ψ ])) ]
-  ≡⟨ expand-sub op Γ (ϕ [ thin p ψ ]) p ? ⟩
+  ≡⟨ expand-sub op Γ (ϕ [ thin p ψ ]) p {!q!} ⟩
     expand Γ ((ϕ [ thin p ψ ]) [ μMLη op (ϕ [ thin p ψ ]) ])
   ≡⟨ {!!} ⟩
     expand Γ ((ϕ [ ψ ]') [ μMLη op ϕ [ ψ ] ])
@@ -252,7 +253,7 @@ unfold-expand : ∀ {At n} op (Γ : Scope At n) (ϕ : μML At (suc n)) (p : Plus
 unfold-expand {At} {n} op Γ ϕ p =
   begin
     (expand' p Γ ϕ) [ μMLη op (expand' p Γ ϕ) ]
-  ≡⟨ expand-sub op Γ ϕ p ? ⟩
+  ≡⟨ expand-sub op Γ ϕ p {!!} ⟩
     expand Γ (ϕ [ μMLη op ϕ ])
   ≡⟨ (sym $ expand-cons Γ (μMLη op ϕ) ϕ) ⟩
     expand (μMLη op ϕ ,- Γ) ϕ
