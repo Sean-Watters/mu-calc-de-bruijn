@@ -6,6 +6,7 @@ open import Data.Fin as F using (Fin)
 open import Data.Product hiding (map)
 open import Data.Empty
 open import Data.Sum
+open import Data.Thinning.Base as Th using (Thin; embed; inj; pad; end)
 open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Nullary
 
@@ -330,24 +331,25 @@ substitution-lemma ϕ ψ ξ = sub-comm (sub₀ ξ) ϕ ψ
 -- Weakening and Strengthening --
 ---------------------------------
 
+{-
 -- Thinnings!
 -- AKA monotone embedding of Fin i to Fin j.
 -- AKA bit vectors.
 data Thin : ℕ → ℕ → Set where
-  keep : ∀ {i j} → Thin i j → Thin (suc i) (suc j) -- 1 ∷_
-  drop : ∀ {i j} → Thin i j → Thin i (suc j)       -- 0 ∷_
+  inj : ∀ {i j} → Thin i j → Thin (suc i) (suc j) -- 1 ∷_
+  pad : ∀ {i j} → Thin i j → Thin i (suc j)       -- 0 ∷_
   end : Thin 0 0                                   -- ε
 
 -- The identity thinning; all 1's.
 full : ∀ {i} → Thin i i
 full {zero} = end
-full {suc i} = keep full
+full {suc i} = inj full
 
 -- Turning a thinning into an actual embedding of variables
 embed : {i j : ℕ} → Thin i j → Fin i → Fin j
-embed (keep θ) F.zero = F.zero
-embed (keep θ) (F.suc x) = F.suc (embed θ x)
-embed (drop θ) x = F.suc (embed θ x)
+embed (inj θ) F.zero = F.zero
+embed (inj θ) (F.suc x) = F.suc (embed θ x)
+embed (pad θ) x = F.suc (embed θ x)
 
 -- The identity thinning really is identity
 embed-full : ∀ {i} (x : Fin i) → embed full x ≡ x
@@ -358,7 +360,7 @@ weaken : ∀ {At i j} → Thin i j → μML At i → μML At j
 weaken θ = rename (embed θ)
 
 weaken₁ : ∀ {At i} → μML At i → μML At (suc i)
-weaken₁ = weaken (drop full)
+weaken₁ = weaken (pad full)
 
 -- Paths through formulas to variables
 data VarOccurs {At : Set} {n : ℕ} (x : Fin n) : (ϕ : μML At n) → Set where
@@ -379,11 +381,12 @@ var-occurs? x (μML₂ op ϕ ψ) with var-occurs? x ϕ | var-occurs? x ψ
 ... | no ¬p | no ¬q = no λ { (left p) → ¬p p ; (right q) → ¬q q}
 var-occurs? x (μMLη op ϕ) = map′ under (λ {(under p) → p}) (var-occurs? (F.suc x) ϕ)
 
--- Whether a given variable supported (marked as keep) by a thinning
+-- Whether a given variable supported (marked as inj) by a thinning
 data Supported : {i j : ℕ} → Thin i j → Fin j → Set where
-  here : ∀ {i j} {θ : Thin i j} → Supported (keep θ) F.zero
-  there-k : ∀ {i j} {θ : Thin i j} {x : Fin j} → Supported θ x → Supported (keep θ) (F.suc x)
-  there-d : ∀ {i j} {θ : Thin i j} {x : Fin j} → Supported θ x → Supported (drop θ) (F.suc x)
+  here : ∀ {i j} {θ : Thin i j} → Supported (inj θ) F.zero
+  there-k : ∀ {i j} {θ : Thin i j} {x : Fin j} → Supported θ x → Supported (inj θ) (F.suc x)
+  there-d : ∀ {i j} {θ : Thin i j} {x : Fin j} → Supported θ x → Supported (pad θ) (F.suc x)
+-}
 
 {-
 -- The support of a formula is the number of free variables that actually occur, not just
@@ -405,14 +408,25 @@ strengthen = {!!}
 
 -}
 
+----------------------------------
+-- Other Properties of Renaming --
+----------------------------------
+
+rename-preserves-fp : ∀ {At n m} → {ρ : Rename n m} → (ϕ : μML At n) → {{_ : IsFP ϕ}} → IsFP (rename ρ ϕ)
+rename-preserves-fp (μMLη op ϕ) = fp
+
+ext-embed : ∀ {i j} → (θ : Thin i j) → ext (embed θ) ≗ embed (inj θ)
+ext-embed θ F.zero = refl
+ext-embed θ (F.suc x) = refl
+
+
 --------------------------------------
 -- Other Properties of Substitution --
 --     (and related machinery)      --
 --------------------------------------
 
-rename-preserves-fp : ∀ {At n m} → {ρ : Rename n m} → (ϕ : μML At n) → {{_ : IsFP ϕ}} → IsFP (rename ρ ϕ)
-rename-preserves-fp (μMLη op ϕ) = fp
 
+{-
 subs-agree : ∀ {At n m}
            → (σ θ : Subst At n m) -- Given two substitutions...
            → (ϕ : μML At n) -- and some formula...
@@ -423,6 +437,7 @@ subs-agree σ θ (μML₀ op) eq = refl
 subs-agree σ θ (μML₁ op ϕ) eq = cong (μML₁ op) (subs-agree σ θ ϕ (λ [x] → eq (down [x])))
 subs-agree σ θ (μML₂ op ϕ ψ) eq = cong₂ (μML₂ op) (subs-agree σ θ ϕ (λ [x] → eq (left [x]))) (subs-agree σ θ ψ λ [x] → eq (right [x]))
 subs-agree σ θ (μMLη op ϕ) eq = cong (μMLη op) (subs-agree (exts σ) (exts θ) ϕ (λ { {F.zero} [x] → refl ; {F.suc x} [x] → cong (rename F.suc) (eq (under [x]))}))
+-}
 
 ids-ext : ∀ {At n} {σ : Subst At n n} → σ ≗ ids → (exts σ ≗ ids)
 ids-ext eq F.zero = refl
@@ -438,9 +453,11 @@ sub-id (μMLη op ϕ) eq = cong (μMLη op) (sub-id ϕ (ids-ext eq))
 
 
 
+{-
 -- Weakened id substitutions
 Weakids : ∀ {At i j} → Thin i j → Subst At i j
 Weakids θ x = weaken θ (var x)
+-}
 
 {-
 -- Weakening (by 1) and substitution commute.

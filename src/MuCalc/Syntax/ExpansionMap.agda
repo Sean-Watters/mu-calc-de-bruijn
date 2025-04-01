@@ -179,7 +179,7 @@ expand-cons-var p (sucl q) Γ ψ {inj₁ (F.suc x)} {F.suc x'} (ls z) = --{!cong
   ≡⟨ {!sub-n q ψ x'!} ⟩
     expand' p Γ (rename F.suc (sub-n q ψ x'))
   ∎ where open ≡-Reasoning
-expand-cons-var {n = n} {b} p q Γ ψ (rz p₁ x) = {!cong₂ (λ a b → expand' a Γ b) (Plus-irrelevant (plus n b) p)!}
+expand-cons-var {n = n} {b} p q Γ ψ (rz p₁ x) = {! cong₂ (λ a b → expand' a Γ b) (Plus-irrelevant (plus n b) p)!}
 expand-cons-var p q Γ ψ (rs z) = {!!}
 
 

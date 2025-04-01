@@ -21,9 +21,9 @@ data Thin : ℕ → ℕ → Set where
 ----------------
 
 -- The identity thinning; all 1's.
-id : ∀ {i} → Thin i i
-id {N.zero} = end
-id {N.suc i} = inj id
+id : ∀ i → Thin i i
+id (N.zero) = end
+id (N.suc i) = inj (id i)
 
 -- The empty thinning; all 0's.
 zeros : ∀ {i} → Thin 0 i
@@ -49,35 +49,41 @@ pad θ ⊗ σ = pad (θ ⊗ σ)
 -------------------
 
 -- The successor thinning
-inc : ∀ {i} → Thin i (N.suc i)
-inc = pad id
+inc : ∀ i → Thin i (N.suc i)
+inc i = pad (id i)
 
 -- The `k+` thinning; repeated application of `inc`
 plusL : ∀ {i} k → Thin i (k N.+ i)
-plusL N.zero = id
-plusL (N.suc k) = inc ⨾ inj (plusL k)
+plusL {i} N.zero = (id i)
+plusL {i} (N.suc k) = (inc i) ⨾ inj (plusL k)
 
 
 ---------
 -- Fin --
 ---------
 
-Fin = Thin 1
-
-pattern fzero {θ} = inj θ
-pattern fsuc x = pad x
-
--- The special case of composition for Fin's tells us how to inject Fins into larger scopes
-inject : ∀ {i j} → Fin i → Thin i j → Fin j
-inject x θ = x ⨾ θ
-
-splitAt : ∀ i {j} → Fin (i N.+ j) → Fin i ⊎ Fin j
-splitAt N.zero x = inj₂ x
-splitAt (N.suc i) (fzero {x}) = inj₁ (fzero {zeros})
-splitAt (N.suc i) (fsuc x) = Sum.map₁ fsuc (splitAt i x)
-
+-- Turning a thinning into an actual embedding of variables
+embed : {i j : ℕ} → Thin i j → F.Fin i → F.Fin j
+embed (inj θ) F.zero = F.zero
+embed (inj θ) (F.suc x) = F.suc (embed θ x)
+embed (pad θ) x = F.suc (embed θ x)
 
 module Fin where
+  Fin = Thin 1
+
+  pattern fzero {θ} = inj θ
+  pattern fsuc x = pad x
+
+  -- The special case of composition for Fin's tells us how to inject Fins into larger scopes
+  inject : ∀ {i j} → Fin i → Thin i j → Fin j
+  inject x θ = x ⨾ θ
+
+  splitAt : ∀ i {j} → Fin (i N.+ j) → Fin i ⊎ Fin j
+  splitAt N.zero x = inj₂ x
+  splitAt (N.suc i) (fzero {x}) = inj₁ (fzero {zeros})
+  splitAt (N.suc i) (fsuc x) = Sum.map₁ fsuc (splitAt i x)
+
+
   zero : ∀ {i} → Fin (N.suc i)
   zero = fzero {zeros}
 

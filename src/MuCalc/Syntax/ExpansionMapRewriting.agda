@@ -7,6 +7,7 @@ open import Data.Nat
 open import Data.Nat.Properties
 open import Data.Fin as F using (Fin) renaming (_ℕ-ℕ_ to _-_)
 open import Data.Fin.Properties as F
+open import Data.Thinning as Th
 open import Data.Sum as S
 open import Data.Product
 open import Data.Vec as V using (Vec; []; _∷_)
@@ -69,8 +70,21 @@ splitAt-idr (F.suc x) = cong (S.map₁ F.suc) (splitAt-idr x)
 expand-rename : ∀ {At b n}
               → (θ : Thin b (suc b))
               → (Γ : Scope At n) (ϕ : μML At (b + n))
-              → rename (embed θ) (expand Γ ϕ) ≡ expand Γ (rename {!embed θ!} ϕ)
-expand-rename = {!!}
+              → rename (embed θ) (expand Γ ϕ) ≡ expand Γ (rename (embed (θ ⊗ Th.id n)) ϕ)
+expand-rename θ Γ (var x) = {!!}
+expand-rename θ Γ (μML₀ op) = refl
+expand-rename θ Γ (μML₁ op ϕ) = cong (μML₁ op) (expand-rename θ Γ ϕ)
+expand-rename θ Γ (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (expand-rename θ Γ ϕl) (expand-rename θ Γ ϕr)
+expand-rename {n = n} θ Γ (μMLη op ϕ) = cong (μMLη op) $
+  begin
+    rename (ext (embed θ)) (expand Γ ϕ)
+  ≡⟨ rename-cong (ext-embed θ) (expand Γ ϕ) ⟩
+    rename (embed (inj θ)) (expand Γ ϕ)
+  ≡⟨ expand-rename (inj θ) Γ ϕ ⟩
+    expand Γ (rename (embed (inj θ ⊗ Th.id n)) ϕ)
+  ≡⟨ cong (expand Γ) (rename-cong (ext-embed (θ ⊗ Th.id n)) ϕ) ⟨
+    expand Γ (rename (ext (embed (θ ⊗ Th.id n))) ϕ)
+  ∎ where open ≡-Reasoning
 
 ----------------------------------------------
 -- The Characteristic Equations of `expand` --
