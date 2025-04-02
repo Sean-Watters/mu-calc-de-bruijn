@@ -7,7 +7,7 @@ open import Data.Nat
 open import Data.Nat.Properties
 open import Data.Fin as F using (Fin) renaming (_ℕ-ℕ_ to _-_)
 open import Data.Fin.Properties as F
-open import Data.Thinning as Th
+open import Data.Thinning as Th hiding (id)
 open import Data.Sum as S
 open import Data.Product
 open import Data.Vec as V using (Vec; []; _∷_)
@@ -68,10 +68,23 @@ splitAt-idr (F.suc x) = cong (S.map₁ F.suc) (splitAt-idr x)
 
 
 expand-rename : ∀ {At b n}
-              → (θ : Thin b (suc b))
+              → (θ : Thin b (suc b)) -- generalisation of suc, ext suc, ext ext suc, etc
               → (Γ : Scope At n) (ϕ : μML At (b + n))
               → rename (embed θ) (expand Γ ϕ) ≡ expand Γ (rename (embed (θ ⊗ Th.id n)) ϕ)
-expand-rename θ Γ (var x) = {!!}
+expand-rename-var : ∀ {At b n}
+                  → (θ : Thin b (suc b))
+                  → (Γ : Scope At n) (x : Fin b ⊎ Fin n)
+                  → rename (embed θ) (expand-var Γ x)
+                  ≡ expand-var Γ (S.map (embed θ) id x)
+
+expand-rename {b = b} {n} θ Γ (var x) =
+  begin
+    rename (embed θ) (expand Γ (var x))
+  ≡⟨  expand-rename-var θ Γ (F.splitAt b x)  ⟩
+    expand-var Γ (S.map (embed θ) id (F.splitAt b x))
+  ≡⟨ cong (expand-var Γ) (splitAt-embed-⊗ θ x) ⟩
+    expand-var Γ (F.splitAt (suc b) (embed (θ ⊗ Th.id n) x))
+  ∎ where open ≡-Reasoning
 expand-rename θ Γ (μML₀ op) = refl
 expand-rename θ Γ (μML₁ op ϕ) = cong (μML₁ op) (expand-rename θ Γ ϕ)
 expand-rename θ Γ (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (expand-rename θ Γ ϕl) (expand-rename θ Γ ϕr)
@@ -86,6 +99,34 @@ expand-rename {n = n} θ Γ (μMLη op ϕ) = cong (μMLη op) $
     expand Γ (rename (ext (embed (θ ⊗ Th.id n))) ϕ)
   ∎ where open ≡-Reasoning
 
+expand-rename-var θ Γ (inj₁ x) = {!!}
+expand-rename-var θ Γ (inj₂ y) = {!!}
+
+-- The special case we actually care about. Couldn't prove it directly because going under binders
+-- bumps `suc` up to `ext suc`.
+expand-rename-suc : ∀ {At b n} → (Γ : Scope At n) (ϕ : μML At (b + n))
+                  → rename F.suc (expand Γ ϕ) ≡ expand Γ (rename F.suc ϕ)
+expand-rename-suc {b = b} {n} Γ ϕ =
+  begin
+    rename F.suc (expand Γ ϕ)
+  ≡⟨ rename-cong embed-suc (expand Γ ϕ) ⟩
+    rename (embed (inc b)) (expand Γ ϕ)
+  ≡⟨ expand-rename (inc b) Γ ϕ ⟩
+    expand Γ (rename (embed ((inc b) ⊗ Th.id n)) ϕ)
+  ≡⟨ cong (expand Γ) (rename-cong lemma ϕ) ⟩
+    expand Γ (rename F.suc ϕ)
+  ∎ where
+    open ≡-Reasoning
+    lemma : embed ((inc b) ⊗ Th.id n) ≗ F.suc
+    lemma x =
+      begin
+        F.suc (embed (Th.id b ⊗ Th.id n) x)
+      ≡⟨ cong (λ z → F.suc (embed z x)) (⊗-id b) ⟩
+        F.suc (embed (Th.id (b + n)) x)
+      ≡⟨ embed-id (F.suc x) ⟩
+        F.suc x
+      ∎
+  
 ----------------------------------------------
 -- The Characteristic Equations of `expand` --
 ----------------------------------------------
@@ -139,7 +180,7 @@ expand-cons'-var {At} {b} {n} Γ ψ (inj₁ x) x' refl = lem Γ ψ x where
       var (F.suc x)
     ≡⟨ cong (rename F.suc) (lem Γ ψ x) ⟩
       rename F.suc (expand Γ (sub-n' _ ψ (x F.↑ˡ suc n)))
-    ≡⟨ {! expand-rename F.suc Γ (sub-n' b ψ (x F.↑ˡ suc n)) !} ⟩ -- ought to be correct, depending on whether the type of expand-rename ends up bad
+    ≡⟨  expand-rename-suc Γ (sub-n' b ψ (x F.↑ˡ suc n)) ⟩
       expand Γ (sub-n' (suc b) ψ (F.suc x F.↑ˡ suc n))
     ∎ where open ≡-Reasoning
 expand-cons'-var Γ ψ (inj₂ y) x' refl = lem Γ ψ y where
