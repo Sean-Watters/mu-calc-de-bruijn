@@ -62,6 +62,24 @@ splitAt-idr F.zero = refl
 splitAt-idr (F.suc x) = cong (S.map₁ F.suc) (splitAt-idr x)
 
 
+rename-embed-inject : ∀ {At b n}
+                    → (θ : Thin b (suc b))
+                    → (ϕ : μML At n)
+                    → rename (embed (θ ⊗ Th.id n)) (inject-+ b ϕ) ≡ inject-+ (suc b) ϕ
+rename-embed-inject θ (μML₀ op) = refl
+rename-embed-inject θ (μML₁ op ϕ) = cong (μML₁ op) (rename-embed-inject θ ϕ)
+rename-embed-inject θ (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (rename-embed-inject θ ϕl) (rename-embed-inject θ ϕr)
+rename-embed-inject {b = b} {n} θ (μMLη op ϕ) = cong (μMLη op) $
+  begin
+    rename (ext (embed (θ ⊗ Th.id n))) (inject-+ b ϕ)
+  ≡⟨ rename-cong {!!} (inject-+ b ϕ) ⟩
+    rename (embed (θ ⊗ Th.id (suc n))) (inject-+ b ϕ)
+  ≡⟨ rename-embed-inject θ ϕ ⟩
+    inject-+ (suc b) ϕ
+  ∎ where open ≡-Reasoning
+rename-embed-inject θ (var x) = {!!} -- false! :( :(
+
+
 -------------------------------------
 -- `expand` Commutes with Renaming --
 -------------------------------------
@@ -75,13 +93,13 @@ expand-rename-var : ∀ {At b n}
                   → (θ : Thin b (suc b))
                   → (Γ : Scope At n) (x : Fin b ⊎ Fin n)
                   → rename (embed θ) (expand-var Γ x)
-                  ≡ expand-var Γ (S.map (embed θ) id x)
+                  ≡ expand-var Γ (S.map₁ (embed θ) x)
 
 expand-rename {b = b} {n} θ Γ (var x) =
   begin
     rename (embed θ) (expand Γ (var x))
   ≡⟨  expand-rename-var θ Γ (F.splitAt b x)  ⟩
-    expand-var Γ (S.map (embed θ) id (F.splitAt b x))
+    expand-var Γ (S.map₁ (embed θ) (F.splitAt b x))
   ≡⟨ cong (expand-var Γ) (splitAt-embed-⊗ θ x) ⟩
     expand-var Γ (F.splitAt (suc b) (embed (θ ⊗ Th.id n) x))
   ∎ where open ≡-Reasoning
@@ -99,8 +117,18 @@ expand-rename {n = n} θ Γ (μMLη op ϕ) = cong (μMLη op) $
     expand Γ (rename (ext (embed (θ ⊗ Th.id n))) ϕ)
   ∎ where open ≡-Reasoning
 
-expand-rename-var θ Γ (inj₁ x) = {!!}
-expand-rename-var θ Γ (inj₂ y) = {!!}
+expand-rename-var θ Γ (inj₁ x) = refl
+expand-rename-var {b = b} {suc n} θ (ϕ ,- Γ) (inj₂ F.zero) =
+  begin
+    rename (embed θ) (expand-var (ϕ ,- Γ) (inj₂ F.zero))
+  ≡⟨ expand-rename θ Γ (inject-+ b ϕ) ⟩
+    expand Γ (rename (embed (θ ⊗ Th.id n)) (inject-+ b ϕ))
+  ≡⟨ {!cong (expand Γ) (rename-embed-inject θ ϕ)!} ⟩ --uhhhh this smells bad D:
+    expand Γ (inject-+ (suc b) ϕ)
+  ≡⟨⟩
+    expand-var (ϕ ,- Γ) (S.map₁ (embed θ) (inj₂ F.zero))
+  ∎ where open ≡-Reasoning
+expand-rename-var θ (ϕ ,- Γ) (inj₂ (F.suc y)) = expand-rename-var θ Γ (inj₂ y)
 
 -- The special case we actually care about. Couldn't prove it directly because going under binders
 -- bumps `suc` up to `ext suc`.
