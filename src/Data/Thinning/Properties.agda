@@ -65,4 +65,9 @@ splitAt-embed-⊗ {b} {suc b'} {n} (pad θ) x =
     F.splitAt (suc b') (embed (pad θ ⊗ Th.id n) x)
   ∎ where open ≡-Reasoning
 
-
+-- embed commutes with ↑ʳ
+embed-↑ʳ : ∀ {i j k l} (θ1 : Thin i k) (θ2 : Thin j l) (x : F.Fin j)
+         → (embed (θ1 ⊗ θ2) (i F.↑ʳ x)) ≡ k F.↑ʳ (embed θ2 x)
+embed-↑ʳ end θ2 x = refl
+embed-↑ʳ (inj θ1) θ2 x = cong F.suc (embed-↑ʳ θ1 θ2 x)
+embed-↑ʳ (pad θ1) θ2 x = cong F.suc (embed-↑ʳ θ1 θ2 x)

@@ -31,6 +31,7 @@ ext : ∀ {n m} → Rename n m → Rename (suc n) (suc m)
 ext ρ F.zero = F.zero
 ext ρ (F.suc x) = F.suc (ρ x)
 
+
 -- Executing a renaming
 rename : ∀ {At n m} → Rename n m -- if we have an mapping of n vars to m vars...
         → μML At n → μML At m -- then we can rename n-terms to be m-terms.
@@ -415,10 +416,13 @@ strengthen = {!!}
 rename-preserves-fp : ∀ {At n m} → {ρ : Rename n m} → (ϕ : μML At n) → {{_ : IsFP ϕ}} → IsFP (rename ρ ϕ)
 rename-preserves-fp (μMLη op ϕ) = fp
 
-ext-embed : ∀ {i j} → (θ : Thin i j) → ext (embed θ) ≗ embed (inj θ)
-ext-embed θ F.zero = refl
-ext-embed θ (F.suc x) = refl
+ext∘embed : ∀ {i j} → (θ : Thin i j) → ext (embed θ) ≗ embed (inj θ)
+ext∘embed θ F.zero = refl
+ext∘embed θ (F.suc x) = refl
 
+embed-ext : ∀ {i j} {θ : Thin i j} {f : F.Fin i → F.Fin j} → embed θ ≗ f → embed (inj θ) ≗ ext f
+embed-ext p F.zero = refl
+embed-ext p (F.suc x) = cong F.suc (p x)
 
 --------------------------------------
 -- Other Properties of Substitution --

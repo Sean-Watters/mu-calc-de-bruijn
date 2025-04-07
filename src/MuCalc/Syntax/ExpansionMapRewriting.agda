@@ -31,13 +31,6 @@ open import MuCalc.Syntax.Substitution
 -- Definition of Expansion Map --
 ---------------------------------
 
-inject-+ : ∀ {At a} b → μML At a → μML At (b + a)
-inject-+ b (var x) = var (F.inject≤ x (m≤n+m _ b))
-inject-+ b (μML₀ op) = μML₀ op
-inject-+ b (μML₁ op ϕ) = μML₁ op (inject-+ b ϕ)
-inject-+ b (μML₂ op ϕl ϕr) = μML₂ op (inject-+ b ϕl) (inject-+ b ϕr)
-inject-+ b (μMLη op ϕ) = μMLη op (inject-+ b ϕ) -- via rewriting by +-suc
-
 expand : ∀ {At n b} → Scope At n → μML At (b + n) → μML At b
 expand-var : ∀ {At n b} → (Γ : Scope At n) → (x : Fin b ⊎ Fin n) → μML At b
 
@@ -48,7 +41,7 @@ expand Γ (μML₂ op ϕl ϕr) = μML₂ op (expand Γ ϕl) (expand Γ ϕr)
 expand {At} {n} {b} Γ (μMLη op ϕ) = μMLη op (expand Γ ϕ)
 
 expand-var Γ (inj₁ x) = var x -- BVs are left alone
-expand-var {n = suc n} {b = b} (ϕ ,- Γ) (inj₂ F.zero) = expand Γ (inject-+ b ϕ )
+expand-var {n = suc n} {b = b} (ϕ ,- Γ) (inj₂ F.zero) = expand Γ (rename (b F.↑ʳ_) ϕ )
 expand-var (ϕ ,- Γ) (inj₂ (F.suc y)) = expand-var Γ (inj₂ y)
 
 
@@ -62,28 +55,9 @@ splitAt-idr F.zero = refl
 splitAt-idr (F.suc x) = cong (S.map₁ F.suc) (splitAt-idr x)
 
 
-rename-embed-inject : ∀ {At b n}
-                    → (θ : Thin b (suc b))
-                    → (ϕ : μML At n)
-                    → rename (embed (θ ⊗ Th.id n)) (inject-+ b ϕ) ≡ inject-+ (suc b) ϕ
-rename-embed-inject θ (μML₀ op) = refl
-rename-embed-inject θ (μML₁ op ϕ) = cong (μML₁ op) (rename-embed-inject θ ϕ)
-rename-embed-inject θ (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (rename-embed-inject θ ϕl) (rename-embed-inject θ ϕr)
-rename-embed-inject {b = b} {n} θ (μMLη op ϕ) = cong (μMLη op) $
-  begin
-    rename (ext (embed (θ ⊗ Th.id n))) (inject-+ b ϕ)
-  ≡⟨ rename-cong {!!} (inject-+ b ϕ) ⟩
-    rename (embed (θ ⊗ Th.id (suc n))) (inject-+ b ϕ)
-  ≡⟨ rename-embed-inject θ ϕ ⟩
-    inject-+ (suc b) ϕ
-  ∎ where open ≡-Reasoning
-rename-embed-inject θ (var x) = {!!} -- false! :( :(
-
-
 -------------------------------------
 -- `expand` Commutes with Renaming --
 -------------------------------------
-
 
 expand-rename : ∀ {At b n}
               → (θ : Thin b (suc b)) -- generalisation of suc, ext suc, ext ext suc, etc
@@ -109,11 +83,11 @@ expand-rename θ Γ (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (expand-rename �
 expand-rename {n = n} θ Γ (μMLη op ϕ) = cong (μMLη op) $
   begin
     rename (ext (embed θ)) (expand Γ ϕ)
-  ≡⟨ rename-cong (ext-embed θ) (expand Γ ϕ) ⟩
+  ≡⟨ rename-cong (ext∘embed θ) (expand Γ ϕ) ⟩
     rename (embed (inj θ)) (expand Γ ϕ)
   ≡⟨ expand-rename (inj θ) Γ ϕ ⟩
     expand Γ (rename (embed (inj θ ⊗ Th.id n)) ϕ)
-  ≡⟨ cong (expand Γ) (rename-cong (ext-embed (θ ⊗ Th.id n)) ϕ) ⟨
+  ≡⟨ cong (expand Γ) (rename-cong (ext∘embed (θ ⊗ Th.id n)) ϕ) ⟨
     expand Γ (rename (ext (embed (θ ⊗ Th.id n))) ϕ)
   ∎ where open ≡-Reasoning
 
@@ -121,13 +95,22 @@ expand-rename-var θ Γ (inj₁ x) = refl
 expand-rename-var {b = b} {suc n} θ (ϕ ,- Γ) (inj₂ F.zero) =
   begin
     rename (embed θ) (expand-var (ϕ ,- Γ) (inj₂ F.zero))
-  ≡⟨ expand-rename θ Γ (inject-+ b ϕ) ⟩
-    expand Γ (rename (embed (θ ⊗ Th.id n)) (inject-+ b ϕ))
-  ≡⟨ {!cong (expand Γ) (rename-embed-inject θ ϕ)!} ⟩ --uhhhh this smells bad D:
-    expand Γ (inject-+ (suc b) ϕ)
+  ≡⟨ expand-rename θ Γ (rename (b F.↑ʳ_) ϕ) ⟩
+    expand Γ (rename (embed (θ ⊗ Th.id n)) (rename (b F.↑ʳ_) ϕ))
+  ≡⟨ cong (expand Γ) (rename-fusion (λ x → trans (embed-↑ʳ θ (Th.id n) x) (cong (λ z → F.suc (b F.↑ʳ z)) (embed-id x))) ϕ) ⟩
+    expand Γ (rename (F.suc ∘ (b F.↑ʳ_)) ϕ)
   ≡⟨⟩
     expand-var (ϕ ,- Γ) (S.map₁ (embed θ) (inj₂ F.zero))
   ∎ where open ≡-Reasoning
+
+  -- begin
+  --   rename (embed θ) (expand-var (ϕ ,- Γ) (inj₂ F.zero))
+  -- ≡⟨ expand-rename θ Γ (inject-+ b ϕ) ⟩
+  --   expand Γ (rename (embed (θ ⊗ Th.id n)) (inject-+ b ϕ))
+  -- ≡⟨ {!cong (expand Γ) (rename-embed-inject θ ϕ)!} ⟩ --uhhhh this smells bad D:
+  --   expand-var (ϕ ,- Γ) (S.map₁ (embed θ) (inj₂ F.zero))
+  -- ∎ where open ≡-Reasoning
+
 expand-rename-var θ (ϕ ,- Γ) (inj₂ (F.suc y)) = expand-rename-var θ Γ (inj₂ y)
 
 -- The special case we actually care about. Couldn't prove it directly because going under binders
@@ -154,7 +137,7 @@ expand-rename-suc {b = b} {n} Γ ϕ =
       ≡⟨ embed-id (F.suc x) ⟩
         F.suc x
       ∎
-  
+
 ----------------------------------------------
 -- The Characteristic Equations of `expand` --
 ----------------------------------------------
