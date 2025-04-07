@@ -328,86 +328,6 @@ substitution-lemma : ∀ {At i} (ϕ : μML At (2+ i)) (ψ : μML At (suc i)) (ξ
                    → (ϕ [ ψ ]) [ ξ ] ≡ (ϕ [ ξ ]') [ ψ [ ξ ] ]
 substitution-lemma ϕ ψ ξ = sub-comm (sub₀ ξ) ϕ ψ
 
----------------------------------
--- Weakening and Strengthening --
----------------------------------
-
-{-
--- Thinnings!
--- AKA monotone embedding of Fin i to Fin j.
--- AKA bit vectors.
-data Thin : ℕ → ℕ → Set where
-  inj : ∀ {i j} → Thin i j → Thin (suc i) (suc j) -- 1 ∷_
-  pad : ∀ {i j} → Thin i j → Thin i (suc j)       -- 0 ∷_
-  end : Thin 0 0                                   -- ε
-
--- The identity thinning; all 1's.
-full : ∀ {i} → Thin i i
-full {zero} = end
-full {suc i} = inj full
-
--- Turning a thinning into an actual embedding of variables
-embed : {i j : ℕ} → Thin i j → Fin i → Fin j
-embed (inj θ) F.zero = F.zero
-embed (inj θ) (F.suc x) = F.suc (embed θ x)
-embed (pad θ) x = F.suc (embed θ x)
-
--- The identity thinning really is identity
-embed-full : ∀ {i} (x : Fin i) → embed full x ≡ x
-embed-full F.zero = refl
-embed-full (F.suc x) = cong F.suc (embed-full x)
-
-weaken : ∀ {At i j} → Thin i j → μML At i → μML At j
-weaken θ = rename (embed θ)
-
-weaken₁ : ∀ {At i} → μML At i → μML At (suc i)
-weaken₁ = weaken (pad full)
-
--- Paths through formulas to variables
-data VarOccurs {At : Set} {n : ℕ} (x : Fin n) : (ϕ : μML At n) → Set where
-  here  : VarOccurs x (var x)
-  down  : ∀ {op ϕ} → VarOccurs x ϕ → VarOccurs x (μML₁ op ϕ)
-  left  : ∀ {op ϕ ψ} → VarOccurs x ϕ → VarOccurs x (μML₂ op ϕ ψ)
-  right : ∀ {op ϕ ψ} → VarOccurs x ψ → VarOccurs x (μML₂ op ϕ ψ)
-  under : ∀ {op ϕ} → VarOccurs (F.suc x) ϕ → VarOccurs x (μMLη op ϕ) -- increment when traversing a binder
-
--- Either a variable doesn't occur, or we can find a path to where it does.
-var-occurs? : ∀ {At n} (x : Fin n) (ϕ : μML At n) → Dec (VarOccurs x ϕ)
-var-occurs? x (var y) = map′ (λ {refl → here}) (λ { here → refl}) (x F.≟ y)
-var-occurs? x (μML₀ op) = no (λ ())
-var-occurs? x (μML₁ op ϕ) = map′ down (λ {(down p) → p}) (var-occurs? x ϕ)
-var-occurs? x (μML₂ op ϕ ψ) with var-occurs? x ϕ | var-occurs? x ψ
-... | yes p | _ = yes (left p)
-... | no ¬p | yes q = yes (right q)
-... | no ¬p | no ¬q = no λ { (left p) → ¬p p ; (right q) → ¬q q}
-var-occurs? x (μMLη op ϕ) = map′ under (λ {(under p) → p}) (var-occurs? (F.suc x) ϕ)
-
--- Whether a given variable supported (marked as inj) by a thinning
-data Supported : {i j : ℕ} → Thin i j → Fin j → Set where
-  here : ∀ {i j} {θ : Thin i j} → Supported (inj θ) F.zero
-  there-k : ∀ {i j} {θ : Thin i j} {x : Fin j} → Supported θ x → Supported (inj θ) (F.suc x)
-  there-d : ∀ {i j} {θ : Thin i j} {x : Fin j} → Supported θ x → Supported (pad θ) (F.suc x)
--}
-
-{-
--- The support of a formula is the number of free variables that actually occur, not just
--- the number that are in scope. We can traverse a formula to compute its support.
--- Even better than knowing the mere number is having a thinning that tells us /which/
--- variables occur.
-support-size : ∀ {At n} → μML At n → ℕ
-support : ∀ {At n} → (ϕ : μML At n) → Thin (support-size ϕ) n
-
-support-size ϕ = {!!}
-support = {!!}
-
-support-occurs? : ∀ {At n} → (ϕ : μML At n) → Dec (∀ (x : Fin n) → Supported (support ϕ) x → VarOccurs x ϕ)
-support-occurs? = {!!}
-
--- We can strengthen the scope of any formula to at most the size of its support.
-strengthen : ∀ {At i j} → Thin i j → (ϕ : μML At j) → Thin (support-size ϕ) i → μML At i
-strengthen = {!!}
-
--}
 
 ----------------------------------
 -- Other Properties of Renaming --
@@ -424,24 +344,23 @@ embed-ext : ∀ {i j} {θ : Thin i j} {f : F.Fin i → F.Fin j} → embed θ ≗
 embed-ext p F.zero = refl
 embed-ext p (F.suc x) = cong F.suc (p x)
 
+ext-id : ∀ {i} → ext {i} id ≗ id
+ext-id F.zero = refl
+ext-id (F.suc x) = refl
+
+rename-id : ∀ {At n} → (ϕ : μML At n) → rename id ϕ ≡ ϕ
+rename-id (var x) = refl
+rename-id (μML₀ op) = refl
+rename-id (μML₁ op ϕ) = cong (μML₁ op) (rename-id ϕ)
+rename-id (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (rename-id ϕl) (rename-id ϕr)
+rename-id (μMLη op ϕ) = cong (μMLη op) (trans (rename-cong ext-id ϕ) (rename-id ϕ))
+
+
 --------------------------------------
 -- Other Properties of Substitution --
 --     (and related machinery)      --
 --------------------------------------
 
-
-{-
-subs-agree : ∀ {At n m}
-           → (σ θ : Subst At n m) -- Given two substitutions...
-           → (ϕ : μML At n) -- and some formula...
-           → (∀ {x} → VarOccurs x ϕ → σ x ≡ θ x) -- if the two substitutions agree on all of those variables that occur in the formula...
-           → sub σ ϕ ≡ sub θ ϕ -- Then the substitutions really do agree for that formula.
-subs-agree σ θ (var x) eq = eq here
-subs-agree σ θ (μML₀ op) eq = refl
-subs-agree σ θ (μML₁ op ϕ) eq = cong (μML₁ op) (subs-agree σ θ ϕ (λ [x] → eq (down [x])))
-subs-agree σ θ (μML₂ op ϕ ψ) eq = cong₂ (μML₂ op) (subs-agree σ θ ϕ (λ [x] → eq (left [x]))) (subs-agree σ θ ψ λ [x] → eq (right [x]))
-subs-agree σ θ (μMLη op ϕ) eq = cong (μMLη op) (subs-agree (exts σ) (exts θ) ϕ (λ { {F.zero} [x] → refl ; {F.suc x} [x] → cong (rename F.suc) (eq (under [x]))}))
--}
 
 ids-ext : ∀ {At n} {σ : Subst At n n} → σ ≗ ids → (exts σ ≗ ids)
 ids-ext eq F.zero = refl
@@ -455,36 +374,4 @@ sub-id (μML₁ op ϕ) eq = cong (μML₁ op) (sub-id ϕ eq)
 sub-id (μML₂ op ϕ ψ) eq = cong₂ (μML₂ op) (sub-id ϕ eq) (sub-id ψ eq)
 sub-id (μMLη op ϕ) eq = cong (μMLη op) (sub-id ϕ (ids-ext eq))
 
-
-
-{-
--- Weakened id substitutions
-Weakids : ∀ {At i j} → Thin i j → Subst At i j
-Weakids θ x = weaken θ (var x)
--}
-
-{-
--- Weakening (by 1) and substitution commute.
-sub-weaken : ∀ {At i j} → (σ : Subst At i j) (ϕ : μML At i)
-           → (sub (exts σ) (weaken₁ ϕ)) ≡ weaken₁ (sub σ ϕ)
-sub-weaken σ ϕ = {!!}
-
--- Putting all the above together in the special case of a single substitution:
--- If the variable being substituted doesn't appear, the substitution is identity(ish)
-sub-trivial : ∀ {At n}
-            → (ϕ : μML At (suc n)) (δ : μML At n)
-            → (p : ¬ (VarOccurs F.zero ϕ))
-            → weaken₁ (ϕ [ δ ]) ≡ ϕ
-sub-trivial ϕ δ p = begin
-  weaken₁ (ϕ [ δ ])
-  ≡⟨ (sym $ sub-weaken (sub₀ δ) ϕ) ⟩
-  sub (exts (sub₀ δ)) (weaken₁ ϕ)
-  ≡⟨ {!subs-agree!} ⟩
-  sub {!ids!} (weaken₁ ϕ) -- does there exist an identityish subst with this type? If not, need a version of subs-agree for weakenings which would subsume these two steps
-  ≡⟨ {!substid-weaken!} ⟩
-  sub ids ϕ
-  ≡⟨ sub-id ϕ (λ _ → refl) ⟩
-  ϕ
-  ∎ where open ≡-Reasoning
--}
 

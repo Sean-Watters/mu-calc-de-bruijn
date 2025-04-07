@@ -102,15 +102,6 @@ expand-rename-var {b = b} {suc n} θ (ϕ ,- Γ) (inj₂ F.zero) =
   ≡⟨⟩
     expand-var (ϕ ,- Γ) (S.map₁ (embed θ) (inj₂ F.zero))
   ∎ where open ≡-Reasoning
-
-  -- begin
-  --   rename (embed θ) (expand-var (ϕ ,- Γ) (inj₂ F.zero))
-  -- ≡⟨ expand-rename θ Γ (inject-+ b ϕ) ⟩
-  --   expand Γ (rename (embed (θ ⊗ Th.id n)) (inject-+ b ϕ))
-  -- ≡⟨ {!cong (expand Γ) (rename-embed-inject θ ϕ)!} ⟩ --uhhhh this smells bad D:
-  --   expand-var (ϕ ,- Γ) (S.map₁ (embed θ) (inj₂ F.zero))
-  -- ∎ where open ≡-Reasoning
-
 expand-rename-var θ (ϕ ,- Γ) (inj₂ (F.suc y)) = expand-rename-var θ Γ (inj₂ y)
 
 -- The special case we actually care about. Couldn't prove it directly because going under binders
@@ -167,6 +158,20 @@ expand-nil (μML₁ op ϕ) = cong (μML₁ op) (expand-nil ϕ)
 expand-nil (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (expand-nil ϕl) (expand-nil ϕr)
 expand-nil (μMLη op ϕ) = cong (μMLη op) (expand-nil ϕ)
 
+-- Single substition and scope injection commute in the following way.
+-- The type requires rewriting by +-suc
+sub-n-↑ʳ : ∀ {At n} (k : ℕ) → (ϕ : μML At n) → (x : Fin (suc n))
+         → rename (k F.↑ʳ_) (sub₀ ϕ x) ≡ sub-n' k ϕ (k F.↑ʳ x)
+sub-n-↑ʳ zero ϕ x = rename-id _
+sub-n-↑ʳ (suc k) ϕ x =
+  begin
+    rename (suc k F.↑ʳ_) (sub₀ ϕ x)
+  ≡⟨ rename-fusion (λ _ → refl) (sub₀ ϕ x) ⟨
+    rename F.suc (rename (F._↑ʳ_ k) (sub₀ ϕ x))
+  ≡⟨ cong (rename F.suc) (sub-n-↑ʳ k ϕ x) ⟩
+    sub-n' (suc k) ϕ (suc k F.↑ʳ x)
+  ∎ where open ≡-Reasoning
+
 
 expand-cons' : ∀ {At b n} (Γ : Scope At n) (ψ : μML At n)
              → (ϕ : μML At ((suc b) + n))
@@ -194,11 +199,16 @@ expand-cons'-var {At} {b} {n} Γ ψ (inj₁ x) x' refl = lem Γ ψ x where
     ≡⟨  expand-rename-suc Γ (sub-n' b ψ (x F.↑ˡ suc n)) ⟩
       expand Γ (sub-n' (suc b) ψ (F.suc x F.↑ˡ suc n))
     ∎ where open ≡-Reasoning
-expand-cons'-var Γ ψ (inj₂ y) x' refl = lem Γ ψ y where
-  lem : ∀ {At b n} (Γ : Scope At n) (ψ : μML At n) (y : Fin (suc n))
+expand-cons'-var Γ ψ (inj₂ y) x' refl = lem1 Γ ψ y  where
+  lem2 : ∀ {At b n} → (Γ : Scope At n) (ψ : μML At n) (y : Fin (suc n))
+       → expand-var (ψ ,- Γ) (inj₂ y) ≡ expand Γ (rename (F._↑ʳ_ b) (sub₀ ψ y))
+  lem2 Γ ψ F.zero = refl
+  lem2 {b = b} Γ ψ (F.suc y) = sym $ cong (expand-var Γ) (splitAt-↑ʳ b _ y)
+
+  lem1 : ∀ {At b n} → (Γ : Scope At n) (ψ : μML At n) (y : Fin (suc n))
       → expand-var (ψ ,- Γ) (inj₂ y) ≡ expand Γ (sub-n' b ψ (b F.↑ʳ y))
-  lem Γ ψ F.zero = {!looks achievable!}
-  lem Γ ψ (F.suc y) = {!wheres the recursive call? does this need a different strategy?!}
+  lem1 {b = b} Γ ψ y = trans (lem2 Γ ψ y) (cong (expand Γ) (sub-n-↑ʳ b ψ y)) -- idea: we're only substituting an `n` variable, so the `b` doesnt matter
+
 
 -- When b=0, we get the special case for single substution, which is the characteristic equation we want.
 expand-cons : ∀ {At n} (Γ : Scope At n) (ψ : μML At n) (ϕ : μML At (suc n))
