@@ -22,8 +22,7 @@ open import MuCalc.Syntax.Substitution
 -- Rewrite Rules --
 -------------------
 
-{-# BUILTIN REWRITE _≡_ #-}
-{-# REWRITE +-identityʳ +-suc #-}
+open import Rewrite.Plus
 
 -- NB: Rewrite rules are directed, so these will only replace occurrences of the LHS.
 
