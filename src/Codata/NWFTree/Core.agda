@@ -75,8 +75,6 @@ _~_ :  ∞NWFTree X → ∞NWFTree X → Set
 s ~ t = ∞Pointwise _≡_ s t
 
 -- Bisimilarity Extensionality.
--- True in OTT and HoTT(?), but not plain MLTT.
--- We may at some point need to postulate this.
 BisimExt : Set → Set
 BisimExt X = ∀ {s t : ∞NWFTree X} → s ~ t → s ≡ t
 

@@ -15,7 +15,6 @@ open import Relation.Binary.PropositionalEquality hiding ([_])
 open import Relation.Nullary using (Irrelevant; Dec; yes; no)
 
 open import MuCalc.Base
-open import MuCalc.Syntax.Subformula
 open import MuCalc.Syntax.Substitution
 
 -------------------
@@ -239,10 +238,11 @@ sub-expand op (ψ ,- Γ) ϕ =
     expand Γ ((ϕ [ ψ ]') [ μMLη op ϕ [ ψ ] ])
   ≡⟨ cong (expand Γ) (sym $ substitution-lemma ϕ (μMLη op ϕ) ψ) ⟩
     expand Γ ((ϕ [ μMLη op ϕ ]) [ ψ ])
-  ≡⟨ (sym $ expand-cons Γ ψ (ϕ [ μMLη op ϕ ])) ⟩
+  ≡⟨ expand-cons Γ ψ (ϕ [ μMLη op ϕ ]) ⟨
     expand (ψ ,- Γ) (ϕ [ μMLη op ϕ ])
   ∎ where open ≡-Reasoning
 
+-- And in particular, the unfold of an expand is an expand.
 unfold-expand : ∀ {At n} op (Γ : Scope At n) (ϕ : μML At (suc n))
               → unfold (μMLη op (expand Γ ϕ)) ≡ expand (μMLη op ϕ ,- Γ) ϕ
 unfold-expand op Γ ϕ =
@@ -250,6 +250,6 @@ unfold-expand op Γ ϕ =
     unfold (μMLη op (expand Γ ϕ))
   ≡⟨ sub-expand op Γ ϕ ⟩
     expand Γ (ϕ [ μMLη op ϕ ])
-  ≡⟨ (sym $ expand-cons Γ (μMLη op ϕ) ϕ) ⟩
+  ≡⟨ expand-cons Γ (μMLη op ϕ) ϕ ⟨
     expand (μMLη op ϕ ,- Γ) ϕ
   ∎ where open ≡-Reasoning
