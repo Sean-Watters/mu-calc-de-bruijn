@@ -65,7 +65,7 @@ T.tree (closure (μMLη op ϕ)) = nodeη op (closure (unfold (μMLη op ϕ)))
 -- Everything reachable via the closure algorithm is in the
 -- closure relation.
 closure-sound : ∀ {At} (ξ : μML At 0) {ϕ : μML At 0}
-                → (ϕ ∈ closure ξ) → (ϕ ∈-Closure ξ)
+                → (ϕ T.∈ closure ξ) → (ϕ ∈-Closure ξ)
 closure-sound ξ (here refl) = ε
 closure-sound (μML₁ op ξ) (there (node1 p)) = down op ξ ◅ (closure-sound ξ p)
 closure-sound (μML₂ op ξl ξr) (there (node2l p)) = left  op ξl ξr ◅ (closure-sound ξl p)
@@ -75,8 +75,8 @@ closure-sound (μMLη op ξ) (there (nodeη p)) = thru (μMLη op ξ) ◅ (closu
 -- And the other direction.
 -- Every formula in the closure is reached by the algorithm.
 closure-complete : ∀ {At} (ξ : μML At 0) {ϕ : μML At 0}
-                 → (ϕ ∈-Closure ξ) → (ϕ ∈ closure ξ)
-closure-complete ξ ε = here refl
+                 → (ϕ ∈-Closure ξ) → (ϕ T.∈ closure ξ)
+closure-complete ξ ε = T.here refl
 closure-complete (μML₁ op ξ) (down .op .ξ ◅ pxs) = there (node1 (closure-complete ξ pxs))
 closure-complete (μML₂ op ξl ξr) (left .op .ξl .ξr ◅ pxs) = there (node2l (closure-complete ξl pxs))
 closure-complete (μML₂ op ξl ξr) (right .op .ξl .ξr ◅ pxs) = there (node2r (closure-complete ξr pxs))
@@ -124,7 +124,7 @@ data IsClosure {At : Set} {n : ℕ} (Γ : Scope At n) : μML At n → R.Tree (μ
 -- Coherence between scopes of formulas and scopes of rational trees.
 data ScCoh {At : Set} : ∀ {n} → Scope At n → R.Scope (μML At 0) n → Set where
   [] : ScCoh [] []
-  _,-_ : ∀ {n} {Γ : Scope At n} {Γ₀ : μML At n} {{_ : IsFP Γ₀}} {Δ : R.Scope (μML At 0) n} {Δ₀ : R.Tree (μML At 0) n}
+  _,-_ : ∀ {n} {Γ : Scope At n} {Γ₀ : μML At n} {{_ : IsFP Γ₀}} {Δ : R.Scope (μML At 0) n} {Δ₀ : R.Tree (μML At 0) n} {{_ : NonVar Δ₀}}
        → IsClosure Γ Γ₀ Δ₀ → ScCoh Γ Δ → ScCoh (Γ₀ ,- Γ) (Δ₀ ,- Δ)
 
 -- The rational tree produced has the same shape as the formula
@@ -188,6 +188,7 @@ rclos-bisim-tree {At} {n} {Γ} {Δ} Γ≈Δ (μMLη op ξ) (nodeη .op cl)
 
 -- -- Very interesting - using this DSL style broke termination checking. Rewrite to the rescue!
 -- -- Good thing we didn't need to chain bisim proofs together...
+-- -- I guess the problem was nesting the DSL proof inside a larger proof.
 -- = nodeη $
 --     begin
 --       closure (unfold (μMLη op (expand Γ ξ)))
@@ -214,3 +215,7 @@ rclos-bisim-sentence {At} ξ =
   ~⟨  rclos-bisim [] ξ (rational-closure-IsClosure [] ξ)  ⟩
     R.unfold [] (rational-closure [] ξ)
   ∎ where open T.bisim-Reasoning (μML At 0)
+
+----------------------------------------------------
+-- Correctness for the Rational Closure Algorithm --
+----------------------------------------------------

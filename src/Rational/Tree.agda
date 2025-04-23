@@ -1,12 +1,13 @@
 {-# OPTIONS --safe --guardedness #-}
 module Rational.Tree where
 
-open import Data.Nat
+open import Data.Nat as N
 open import Data.Fin hiding (_-_) renaming (_ℕ-ℕ_ to _-_)
 open import Function using (_$_)
+open import Relation.Binary.PropositionalEquality
 
 open import MuCalc.Base using (Op₁; Op₂; Opη)
-open import Codata.NWFTree as T hiding (Eventually; head; tree)
+open import Codata.NWFTree as T hiding (Eventually; head; tree; _∈_; here)
 
 -- Rational trees, presented as a syntax with binding in the style of Hamana.
 -- Variables denote backedges.
@@ -17,6 +18,13 @@ data Tree (X : Set) (n : ℕ) : Set where
   node2 : Op₂ → X → Tree X n → Tree X n → Tree X n
   nodeη : Opη → X → Tree X (suc n) → Tree X n
 
+data NonVar {X : Set} {n : ℕ} : Tree X n → Set where
+  instance leaf : ∀ {x} → NonVar (leaf x)
+  instance node1 : ∀ {op x} → {t : Tree X n} → NonVar (node1 op x t)
+  instance node2 : ∀ {op x} → {tl tr : Tree X n} → NonVar (node2 op x tl tr)
+  instance nodeη : ∀ {op x} → {t : Tree X (suc n)} → NonVar (nodeη op x t)
+
+
 ------------
 -- Scopes --
 ------------
@@ -25,7 +33,7 @@ data Tree (X : Set) (n : ℕ) : Set where
 -- This is *begging* for abstraction, look how similar it was to the scopes for formulas!
 data Scope (X : Set) : ℕ → Set where
   [] : Scope X zero
-  _,-_ : ∀ {n} → (t : Tree X n) (Γ₀ : Scope X n) → Scope X (suc n)
+  _,-_ : ∀ {n} → (t : Tree X n) → {{_ : NonVar t}} → (Γ₀ : Scope X n) → Scope X (suc n)
 
 -- Scope extension
 ext : ∀ {n m} → (Fin n → Fin m)
@@ -65,6 +73,7 @@ unwind (ϕ ,- Γ) (suc x) = unwind Γ x
 -- *Inductive* flavoured Any that *doesn't follow backedges*.
 -- This is *not* Eventually for RTrees.
 data Any {X : Set} (P : X → Set) : ∀ {n} → Tree X n → Set where
+  leaf    : ∀ {x n}                         → P x     → Any P {n} (leaf x)
   here1   : ∀ {op x n} {t : Tree X n}       → P x     → Any P (node1 op x t)
   there1  : ∀ {op x n} {t : Tree X n}       → Any P t → Any P (node1 op x t)
   here2   : ∀ {op x n} {l r : Tree X n}     → P x     → Any P (node2 op x l r)
@@ -78,6 +87,7 @@ data Any {X : Set} (P : X → Set) : ∀ {n} → Tree X n → Set where
 -- *doesn't* loop another variable -- ie, an Any).
 data Eventually {X : Set} (P : X → Set) : ∀ {n} → (Γ : Scope X n) → Tree X n → Set where
   loop    : ∀ {n} {x : Fin n} {Γ : Scope X n}               → Any P (lookup Γ x) → Eventually P Γ (loop x)
+  leaf    : ∀ {x n} {Γ : Scope X n}                         → P x                → Eventually P Γ (leaf x)
   here1   : ∀ {op x n} {Γ : Scope X n} {t : Tree X n}       → P x                → Eventually P Γ (node1 op x t)
   there1  : ∀ {op x n} {Γ : Scope X n} {t : Tree X n}       → Eventually P Γ t   → Eventually P Γ (node1 op x t)
   here2   : ∀ {op x n} {Γ : Scope X n} {l r : Tree X n}     → P x                → Eventually P Γ (node2 op x l r)
@@ -85,6 +95,9 @@ data Eventually {X : Set} (P : X → Set) : ∀ {n} → (Γ : Scope X n) → Tre
   there2r : ∀ {op x n} {Γ : Scope X n} {l r : Tree X n}     → Eventually P Γ r   → Eventually P Γ (node2 op x l r)
   hereη   : ∀ {op x n} {Γ : Scope X n} {t : Tree X (suc n)} → P x                → Eventually P Γ (nodeη op x t)
   thereη  : ∀ {op x n} {Γ : Scope X n} {t : Tree X (suc n)} → Eventually P (nodeη op x t ,- Γ) t → Eventually P Γ (nodeη op x t)
+
+_∈_ : {X : Set} → X → Tree X 0 → Set
+x ∈ t = Eventually (_≡ x) [] t
 
 ----------------------------
 -- Unfolding to NWF Trees --
@@ -110,3 +123,74 @@ tree (t ,- Γ) (loop (suc x)) = tree Γ (loop x)
 
 T.head (unfold Γ t) = head Γ t
 T.tree (unfold Γ t) = tree Γ t
+
+----------------
+-- Operations --
+----------------
+
+size : ∀ {X n} → Tree X n → ℕ
+size (loop x) = 0
+size (leaf x) = 1
+size (node1 _ _ t) = suc (size t)
+size (node2 _ _ tl tr) = suc (size tl N.+ size tr)
+size (nodeη _ _ t) = suc (size t)
+
+
+---------------------------------
+-- `here` for Any & Eventually --
+---------------------------------
+
+-- `here` for Any
+here-any : ∀ {X n x} {P : X → Set} (Γ : Scope X n) (t : Tree X n)
+         → {{_ : NonVar t}}
+         → P x → x ≡ head Γ t → Any P t
+here-any Γ (leaf x) px refl = leaf px
+here-any Γ (node1 x x₁ t) px refl = here1 px
+here-any Γ (node2 x x₁ t t₁) px refl = here2 px
+here-any Γ (nodeη x x₁ t) px refl = hereη px
+
+rescope-NonVar : ∀ {X n m} (ρ : Fin n → Fin m) (t : Tree X n) → NonVar t → NonVar (rescope ρ t)
+rescope-NonVar ρ (leaf x₁) x = leaf
+rescope-NonVar ρ (node1 x₁ x₂ t) x = node1
+rescope-NonVar ρ (node2 x₁ x₂ t t₁) x = node2
+rescope-NonVar ρ (nodeη x₁ x₂ t) x = nodeη
+
+lookup-NonVar : ∀ {X n} → (Γ : Scope X n) → (x : Fin n) → NonVar (lookup Γ x)
+lookup-NonVar (_,-_ t {{p}} Γ) zero = rescope-NonVar suc t p
+lookup-NonVar (t ,- Γ) (suc x) = rescope-NonVar suc (lookup Γ x) (lookup-NonVar Γ x)
+
+head-rescope : ∀ {X n} → (Γ : Scope X n) (t : Tree X n) {{_ : NonVar t}} → head Γ t ≡ head (t ,- Γ) (rescope suc t)
+head-rescope Γ (leaf x) = refl
+head-rescope Γ (node1 x x₁ t) = refl
+head-rescope Γ (node2 x x₁ t t₁) = refl
+head-rescope Γ (nodeη x x₁ t) = refl
+
+
+head-rescope-suc : ∀ {X n} (a b : Tree X n) {{_ : NonVar a}} {{_ : NonVar b}} (Γ : Scope X n) (t : Tree X n) → head (a ,- Γ) (rescope suc t) ≡ head (b ,- Γ) (rescope suc t)
+head-rescope-suc a b Γ (loop x) = refl
+head-rescope-suc a b Γ (leaf x) = refl
+head-rescope-suc a b Γ (node1 x x₁ t) = refl
+head-rescope-suc a b Γ (node2 x x₁ t t₁) = refl
+head-rescope-suc a b Γ (nodeη x x₁ t) = refl
+
+head-loop : ∀ {X n} → (Γ : Scope X n) (x : Fin n) → head Γ (loop x) ≡  head Γ (lookup Γ x)
+head-loop (t ,- Γ) zero = head-rescope Γ t
+head-loop (t ,- Γ) (suc x) =
+  begin
+    head (t ,- Γ) (loop (suc x))
+  ≡⟨ head-loop Γ x ⟩
+    head Γ (lookup Γ x)
+  ≡⟨ head-rescope Γ (lookup Γ x) {{lookup-NonVar Γ x}}  ⟩
+    head _ (rescope suc (lookup Γ x))
+  ≡⟨ head-rescope-suc (lookup Γ x) t {{lookup-NonVar Γ x}} Γ (lookup Γ x) ⟩
+    head (t ,- Γ) (lookup (t ,- Γ) (suc x))
+  ∎ where open ≡-Reasoning
+
+-- `here` for Eventually
+here : ∀ {X n x} {P : X → Set} (Γ : Scope X n) (t : Tree X n)
+     → P x → x ≡ head Γ t → Eventually P Γ t
+here Γ (loop x) px refl = loop (here-any Γ (lookup Γ x) {{lookup-NonVar Γ x}} px (head-loop Γ x))
+here Γ (leaf x) px refl = leaf px
+here Γ (node1 x x₁ t) px refl = here1 px
+here Γ (node2 x x₁ t t₁) px refl = here2 px
+here Γ (nodeη x x₁ t) px refl = hereη px
