@@ -66,34 +66,21 @@ unwind : ∀ {X n} → (Γ : Scope X n) → (x : Fin n) → Scope X (n - (suc x)
 unwind (ϕ ,- Γ) zero = Γ
 unwind (ϕ ,- Γ) (suc x) = unwind Γ x
 
---------------------
--- Any/Eventually --
---------------------
+----------------
+-- Eventually --
+----------------
 
--- *Inductive* flavoured Any that *doesn't follow backedges*.
--- This is *not* Eventually for RTrees.
-data Any {X : Set} (P : X → Set) : ∀ {n} → Tree X n → Set where
-  leaf    : ∀ {x n}                         → P x     → Any P {n} (leaf x)
-  here1   : ∀ {op x n} {t : Tree X n}       → P x     → Any P (node1 op x t)
-  there1  : ∀ {op x n} {t : Tree X n}       → Any P t → Any P (node1 op x t)
-  here2   : ∀ {op x n} {l r : Tree X n}     → P x     → Any P (node2 op x l r)
-  there2l : ∀ {op x n} {l r : Tree X n}     → Any P l → Any P (node2 op x l r)
-  there2r : ∀ {op x n} {l r : Tree X n}     → Any P r → Any P (node2 op x l r)
-  hereη   : ∀ {op x n} {t : Tree X (suc n)} → P x     → Any P (nodeη op x t)
-  thereη  : ∀ {op x n} {t : Tree X (suc n)} → Any P t → Any P (nodeη op x t)
-
--- Eventually for RTrees. Either we find a path to it in the inductive structure,
--- or we find a path to a variable and then a path from the landing point (which
--- *doesn't* loop another variable -- ie, an Any).
+-- This is clearly not prop-valued, because we can follow loops as often as we like. But that's good, as it
+-- makes this definition line up 1:1 with Eventually for NWF trees.
 data Eventually {X : Set} (P : X → Set) : ∀ {n} → (Γ : Scope X n) → Tree X n → Set where
-  loop    : ∀ {n} {x : Fin n} {Γ : Scope X n}               → Any P (lookup Γ x) → Eventually P Γ (loop x)
-  leaf    : ∀ {x n} {Γ : Scope X n}                         → P x                → Eventually P Γ (leaf x)
-  here1   : ∀ {op x n} {Γ : Scope X n} {t : Tree X n}       → P x                → Eventually P Γ (node1 op x t)
-  there1  : ∀ {op x n} {Γ : Scope X n} {t : Tree X n}       → Eventually P Γ t   → Eventually P Γ (node1 op x t)
-  here2   : ∀ {op x n} {Γ : Scope X n} {l r : Tree X n}     → P x                → Eventually P Γ (node2 op x l r)
-  there2l : ∀ {op x n} {Γ : Scope X n} {l r : Tree X n}     → Eventually P Γ l   → Eventually P Γ (node2 op x l r)
-  there2r : ∀ {op x n} {Γ : Scope X n} {l r : Tree X n}     → Eventually P Γ r   → Eventually P Γ (node2 op x l r)
-  hereη   : ∀ {op x n} {Γ : Scope X n} {t : Tree X (suc n)} → P x                → Eventually P Γ (nodeη op x t)
+  loop    : ∀ {n} {x : Fin n} {Γ : Scope X n} → Eventually P Γ (lookup Γ x) → Eventually P Γ (loop x)
+  leaf    : ∀ {x n} {Γ : Scope X n} → P x → Eventually P Γ (leaf x)
+  here1   : ∀ {op x n} {Γ : Scope X n} {t : Tree X n} → P x → Eventually P Γ (node1 op x t)
+  there1  : ∀ {op x n} {Γ : Scope X n} {t : Tree X n} → Eventually P Γ t   → Eventually P Γ (node1 op x t)
+  here2   : ∀ {op x n} {Γ : Scope X n} {l r : Tree X n} → P x → Eventually P Γ (node2 op x l r)
+  there2l : ∀ {op x n} {Γ : Scope X n} {l r : Tree X n} → Eventually P Γ l → Eventually P Γ (node2 op x l r)
+  there2r : ∀ {op x n} {Γ : Scope X n} {l r : Tree X n} → Eventually P Γ r → Eventually P Γ (node2 op x l r)
+  hereη   : ∀ {op x n} {Γ : Scope X n} {t : Tree X (suc n)} → P x → Eventually P Γ (nodeη op x t)
   thereη  : ∀ {op x n} {Γ : Scope X n} {t : Tree X (suc n)} → Eventually P (nodeη op x t ,- Γ) t → Eventually P Γ (nodeη op x t)
 
 _∈_ : {X : Set} → X → Tree X 0 → Set
@@ -140,14 +127,14 @@ size (nodeη _ _ t) = suc (size t)
 -- `here` for Any & Eventually --
 ---------------------------------
 
--- `here` for Any
-here-any : ∀ {X n x} {P : X → Set} (Γ : Scope X n) (t : Tree X n)
-         → {{_ : NonVar t}}
-         → P x → x ≡ head Γ t → Any P t
-here-any Γ (leaf x) px refl = leaf px
-here-any Γ (node1 x x₁ t) px refl = here1 px
-here-any Γ (node2 x x₁ t t₁) px refl = here2 px
-here-any Γ (nodeη x x₁ t) px refl = hereη px
+-- -- `here` for Any
+-- here-any : ∀ {X n x} {P : X → Set} (Γ : Scope X n) (t : Tree X n)
+--          → {{_ : NonVar t}}
+--          → P x → x ≡ head Γ t → Any P t
+-- here-any Γ (leaf x) px refl = leaf px
+-- here-any Γ (node1 x x₁ t) px refl = here1 px
+-- here-any Γ (node2 x x₁ t t₁) px refl = here2 px
+-- here-any Γ (nodeη x x₁ t) px refl = hereη px
 
 rescope-NonVar : ∀ {X n m} (ρ : Fin n → Fin m) (t : Tree X n) → NonVar t → NonVar (rescope ρ t)
 rescope-NonVar ρ (leaf x₁) x = leaf
@@ -186,10 +173,18 @@ head-loop (t ,- Γ) (suc x) =
     head (t ,- Γ) (lookup (t ,- Γ) (suc x))
   ∎ where open ≡-Reasoning
 
+
 -- `here` for Eventually
+here-NonVar : ∀ {X n x} {P : X → Set} (Γ : Scope X n) (t : Tree X n) {{_ : NonVar t}}
+     → P x → x ≡ head Γ t → Eventually P Γ t
+here-NonVar Γ (leaf _) px refl = leaf px
+here-NonVar Γ (node1 _ _ _) px refl = here1 px
+here-NonVar Γ (node2 _ _ _ _) px refl = here2 px
+here-NonVar Γ (nodeη _ _ _) px refl = hereη px
+
 here : ∀ {X n x} {P : X → Set} (Γ : Scope X n) (t : Tree X n)
      → P x → x ≡ head Γ t → Eventually P Γ t
-here Γ (loop x) px refl = loop (here-any Γ (lookup Γ x) {{lookup-NonVar Γ x}} px (head-loop Γ x))
+here Γ (loop x) px refl = loop (here-NonVar Γ (lookup Γ x) {{lookup-NonVar Γ x}} px (head-loop Γ x))
 here Γ (leaf x) px refl = leaf px
 here Γ (node1 x x₁ t) px refl = here1 px
 here Γ (node2 x x₁ t t₁) px refl = here2 px
