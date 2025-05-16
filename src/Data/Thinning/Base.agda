@@ -53,10 +53,12 @@ inc : ∀ i → Thin i (N.suc i)
 inc i = pad (id i)
 
 -- The `k+` thinning; repeated application of `inc`
-plusL : ∀ {i} k → Thin i (k N.+ i)
+plusL : ∀ {i} j → Thin i (j N.+ i)
 plusL {i} N.zero = (id i)
-plusL {i} (N.suc k) = (inc i) ⨾ inj (plusL k)
-
+plusL {i} (N.suc j) = (inc i) ⨾ inj (plusL j)
+plusR : ∀ i {j} → Thin i (i N.+ j)
+plusR N.zero = zeros
+plusR (N.suc i) = inj (plusR i)
 
 ---------
 -- Fin --

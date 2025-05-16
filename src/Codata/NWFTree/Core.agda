@@ -30,23 +30,24 @@ data NWFTree X where
   nodeη : Opη → ∞NWFTree X → NWFTree X
 
 
--- P eventually becomes true (in finitely many steps)
-data Eventually {X : Set} (P : X → Set) (t : ∞NWFTree X) : Set
-data Eventually-step {X : Set} (P : X → Set) : NWFTree X → Set
+-- P possibly becomes true (in finitely many steps). AKA there is a path through the tree
+-- to an element that satisfies P
+data Any {X : Set} (P : X → Set) (t : ∞NWFTree X) : Set
+data Any-step {X : Set} (P : X → Set) : NWFTree X → Set
 
-data Eventually P t where
-  here : P (head t) → Eventually P t
-  there : Eventually-step P (tree t) → Eventually P t
+data Any P t where
+  here : P (head t) → Any P t
+  there : Any-step P (tree t) → Any P t
 
-data Eventually-step P where
-  node1  : ∀ {op t}   → Eventually P t → Eventually-step P (node1 op t)
-  node2l : ∀ {op l r} → Eventually P l → Eventually-step P (node2 op l r)
-  node2r : ∀ {op l r} → Eventually P r → Eventually-step P (node2 op l r)
-  nodeη  : ∀ {op t}   → Eventually P t → Eventually-step P (nodeη op t)
+data Any-step P where
+  node1  : ∀ {op t}   → Any P t → Any-step P (node1 op t)
+  node2l : ∀ {op l r} → Any P l → Any-step P (node2 op l r)
+  node2r : ∀ {op l r} → Any P r → Any-step P (node2 op l r)
+  nodeη  : ∀ {op t}   → Any P t → Any-step P (nodeη op t)
 
 -- x ∈ t, for a nwf tree `t`
 _∈_ : X → ∞NWFTree X → Set
-x ∈ t = Eventually (x ≡_) t
+x ∈ t = Any (x ≡_) t
 
 -------------------------------
 -- Bisimilarity of NWF Trees --

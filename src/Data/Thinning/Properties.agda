@@ -3,10 +3,12 @@
 module Data.Thinning.Properties where
 
 open import Data.Nat
+open import Data.Nat.Properties using (+-suc)
 open import Data.Fin as F using ()
 open import Data.Sum as S hiding (map)
 open import Data.Sum.Properties as S
 open import Relation.Binary.PropositionalEquality
+open import Relation.Nullary
 open import Function as Fun
 
 open import Data.Thinning.Base as Th
@@ -71,3 +73,12 @@ embed-↑ʳ : ∀ {i j k l} (θ1 : Thin i k) (θ2 : Thin j l) (x : F.Fin j)
 embed-↑ʳ end θ2 x = refl
 embed-↑ʳ (inj θ1) θ2 x = cong F.suc (embed-↑ʳ θ1 θ2 x)
 embed-↑ʳ (pad θ1) θ2 x = cong F.suc (embed-↑ʳ θ1 θ2 x)
+
+sk+n≰n : ∀ {n} k → ¬ (Thin (suc k + n) n)
+sk+n≰n zero (inj θ) = sk+n≰n 0 θ
+sk+n≰n zero (pad θ) = sk+n≰n 1 θ
+sk+n≰n (suc k) (inj θ) = sk+n≰n k (pad θ)
+sk+n≰n (suc k) (pad {j = j} θ) = sk+n≰n {j} (2+ k) (subst (λ z → Thin (2+ z) j) (+-suc k j) θ)
+
+1+n≰n : ∀ {n} → ¬ (Thin (suc n) n)
+1+n≰n {n} = sk+n≰n {n} 0
