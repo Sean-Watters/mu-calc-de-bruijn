@@ -12,24 +12,16 @@ open import Relation.Nullary
 
 open import Function using (_∘_; _$_; id)
 
+open import Data.Fin.Renaming
 open import MuCalc.Base
 
 ---------------------------
 -- Parallel Substitution --
 ---------------------------
 
--- Renamings are maps of variables
-Rename : ℕ → ℕ → Set
-Rename n m = Fin n → Fin m
-
 -- Parallel substitutions are maps from variables to formulae
 Subst : Set → ℕ → ℕ → Set
 Subst At n m = Fin n → μML At m
-
--- Renaming extension
-ext : ∀ {n m} → Rename n m → Rename (suc n) (suc m)
-ext ρ F.zero = F.zero
-ext ρ (F.suc x) = F.suc (ρ x)
 
 
 -- Executing a renaming
@@ -190,12 +182,6 @@ _⨾_ : ∀ {At i j k} → Subst At i j → Subst At j k → Subst At i k
 -- The Fusion Lemma for Renaming --
 -----------------------------------
 
-ext-eq : ∀ {i j} {ρ ρ' : Rename i j}
-       → ρ ≗ ρ'
-       → ext ρ ≗ ext ρ'
-ext-eq eq F.zero = refl
-ext-eq eq (F.suc x) = cong F.suc (eq x)
-
 rename-cong : ∀ {At i j} {ρ ρ' : Rename i j}
             → ρ ≗ ρ'
             → rename {At} ρ ≗ rename ρ'
@@ -204,12 +190,6 @@ rename-cong eq (μML₀ op) = refl
 rename-cong eq (μML₁ op ϕ) = cong (μML₁ op) (rename-cong eq ϕ)
 rename-cong eq (μML₂ op ϕl ϕr) = cong₂ (μML₂ op) (rename-cong eq ϕl) (rename-cong eq ϕr)
 rename-cong eq (μMLη op ϕ) = cong (μMLη op) (rename-cong (ext-eq eq) ϕ)
-
-ext-fusion : ∀ {i j k} {ρ1 : Rename j k} {ρ2 : Rename i j} {ρ3 : Rename i k}
-           → ρ1 ∘ ρ2 ≗ ρ3
-           → (ext ρ1) ∘ (ext ρ2) ≗ ext ρ3
-ext-fusion eq F.zero = refl
-ext-fusion eq (F.suc x) = cong F.suc (eq x)
 
 rename-fusion : ∀ {At i j k} {ρ1 : Rename j k} {ρ2 : Rename i j} {ρ3 : Rename i k}
               → ρ1 ∘ ρ2 ≗ ρ3
@@ -335,18 +315,6 @@ substitution-lemma ϕ ψ ξ = sub-comm (sub₀ ξ) ϕ ψ
 
 rename-preserves-fp : ∀ {At n m} → {ρ : Rename n m} → (ϕ : μML At n) → {{_ : IsFP ϕ}} → IsFP (rename ρ ϕ)
 rename-preserves-fp (μMLη op ϕ) = fp
-
-ext∘embed : ∀ {i j} → (θ : Thin i j) → ext (embed θ) ≗ embed (inj θ)
-ext∘embed θ F.zero = refl
-ext∘embed θ (F.suc x) = refl
-
-embed-ext : ∀ {i j} {θ : Thin i j} {f : F.Fin i → F.Fin j} → embed θ ≗ f → embed (inj θ) ≗ ext f
-embed-ext p F.zero = refl
-embed-ext p (F.suc x) = cong F.suc (p x)
-
-ext-id : ∀ {i} → ext {i} id ≗ id
-ext-id F.zero = refl
-ext-id (F.suc x) = refl
 
 rename-id : ∀ {At n} → (ϕ : μML At n) → rename id ϕ ≡ ϕ
 rename-id (var x) = refl

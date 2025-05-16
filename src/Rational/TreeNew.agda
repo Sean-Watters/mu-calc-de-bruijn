@@ -3,6 +3,7 @@ module Rational.TreeNew where
 
 open import Data.Nat as N
 open import Data.Fin hiding (_-_) renaming (_ℕ-ℕ_ to _-_)
+open import Data.Fin.Renaming using (Rename; ext)
 open import Data.Thinning as Th hiding (id)
 open import Function using (_$_)
 open import Relation.Binary.PropositionalEquality
@@ -41,20 +42,15 @@ data Scope (X : Set) : ℕ → Set where
   [] : Scope X zero
   _,-_ : ∀ {n} → (t : Tree X n) → {{_ : NonVar t}} → (Γ₀ : Scope X n) → Scope X (suc n)
 
--- Scope extension
-ext : ∀ {n m} → (Fin n → Fin m)
-    → Fin (suc n) → Fin (suc m)
-ext ρ zero = zero
-ext ρ (suc x) = suc (ρ x)
 
 -- Rescoping
 mutual
-  rename : ∀ {X n m} → (Fin n → Fin m) -- if we have an mapping of i vars to j vars...
+  rename : ∀ {X n m} → Rename n m -- if we have an mapping of i vars to j vars...
           → Tree X n → Tree X m -- then we can rename i-terms to be j-terms.
   rename ρ (step x t) = step x (rename-step ρ t)
   rename ρ (var x) = var (ρ x)
 
-  rename-step : ∀ {X n m} → (Fin n → Fin m)
+  rename-step : ∀ {X n m} → Rename n m
                → Tree-step X n → Tree-step X m
   rename-step ρ leaf = leaf
   rename-step ρ (node1 op t) = node1 op (rename ρ t)
@@ -65,7 +61,7 @@ lookup : ∀ {X n} → (Γ : Scope X n) → (x : Fin n) → Tree X n
 lookup (t ,- Γ) zero = rename suc t
 lookup (t ,- Γ) (suc x) = rename suc (lookup Γ x)
 
-rename-NonVar : ∀ {X n m} {t : Tree X n} {ρ : Fin n → Fin m} → {{nv : NonVar t}} → NonVar (rename ρ t)
+rename-NonVar : ∀ {X n m} {t : Tree X n} {ρ : Rename n m} → {{nv : NonVar t}} → NonVar (rename ρ t)
 rename-NonVar {{nv = step}} = step
 
 _++_ : ∀ {X a b} → Scope X a → Scope X b → Scope X (a N.+ b)
@@ -79,7 +75,7 @@ _++_ : ∀ {X a b} → Scope X a → Scope X b → Scope X (a N.+ b)
 -- Thinnings of scopes. More abstraction would have been nice, but oh well.
 -- We define this mutually with the function that converts such a thinning to a renaming.
 data _⊑_ {X : Set} : {n m : ℕ} → Scope X n → Scope X m → Set
-embed' : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m} → Γ ⊑ Δ → (Fin n → Fin m)
+embed' : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m} → Γ ⊑ Δ → Rename n m
 
 data _⊑_ {X} where
   end : [] ⊑ []
