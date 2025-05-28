@@ -4,6 +4,7 @@ module Data.Thinning.Properties where
 
 open import Data.Nat
 open import Data.Nat.Properties using (+-suc)
+open import Data.Empty
 open import Data.Fin as F using ()
 open import Data.Sum as S hiding (map)
 open import Data.Sum.Properties as S
@@ -82,3 +83,41 @@ sk+n≰n (suc k) (pad {j = j} θ) = sk+n≰n {j} (2+ k) (subst (λ z → Thin (2
 
 1+n≰n : ∀ {n} → ¬ (Thin (suc n) n)
 1+n≰n {n} = sk+n≰n {n} 0
+
+id-unique : ∀ {i} → (θ1 θ2 : Thin i i) → θ1 ≡ θ2
+id-unique end end = refl
+id-unique (pad θ1) _ = ⊥-elim (1+n≰n θ1)
+id-unique (inj θ1) (pad θ2) = ⊥-elim (1+n≰n θ2)
+id-unique (inj θ1) (inj θ2) = cong inj (id-unique θ1 θ2)
+
+
+-----------------------
+-- Properties of Ext --
+-----------------------
+
+Ext→≡ : ∀ {i j k l n} {θ1 : Thin i j} {θ2 : Thin k l}
+      → (eq1 : k ≡ i + n)
+      → (eq2 : l ≡ j + n)
+      → Ext θ1 θ2
+      → θ1 ⊗ Th.id n ≡ subst₂ Thin eq1 eq2 θ2
+Ext→≡ eq1 eq2 end = id-unique _ _
+Ext→≡ refl refl (inj x) = cong inj (Ext→≡ refl refl x)
+Ext→≡ refl refl (pad x) = cong pad (Ext→≡ refl refl x)
+
+≡→Ext : ∀ {i j k l n} {θ1 : Thin i j} {θ2 : Thin k l}
+      → (eq1 : k ≡ i + n)
+      → (eq2 : l ≡ j + n)
+      → θ1 ⊗ Th.id n ≡ subst₂ Thin eq1 eq2 θ2
+      → Ext θ1 θ2
+≡→Ext {θ1 = end} refl refl refl = end
+≡→Ext {θ1 = inj θ} refl refl refl = inj (≡→Ext refl refl refl)
+≡→Ext {θ1 = pad θ} refl refl refl = pad (≡→Ext refl refl refl)
+
+id-Ext : ∀ {i n} → Ext (Th.id i) (Th.id (i + n))
+id-Ext {zero} {n} = end
+id-Ext {suc i} {n} = inj id-Ext
+
+inc-Ext : ∀ {i j n}
+        → j ≡ i + n
+        → Ext (inc i) (inc j)
+inc-Ext refl = pad id-Ext

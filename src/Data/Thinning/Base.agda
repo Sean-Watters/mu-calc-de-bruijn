@@ -16,6 +16,14 @@ data Thin : ℕ → ℕ → Set where
   inj : ∀ {i j} → Thin i j → Thin (N.suc i) (N.suc j) -- 1 ∷_
   pad : ∀ {i j} → Thin i j → Thin i (N.suc j)         -- 0 ∷_
 
+
+-- One thinning being an "extension" of another. ie, `θ1 ⊗ id ≡ θ2`
+data Ext : {i j k l : ℕ} (θ1 : Thin i j) (θ2 : Thin k l) → Set where
+  end : ∀ {n} {θ : Thin n n} → Ext end θ
+  inj : ∀ {i j k l} {θ1 : Thin i j} {θ2 : Thin k l} → Ext θ1 θ2 → Ext (inj θ1) (inj θ2)
+  pad : ∀ {i j k l} {θ1 : Thin i j} {θ2 : Thin k l} → Ext θ1 θ2 → Ext (pad θ1) (pad θ2)
+
+
 ----------------
 -- Operations --
 ----------------
