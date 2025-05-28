@@ -12,20 +12,18 @@ open import MuCalc.Base using (Op₁; Op₂; Opη)
 open import Codata.NWFTree as T hiding (Any; Any-step; head; tree; _∈_; here)
 
 
+mutual
 -- Our rational trees store X's at both nodes and leaves, and include encodings of backedges
 -- in the form of variables.
-data Tree (X : Set) (n : ℕ) : Set
-data Tree-step (X : Set) (n : ℕ) : Set
+  data Tree (X : Set) (n : ℕ) : Set where
+    step : (x : X) → (t : Tree-step X n) → Tree X n -- either we store an element then take a step,
+    var : (x : Fin n) → Tree X n             -- or we follow a backedge and loop back up the tree.
 
-data Tree X n where
-  step : (x : X) → (t : Tree-step X n) → Tree X n -- either we store an element then take a step,
-  var : (x : Fin n) → Tree X n             -- or we follow a backedge and loop back up the tree.
-
-data Tree-step X n where
-  leaf : Tree-step X n
-  node1 : (op : Op₁) → (t : Tree X n) → Tree-step X n
-  node2 : (op : Op₂) → (tl : Tree X n) → (tr : Tree X n) → Tree-step X n
-  nodeη : (op : Opη) → (t : Tree X (suc n)) → Tree-step X n -- μ/ν nodes are the variable binders
+  data Tree-step (X : Set) (n : ℕ) : Set where
+    leaf : Tree-step X n
+    node1 : (op : Op₁) → (t : Tree X n) → Tree-step X n
+    node2 : (op : Op₂) → (tl : Tree X n) → (tr : Tree X n) → Tree-step X n
+    nodeη : (op : Opη) → (t : Tree X (suc n)) → Tree-step X n -- μ/ν nodes are the variable binders
 
 
 -- A useful predicate on trees
@@ -68,6 +66,21 @@ _++_ : ∀ {X a b} → Scope X a → Scope X b → Scope X (a N.+ b)
 [] ++ Δ = Δ
 (t ,- Γ) ++ Δ = _,-_ (rename (embed (plusR _)) t) {{rename-NonVar}} (Γ ++ Δ)
 
+mutual
+  -- A data type that renaming `tx` by `embed ρ` yields `ty`.
+  data IsRenaming {X : Set} {n m : ℕ} (θ : Thin n m) : (tx : Tree X n) (ty : Tree X m) → Set where
+    step : ∀ {x y} {tx : Tree-step X n} {ty : Tree-step X m} → x ≡ y → IsRenaming-step θ tx ty → IsRenaming θ (step x tx) (step y ty)
+    var : ∀ {x y} → embed θ x ≡ y → IsRenaming θ (var x) (var y)
+
+  data IsRenaming-step {X : Set} : {n m : ℕ} (θ : Thin n m) (tx : Tree-step X n) (ty : Tree-step X m) → Set where
+    leaf : ∀ {n m} {θ : Thin n m} → IsRenaming-step θ leaf leaf
+    node1 : ∀ {n m} {θ : Thin n m} op → {tx : Tree X n} {ty : Tree X m}
+          → IsRenaming θ tx ty → IsRenaming-step θ (node1 op tx) (node1 op ty)
+    node2 : ∀ {n m} {θ : Thin n m} op → {txl txr : Tree X n} {tyl tyr : Tree X m}
+          → IsRenaming θ txl tyl → IsRenaming θ txr tyr → IsRenaming-step θ (node2 op txl txr) (node2 op tyl tyr)
+    nodeη : ∀ {n m} {θ : Thin n m} op → {tx : Tree X (suc n)} {ty : Tree X (suc m)}
+          → IsRenaming (inj θ) tx ty → IsRenaming-step θ (nodeη op tx) (nodeη op ty)
+
 ---------------
 -- Thinnings --
 ---------------
@@ -75,17 +88,22 @@ _++_ : ∀ {X a b} → Scope X a → Scope X b → Scope X (a N.+ b)
 -- Thinnings of scopes. More abstraction would have been nice, but oh well.
 -- We define this mutually with the function that converts such a thinning to a renaming.
 data _⊑_ {X : Set} : {n m : ℕ} → Scope X n → Scope X m → Set
-embed' : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m} → Γ ⊑ Δ → Rename n m
+erase : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m} → Γ ⊑ Δ → Thin n m
 
 data _⊑_ {X} where
   end : [] ⊑ []
-  inj : ∀ {n m} {s : Tree X n} {t : Tree X m} {{_ : NonVar s}} {{_ : NonVar t}}
+  inj : ∀ {n m} {s : Tree X n} {t : Tree X m} {{nvs : NonVar s}} {{nvt : NonVar t}}
       → {Γ : Scope X n} {Δ : Scope X m}
       → (θ : Γ ⊑ Δ)
-      → rename (embed' θ) s ≡ t
+      → IsRenaming (erase θ) s t
       → (s ,- Γ) ⊑ (t ,- Δ)
   pad : ∀ {n m} {t : Tree X m} {{_ : NonVar t}} {Γ : Scope X n} {Δ : Scope X m} → Γ ⊑ Δ → Γ ⊑ (t ,- Δ)
 
+erase end = end
+erase (inj r θ) = inj (erase r)
+erase (pad θ) = pad (erase θ)
+
+embed' : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m} → Γ ⊑ Δ → Rename n m
 embed' (inj θ eq) zero = zero
 embed' (inj θ eq) (suc x) = suc (embed' θ x)
 embed' (pad θ) x = suc (embed' θ x)
