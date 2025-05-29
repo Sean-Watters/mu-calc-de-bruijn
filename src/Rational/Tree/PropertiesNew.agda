@@ -208,6 +208,7 @@ data TreeEq-step {X} {n} {m} {Γ} {Δ} θ {x} {y} x≡y where
 rename-TreeEq : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m}
               → (θ : Γ ⊑ Δ) → (t : Tree X n)
               → TreeEq θ t (rename (embed' θ) t)
+rename-TreeEq θ (var x) = {!!}
 rename-TreeEq θ (step x leaf)
   = step refl leaf
 rename-TreeEq θ (step x (node1 op t))
@@ -240,8 +241,12 @@ TreeEq-rename-inj' θ (step {a} refl (node1 .op x)) (step refl (node1 .op x₁))
   = step refl (node1 op (TreeEq-rename-inj' θ x x₁ ex eq x₂))
 TreeEq-rename-inj' θ (step {a} refl (node2 .op x x₁)) (step refl (node2 .op x₂ x₃)) ex eq (step refl (node2 op x₄ x₅))
   = step refl (node2 op (TreeEq-rename-inj' θ x x₂ ex eq x₄) (TreeEq-rename-inj' θ x₁ x₃ ex eq x₅))
-TreeEq-rename-inj' {X} {n} {m} {Γ} {Δ} {tγ = tγ} {tδ = tδ} {{nvtγ}} {{nvtδ}} θ {σ1} {σ2} (step {a} {tx = tx1} {ty = ty1} refl (nodeη .op sx)) (step {tx = tx2} {ty = ty2} refl (nodeη .op sy)) ex eq1 (step refl (nodeη op eq2 teq))
-  = step refl {!TreeEq-step.nodeη !}
+TreeEq-rename-inj' {X} {n} {m} {Γ} {Δ} {.step a (nodeη op tx)} {.step a (nodeη op ty)} {.step a (nodeη op tx')} {.step a (nodeη op ty')} {tγ = tγ} {tδ = tδ} {{nvtγ}} {{nvtδ}} θ {σ1} {σ2} (step {a} refl (nodeη .op sx)) (step refl (nodeη .op sy)) ex eq1 (step refl (nodeη op {tγ = tγ'} {tδ = tδ'} eq2 teq))
+  = step refl (nodeη op {tx'} {ty'} {step a (nodeη op tx')} {step a (nodeη op ty')} ⦃ step ⦄ ⦃ step ⦄
+                     {!!}
+                     (TreeEq-rename-inj' {X} {suc n} {suc m} {tγ ,- Γ} {tδ ,- Δ} {tx} {ty}
+                       {tx'} {ty'} {step a (nodeη op tx')} {step a (nodeη op ty')} ⦃ step ⦄ ⦃ step ⦄ (inj θ eq1) {inj σ1} {inj σ2} sx sy
+                       (inj ex) _ {!eq1 and eq2 (and hence tγ/tγ' and tδ/tδ') being different is the problem - need to be able to stick teq into here!}))
 TreeEq-rename-inj' θ {σ1} {σ2} (var p) (var q) ex eq (var r)
   = var (trans (trans {!!} (cong (embed σ2) r)) q)
 
