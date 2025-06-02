@@ -4,6 +4,7 @@ module Rational.TreeNew where
 open import Data.Nat as N
 open import Data.Fin hiding (_-_) renaming (_ℕ-ℕ_ to _-_)
 open import Data.Fin.Renaming using (Rename; ext)
+open import Data.Product
 open import Data.Thinning as Th hiding (id)
 open import Function using (_$_)
 open import Relation.Binary.PropositionalEquality
@@ -67,19 +68,19 @@ _++_ : ∀ {X a b} → Scope X a → Scope X b → Scope X (a N.+ b)
 (t ,- Γ) ++ Δ = _,-_ (rename (embed (plusR _)) t) {{rename-NonVar}} (Γ ++ Δ)
 
 mutual
-  -- A data type that renaming `tx` by `embed ρ` yields `ty`.
-  data IsRenaming {X : Set} {n m : ℕ} (θ : Thin n m) : (tx : Tree X n) (ty : Tree X m) → Set where
-    step : ∀ {x y} {tx : Tree-step X n} {ty : Tree-step X m} → x ≡ y → IsRenaming-step θ tx ty → IsRenaming θ (step x tx) (step y ty)
-    var : ∀ {x y} → embed θ x ≡ y → IsRenaming θ (var x) (var y)
+  -- A data type witnessing that renaming `tx` by `ρ` yields `ty`.
+  data IsRenaming {X : Set} {n m : ℕ} (ρ : Rename n m) : (tx : Tree X n) (ty : Tree X m) → Set where
+    step : ∀ {x y} {tx : Tree-step X n} {ty : Tree-step X m} → x ≡ y → IsRenaming-step ρ tx ty → IsRenaming ρ (step x tx) (step y ty)
+    var : ∀ {x y} → ρ x ≡ y → IsRenaming ρ (var x) (var y)
 
-  data IsRenaming-step {X : Set} : {n m : ℕ} (θ : Thin n m) (tx : Tree-step X n) (ty : Tree-step X m) → Set where
-    leaf : ∀ {n m} {θ : Thin n m} → IsRenaming-step θ leaf leaf
-    node1 : ∀ {n m} {θ : Thin n m} op → {tx : Tree X n} {ty : Tree X m}
-          → IsRenaming θ tx ty → IsRenaming-step θ (node1 op tx) (node1 op ty)
-    node2 : ∀ {n m} {θ : Thin n m} op → {txl txr : Tree X n} {tyl tyr : Tree X m}
-          → IsRenaming θ txl tyl → IsRenaming θ txr tyr → IsRenaming-step θ (node2 op txl txr) (node2 op tyl tyr)
-    nodeη : ∀ {n m} {θ : Thin n m} op → {tx : Tree X (suc n)} {ty : Tree X (suc m)}
-          → IsRenaming (inj θ) tx ty → IsRenaming-step θ (nodeη op tx) (nodeη op ty)
+  data IsRenaming-step {X : Set} : {n m : ℕ} (ρ : Rename n m) (tx : Tree-step X n) (ty : Tree-step X m) → Set where
+    leaf : ∀ {n m} {ρ : Rename n m} → IsRenaming-step ρ leaf leaf
+    node1 : ∀ {n m} {ρ : Rename n m} op → {tx : Tree X n} {ty : Tree X m}
+          → IsRenaming ρ tx ty → IsRenaming-step ρ (node1 op tx) (node1 op ty)
+    node2 : ∀ {n m} {ρ : Rename n m} op → {txl txr : Tree X n} {tyl tyr : Tree X m}
+          → IsRenaming ρ txl tyl → IsRenaming ρ txr tyr → IsRenaming-step ρ (node2 op txl txr) (node2 op tyl tyr)
+    nodeη : ∀ {n m} {ρ : Rename n m} op → {tx : Tree X (suc n)} {ty : Tree X (suc m)}
+          → IsRenaming (ext ρ) tx ty → IsRenaming-step ρ (nodeη op tx) (nodeη op ty)
 
 ---------------
 -- Thinnings --
@@ -89,24 +90,33 @@ mutual
 -- We define this mutually with the function that converts such a thinning to a renaming.
 data _⊑_ {X : Set} : {n m : ℕ} → Scope X n → Scope X m → Set
 erase : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m} → Γ ⊑ Δ → Thin n m
+embed' : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m} → Γ ⊑ Δ → Rename n m
 
 data _⊑_ {X} where
   end : [] ⊑ []
   inj : ∀ {n m} {s : Tree X n} {t : Tree X m} {{nvs : NonVar s}} {{nvt : NonVar t}}
       → {Γ : Scope X n} {Δ : Scope X m}
       → (θ : Γ ⊑ Δ)
-      → IsRenaming (erase θ) s t
+      → IsRenaming (embed' θ) s t
       → (s ,- Γ) ⊑ (t ,- Δ)
-  pad : ∀ {n m} {t : Tree X m} {{_ : NonVar t}} {Γ : Scope X n} {Δ : Scope X m} → Γ ⊑ Δ → Γ ⊑ (t ,- Δ)
+  pad : ∀ {n m} {t : Tree X m} {{nvt : NonVar t}} {Γ : Scope X n} {Δ : Scope X m} → Γ ⊑ Δ → Γ ⊑ (t ,- Δ)
 
 erase end = end
 erase (inj r θ) = inj (erase r)
 erase (pad θ) = pad (erase θ)
 
-embed' : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m} → Γ ⊑ Δ → Rename n m
 embed' (inj θ eq) zero = zero
 embed' (inj θ eq) (suc x) = suc (embed' θ x)
 embed' (pad θ) x = suc (embed' θ x)
+
+--------------------------
+-- Equivalence of Trees --
+--------------------------
+
+-- Two trees are equivalent if there's a thinning between their scopes that sends the variables to the right
+-- places.
+[_⊢_]≈[_⊢_] : {X : Set} {n m : ℕ} (Γ : Scope X n) → (tx : Tree X n) → (Δ : Scope X m) → (ty : Tree X m) → Set
+[ Γ ⊢ tx ]≈[ Δ ⊢ ty ] = Σ[ θ ∈ Γ ⊑ Δ ] (IsRenaming (embed' θ) tx ty)
 
 ---------
 -- Any --

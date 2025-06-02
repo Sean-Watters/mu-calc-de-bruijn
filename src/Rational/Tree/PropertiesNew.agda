@@ -73,11 +73,11 @@ here-head {Γ = Γ} {R.var x} p refl
 -- Properties of `ext` --
 -------------------------
 
--- ext-embed : ∀ {X n m} {s : Tree X n} {t : Tree X m} {{_ : NonVar s}} {{_ : NonVar t}}
---           → {Γ : Scope X n} {Δ : Scope X m} → (θ : Γ ⊑ Δ)
---           → (r : IsRenaming (erase θ) s t)
---           → embed' (inj θ r) ≗ ext (embed' θ)
--- ext-embed θ = ?
+ext-embed : ∀ {X n m} {s : Tree X n} {t : Tree X m} {{_ : NonVar s}} {{_ : NonVar t}}
+          → {Γ : Scope X n} {Δ : Scope X m} → (θ : Γ ⊑ Δ)
+          → (r : IsRenaming (embed' θ) s t)
+          → embed' (inj θ r) ≗ ext (embed' θ)
+ext-embed θ = {!!}
 
 -- ext-embed-suc : ∀ {X n m} {s : Tree X n} {t : Tree X m} {{_ : NonVar s}} {{_ : NonVar t}}
 --               → {Γ : Scope X n} {Δ : Scope X m} → (θ : Γ ⊑ Δ)
@@ -139,6 +139,68 @@ rename-ext ρ t =
     (rename (ext ρ) ∘ rename F.suc) t
   ∎ where open ≡-Reasoning
 
+rename-IsRenaming : ∀ {X n m} {ρ : Rename n m} {tx : Tree X n} {ty : Tree X m}
+                  → rename ρ tx ≡ ty
+                  → IsRenaming ρ tx ty
+rename-IsRenaming {tx = step x leaf} refl = step refl leaf
+rename-IsRenaming {tx = step x (node1 op t)} refl = step refl (node1 op (rename-IsRenaming refl))
+rename-IsRenaming {tx = step x (node2 op tl tr)} refl = step refl (node2 op (rename-IsRenaming refl) (rename-IsRenaming refl))
+rename-IsRenaming {tx = step x (nodeη op t)} refl = step refl (nodeη op (rename-IsRenaming refl))
+rename-IsRenaming {tx = var x} refl = var refl
+
+IsRenaming→≡ : ∀ {X n m} {ρ : Rename n m} {tx : Tree X n} {ty : Tree X m}
+             → IsRenaming ρ tx ty
+             → rename ρ tx ≡ ty
+IsRenaming→≡ (step refl leaf) = refl
+IsRenaming→≡ (step refl (node1 op p)) = cong (λ z → step _ (node1 op z)) (IsRenaming→≡ p)
+IsRenaming→≡ (step refl (node2 op p q)) = cong₂ (λ z1 z2 → step _ (node2 op z1 z2)) (IsRenaming→≡ p) (IsRenaming→≡ q)
+IsRenaming→≡ (step refl (nodeη op p)) = cong (λ z → step _ (nodeη op z)) (IsRenaming→≡ p)
+IsRenaming→≡ (var p) = cong var p
+
+rename-embed-inj : ∀ {X} {n m}
+                 → {ρ : Rename n m} {tx : Tree X n} {ty : Tree X m}
+                 → rename ρ tx ≡ ty
+                 → rename (ext ρ) (rename suc tx) ≡ rename suc ty
+rename-embed-inj {ρ = ρ} {tx} refl = sym $ rename-ext ρ tx
+
+
+-- Thinning preserves lookup.
+rename-lookup : ∀ {X} {n m} {Γ : Scope X n} {Δ : Scope X m}
+              → (θ : Γ ⊑ Δ) (x : Fin n)
+              → IsRenaming (embed' θ) (lookup Γ x) (lookup Δ (embed' θ x))
+rename-lookup (inj {s = s} {t = t} θ p) zero = rename-IsRenaming $
+  begin
+    rename (embed' (inj θ p)) (rename suc s)
+  ≡⟨ rename-cong (ext-embed θ p) (rename suc s) ⟩
+    rename (ext (embed' θ)) (rename suc s)
+  ≡⟨ rename-embed-inj (IsRenaming→≡ p) ⟩
+    rename suc t
+  ∎ where open ≡-Reasoning
+rename-lookup {Γ = tγ ,- Γ} {Δ = tδ ,- Δ} (inj θ p) (suc x) = rename-IsRenaming $
+  begin
+    rename (embed' (inj θ p)) (lookup (tγ ,- Γ) (suc x))
+  ≡⟨ rename-cong (ext-embed θ p) (rename suc (lookup Γ x)) ⟩
+    rename (ext (embed' θ)) (rename suc (lookup Γ x))
+  ≡⟨ rename-embed-inj (IsRenaming→≡ (rename-lookup θ x)) ⟩
+    rename suc (lookup Δ (embed' θ x))
+  ∎ where open ≡-Reasoning
+rename-lookup {Γ = Γ} {Δ = tδ ,- Δ} (pad θ) zero = rename-IsRenaming $
+  begin
+    rename (suc ∘ (embed' θ)) (lookup Γ zero)
+  ≡⟨ {!!} ⟩
+    rename suc (lookup Δ (embed' θ zero))
+  ∎ where open ≡-Reasoning
+rename-lookup {Γ = Γ} {Δ = tδ ,- Δ} (pad θ) (suc x) = rename-IsRenaming $
+  begin
+    rename (suc ∘ (embed' θ)) (lookup Γ (suc x))
+  ≡⟨ rename-cong (λ _ → refl) (lookup Γ (suc x)) ⟩
+    rename (embed' (pad {t = tδ} θ)) (lookup Γ (suc x))
+  ≡⟨ rename-fusion (λ _ → refl) (lookup Γ (suc x)) ⟨
+    rename (ext (embed' θ)) (rename suc (lookup Γ (suc x)))
+  ≡⟨ rename-embed-inj $ IsRenaming→≡ $ rename-lookup θ (suc x) ⟩
+    rename suc (lookup Δ (embed' θ (suc x)))
+  ∎ where open ≡-Reasoning
+
 -----------------------
 -- Properties of _⊑_ --
 -----------------------
@@ -158,170 +220,42 @@ embed'-id (pad θ) x = ⊥-elim (t,Γ⋢Γ 1+n≰n θ)
 
 ⊑-refl : ∀ {X n} {Γ : Scope X n} → Γ ⊑ Γ
 ⊑-refl {X} {n} {[]} = end
-⊑-refl {X} {n} {t ,- Γ} = {!!}
+⊑-refl {X} {n} {t ,- Γ} = inj ⊑-refl $ rename-IsRenaming $
+  begin
+    rename (embed' ⊑-refl) t
+  ≡⟨ rename-cong (embed'-id ⊑-refl) t ⟩
+    rename id t
+  ≡⟨ rename-id t ⟩
+    id t
+  ∎ where open ≡-Reasoning
 
--- ⊑-refl {X} {n} {t ,- Γ} = inj ⊑-refl $
---   begin
---     rename (embed' ⊑-refl) t
---   ≡⟨ rename-cong (embed'-id {Γ = Γ} ⊑-refl) t ⟩
---     rename id t
---   ≡⟨ rename-id t ⟩
---     t
---   ∎ where open ≡-Reasoning
 
 
 -------------------------
 -- Properties of `Any` --
 -------------------------
 
--- Structural equality of trees
-data TreeEq {X : Set} {n m : ℕ} {Γ : Scope X n} {Δ : Scope X m} (θ : Γ ⊑ Δ)
-  : Tree X n → Tree X m → Set
-data TreeEq-step {X : Set} {n m : ℕ} {Γ : Scope X n} {Δ : Scope X m} (θ : Γ ⊑ Δ) {x y : X} (x≡y : x ≡ y)
-  : Tree-step X n → Tree-step X m → Set
-
-data TreeEq {X} {n} {m} {Γ} {Δ} θ where
-  step : {x y : X} → (x≡y : x ≡ y)
-       → {tx : Tree-step X n} {ty : Tree-step X m} → TreeEq-step θ x≡y tx ty
-       → TreeEq θ (step x tx) (step y ty)
-
-  var : {x : Fin n} {y : Fin m} → embed' θ x ≡ y
-      → TreeEq θ (var x) (var y)
-
-data TreeEq-step {X} {n} {m} {Γ} {Δ} θ {x} {y} x≡y where
-  leaf : TreeEq-step θ x≡y leaf leaf
-
-  node1 : ∀ op → {tx : Tree X n} {ty : Tree X m}
-        → TreeEq θ tx ty
-        → TreeEq-step θ x≡y (node1 op tx) (node1 op ty)
-
-  node2 : ∀ op → {txl txr : Tree X n} {tyl tyr : Tree X m}
-        → TreeEq θ txl tyl → TreeEq θ txr tyr
-        → TreeEq-step θ x≡y (node2 op txl txr) (node2 op tyl tyr)
-
-  nodeη : ∀ op → {tx : Tree X (suc n)} {ty : Tree X (suc m)}
-        → {tγ : Tree X n} {tδ : Tree X m} {{nvtγ : NonVar tγ}} {{nvtδ : NonVar tδ}}
-        → (r : IsRenaming (erase θ) tγ tδ)
-        → TreeEq {X} {suc n} {suc m} {Γ = tγ ,- Γ} {Δ = tδ ,- Δ} (inj θ r) tx ty
-        → TreeEq-step θ x≡y (nodeη op tx) (nodeη op ty)
-
-rename-TreeEq : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m}
-              → (θ : Γ ⊑ Δ) → (t : Tree X n)
-              → TreeEq θ t (rename (embed' θ) t)
-rename-TreeEq θ (var x) = {!!}
-rename-TreeEq θ (step x leaf)
-  = step refl leaf
-rename-TreeEq θ (step x (node1 op t))
-  = step refl (node1 op (rename-TreeEq θ t))
-rename-TreeEq θ (step x (node2 op tl tr))
-  = step refl (node2 op (rename-TreeEq θ tl) (rename-TreeEq θ tr))
-rename-TreeEq θ (step x (nodeη op t))
-  = {!!}
-
---   = step refl (nodeη op refl (subst (TreeEq (inj θ refl) t)
---                                     (rename-cong (ext-embed θ refl) t)
---                                     (rename-TreeEq (inj {s = step x (nodeη op t)} θ refl) t)))
--- rename-TreeEq θ (var x)
---   = var refl
-
-
-TreeEq-rename-inj' : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m}
-                  → {tx : Tree X n} {ty : Tree X m}
-                  → {tx' : Tree X (suc n)} {ty' : Tree X (suc m)}
-                  → {tγ : Tree X n} {tδ : Tree X m} {{nvtγ : NonVar tγ}} {{nvtδ : NonVar tδ}}
-                  → (θ : Γ ⊑ Δ)
-                  → {σ1 : Thin n (suc n)} {σ2 : Thin m (suc m)}
-                  → IsRenaming σ1 tx tx' → IsRenaming σ2 ty ty'
-                  → Ext σ1 σ2
-                  → (r : IsRenaming (erase θ) tγ  tδ)
-                  → TreeEq θ tx ty → TreeEq (inj θ r) tx' ty'
-TreeEq-rename-inj' θ (step {a} refl leaf) (step refl leaf) ex eq (step refl leaf)
-  = step refl leaf
-TreeEq-rename-inj' θ (step {a} refl (node1 .op x)) (step refl (node1 .op x₁)) ex eq (step refl (node1 op x₂))
-  = step refl (node1 op (TreeEq-rename-inj' θ x x₁ ex eq x₂))
-TreeEq-rename-inj' θ (step {a} refl (node2 .op x x₁)) (step refl (node2 .op x₂ x₃)) ex eq (step refl (node2 op x₄ x₅))
-  = step refl (node2 op (TreeEq-rename-inj' θ x x₂ ex eq x₄) (TreeEq-rename-inj' θ x₁ x₃ ex eq x₅))
-TreeEq-rename-inj' {X} {n} {m} {Γ} {Δ} {.step a (nodeη op tx)} {.step a (nodeη op ty)} {.step a (nodeη op tx')} {.step a (nodeη op ty')} {tγ = tγ} {tδ = tδ} {{nvtγ}} {{nvtδ}} θ {σ1} {σ2} (step {a} refl (nodeη .op sx)) (step refl (nodeη .op sy)) ex eq1 (step refl (nodeη op {tγ = tγ'} {tδ = tδ'} eq2 teq))
-  = step refl (nodeη op {tx'} {ty'} {step a (nodeη op tx')} {step a (nodeη op ty')} ⦃ step ⦄ ⦃ step ⦄
-                     {!!}
-                     (TreeEq-rename-inj' {X} {suc n} {suc m} {tγ ,- Γ} {tδ ,- Δ} {tx} {ty}
-                       {tx'} {ty'} {step a (nodeη op tx')} {step a (nodeη op ty')} ⦃ step ⦄ ⦃ step ⦄ (inj θ eq1) {inj σ1} {inj σ2} sx sy
-                       (inj ex) _ {!eq1 and eq2 (and hence tγ/tγ' and tδ/tδ') being different is the problem - need to be able to stick teq into here!}))
-TreeEq-rename-inj' θ {σ1} {σ2} (var p) (var q) ex eq (var r)
-  = var (trans (trans {!!} (cong (embed σ2) r)) q)
-
-TreeEq-rename-inj : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m}
-                  → {tx : Tree X n} {ty : Tree X m}
-                  → {tγ : Tree X n} {tδ : Tree X m} {{nvtγ : NonVar tγ}} {{nvtδ : NonVar tδ}}
-                  → (θ : Γ ⊑ Δ)
-                  → (r : IsRenaming (erase θ) tγ tδ)
-                  → TreeEq θ tx ty → TreeEq (inj θ r) (rename suc tx) (rename suc ty)
-TreeEq-rename-inj θ eq p = {!!}
-
-
-{-
-
-TreeEq-rename-pad : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m}
-                  → {tx : Tree X n} {ty : Tree X m}
-                  → {tδ : Tree X m} {{nvtδ : NonVar tδ}}
-                  → (θ : Γ ⊑ Δ)
-                  → TreeEq θ tx ty → TreeEq (pad {t = tδ} θ) tx (rename suc ty)
-TreeEq-rename-pad θ (step x≡y leaf)
-  = step x≡y leaf
-TreeEq-rename-pad θ (step x≡y (node1 op eq))
-  = step x≡y (node1 op (TreeEq-rename-pad θ eq))
-TreeEq-rename-pad θ (step x≡y (node2 op eql eqr))
-  = step x≡y (node2 op (TreeEq-rename-pad θ eql) (TreeEq-rename-pad θ eqr))
-TreeEq-rename-pad {X} {n} {m} {Γ} {Δ} {step x (nodeη op tx)} {step y (nodeη op ty)} {tδ} θ (step {x = x} {y} x≡y (nodeη op eq' eq))
-  = step x≡y (nodeη op {!!} {!TreeEq-rename-pad ? eq  !}) where
-  lem : ∀ {X n} {x y : X} {u : Tree X (suc n)} {v : Tree X (suc n)}
-      → x ≡ y → _≡_ {A = Tree X n} (step x (nodeη op u)) (step y (nodeη op v))
-      → u ≡ v
-  lem refl refl = refl
-
-  -- lem2 : rename (ext (λ x₁ → suc (embed' θ x₁))) tx ≡ rename (ext suc) ty
-  -- lem2 =
-  --   begin
-  --     rename (ext (λ x₁ → suc (embed' θ x₁))) tx
-  --   ≡⟨ rename-fusion (ext-fusion (λ _ → refl)) tx ⟨
-  --     rename (ext suc) (rename (ext (embed' θ)) tx)
-  --   ≡⟨ cong (rename $ ext suc) (lem x≡y eq') ⟩
-  --     rename (ext suc) ty
-  --   ∎ where open ≡-Reasoning
-
-TreeEq-rename-pad θ (var eq) = var (cong suc eq)
-
--- Lookups are equal as long as the thinning equalises the two variables.
-lookup-TreeEq : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m} {x : Fin n} {y : Fin m}
-             → (θ : Γ ⊑ Δ)
-             → embed' θ x ≡ y
-             → TreeEq θ (lookup Γ x) (lookup Δ y)
-lookup-TreeEq {x = zero}  (inj θ refl) refl = TreeEq-rename-inj θ refl (rename-TreeEq θ _)
-lookup-TreeEq {x = suc x} (inj θ refl) refl = TreeEq-rename-inj θ refl (lookup-TreeEq θ refl)
-lookup-TreeEq {x = zero}  (pad θ) refl      = TreeEq-rename-pad θ (lookup-TreeEq θ refl)
-lookup-TreeEq {x = suc x} (pad θ) refl      = TreeEq-rename-pad θ (lookup-TreeEq θ refl)
-
 mutual
   any-subst : ∀ {X n m} {P : X → Set}
             → {Γ : Scope X n} {Δ : Scope X m} {tx : Tree X n} {ty : Tree X m}
             → (θ : Γ ⊑ Δ)
-            → TreeEq θ tx ty
+            → IsRenaming (embed' θ) tx ty
             → Any P Γ tx → Any P Δ ty
   any-subst θ (step x≡y eq) (here px) = here (subst _ x≡y px)
   any-subst θ (step x≡y eq) (step ptx) = step (any-subst-step x≡y θ eq ptx)
-  any-subst θ (var eq) (loop ptx) = loop (any-subst θ (lookup-TreeEq θ eq) ptx)
+  any-subst θ (var eq) (loop ptx) = loop (any-subst θ {!!} ptx)
 
   any-subst-step : ∀ {X n m} {P : X → Set}
                  → {x y : X} → (x≡y : x ≡ y)
                  → {Γ : Scope X n} {Δ : Scope X m} {tx : Tree-step X n} {ty : Tree-step X m}
                  → (θ : Γ ⊑ Δ)
-                 → TreeEq-step θ x≡y tx ty
+                 → IsRenaming-step (embed' θ) tx ty
                  → Any-step P x Γ tx → Any-step P y Δ ty
   any-subst-step x≡y θ leaf leaf = leaf
   any-subst-step x≡y θ (node1 op eq) (node1 ptx) = node1 (any-subst θ eq ptx)
   any-subst-step x≡y θ (node2 op eql eqr) (node2l ptx) = node2l (any-subst θ eql ptx)
   any-subst-step x≡y θ (node2 op eql eqr) (node2r ptx) = node2r (any-subst θ eqr ptx)
-  any-subst-step x≡y θ (nodeη op eq' eq) (nodeη ptx) = nodeη (any-subst (inj θ {!!}) {!!} ptx)
+  any-subst-step x≡y θ (nodeη op eq) (nodeη ptx) = nodeη (any-subst (inj θ {!!}) {!!} ptx)
 
 
 
@@ -331,7 +265,8 @@ mutual
 any-rename : ∀ {X n m} {P : X → Set} {Γ : Scope X n} {Δ : Scope X m} {t : Tree X n}
             → (θ : Γ ⊑ Δ) -- Γ embeds into Δ
             → Any P Γ t → Any P Δ (rename (embed' θ) t)
-any-rename θ = any-subst θ (rename-TreeEq θ _)
+-- any-rename θ = any-subst θ (rename-TreeEq θ _)
+any-rename θ = {!!}
 
 
 -- Can't directly prove this, because `suc` will become `ext suc` after traversing a binder.
@@ -385,6 +320,4 @@ bisim-unfold-eventually→ {rt = var (suc x)} {t ,- Γ} rs pt
                          → t ~ R.unfold Γ rt
                          → R.Any P Γ rt
                          → NWF.Any P t
--}
-
 -}
