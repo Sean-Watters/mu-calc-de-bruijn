@@ -1,5 +1,5 @@
 {-# OPTIONS --safe --guardedness --with-K #-}
-module Rational.Tree.PropertiesNew where
+module Rational.Tree.Properties where
 
 open import Relation.Binary.PropositionalEquality
 open import Function
@@ -10,7 +10,7 @@ open import Data.Empty
 open import Data.Thinning as Th hiding (id)
 open import MuCalc.Base using (Op₁; Op₂; Opη)
 open import Codata.NWFTree as NWF using (∞NWFTree; NWFTree; _~_; here; there)
-open import Rational.TreeNew as R
+open import Rational.Tree as R
 open import Relation.Nullary
 
 ------------------------------------
@@ -256,7 +256,6 @@ mutual
                  → (θ : Γ ⊑ Δ)
                  → IsRenaming-step (embed' θ) tx ty
                  → Any-step P x Γ tx → Any-step P y Δ ty
-  any-subst-step x≡y θ leaf leaf = leaf
   any-subst-step x≡y θ (node1 op eq) (node1 ptx) = node1 (any-subst θ eq ptx)
   any-subst-step x≡y θ (node2 op eql eqr) (node2l ptx) = node2l (any-subst θ eql ptx)
   any-subst-step x≡y θ (node2 op eql eqr) (node2r ptx) = node2r (any-subst θ eqr ptx)
@@ -287,41 +286,56 @@ any-rename-suc {n = n} {P} {Γ} {t} {s} pt
 -- `Any` for R-trees and NWF-trees is equivalent --
 ---------------------------------------------------
 
+
 -- NWF to Rational
-∞bisim-unfold-eventually→ : ∀ {X n} {P : X → Set}
-                         → {t : ∞NWFTree X} {rt : R.Tree X n} {Γ : R.Scope X n}
-                         → t ~ R.unfold Γ rt
-                         → NWF.Any P t
-                         → R.Any P Γ rt
+mutual
+  ∞bisim-unfold-any→ : ∀ {X n} {P : X → Set}
+                     → {t : ∞NWFTree X} {rt : R.Tree X n} {Γ : R.Scope X n}
+                     → t ~ R.unfold Γ rt
+                     → NWF.Any P t
+                     → R.Any P Γ rt
 
-bisim-unfold-eventually→ : ∀ {X n} {P : X → Set}
-                        → {t : NWFTree X} {rt : R.Tree X n} {Γ : R.Scope X n}
-                        → NWF.Pointwise _≡_ t (R.unfold-subtree Γ rt)
-                        → NWF.Any-step P t
-                        → R.Any P Γ rt
 
-∞bisim-unfold-eventually→ rs (here px) = here-head px (rs .NWF.head)
-∞bisim-unfold-eventually→ rs (there pt) = bisim-unfold-eventually→ (rs .NWF.tree) pt
+  ∞bisim-unfold-any→ rs (here px) = here-head px (rs .NWF.head)
+  ∞bisim-unfold-any→ rs (there pt) = bisim-unfold-any→ (rs .NWF.tree) pt
 
-bisim-unfold-eventually→ {rt = step x leaf} NWF.leaf ()
-bisim-unfold-eventually→ {rt = step x (node1 op rt)} (NWF.node1 rs) (NWF.node1 pt)
-  = step (node1 (∞bisim-unfold-eventually→ rs pt))
-bisim-unfold-eventually→ {rt = step x (node2 op rtl rtr)} (NWF.node2 rsl rsr) (NWF.node2l pt)
-  = step (node2l (∞bisim-unfold-eventually→ rsl pt))
-bisim-unfold-eventually→ {rt = step x (node2 op rtl rtr)} (NWF.node2 rsl rsr) (NWF.node2r pt)
-  = step (node2r (∞bisim-unfold-eventually→ rsr pt))
-bisim-unfold-eventually→ {rt = step x (nodeη op rt)} (NWF.nodeη rs) (NWF.nodeη pt)
-  = step (nodeη (∞bisim-unfold-eventually→ rs pt))
-bisim-unfold-eventually→ {rt = var zero} {t ,- Γ} rs pt
-  = loop (any-rename-suc (bisim-unfold-eventually→ {rt = t} {Γ = Γ} rs pt))
-bisim-unfold-eventually→ {rt = var (suc x)} {t ,- Γ} rs pt
-  = any-rename-suc (bisim-unfold-eventually→ {rt = var x} {Γ} rs pt)
+  bisim-unfold-any→ : ∀ {X n} {P : X → Set}
+                    → {t : NWFTree X} {rt : R.Tree X n} {Γ : R.Scope X n}
+                    → NWF.Pointwise _≡_ t (R.unfold-subtree Γ rt)
+                    → NWF.Any-step P t
+                    → R.Any P Γ rt
+  bisim-unfold-any→ {rt = step x leaf} NWF.leaf ()
+  bisim-unfold-any→ {rt = step x (node1 op rt)} (NWF.node1 rs) (NWF.node1 pt)
+    = step (node1 (∞bisim-unfold-any→ rs pt))
+  bisim-unfold-any→ {rt = step x (node2 op rtl rtr)} (NWF.node2 rsl rsr) (NWF.node2l pt)
+    = step (node2l (∞bisim-unfold-any→ rsl pt))
+  bisim-unfold-any→ {rt = step x (node2 op rtl rtr)} (NWF.node2 rsl rsr) (NWF.node2r pt)
+    = step (node2r (∞bisim-unfold-any→ rsr pt))
+  bisim-unfold-any→ {rt = step x (nodeη op rt)} (NWF.nodeη rs) (NWF.nodeη pt)
+    = step (nodeη (∞bisim-unfold-any→ rs pt))
+  bisim-unfold-any→ {rt = var zero} {t ,- Γ} rs pt
+    = loop (any-rename-suc (bisim-unfold-any→ {rt = t} {Γ = Γ} rs pt))
+  bisim-unfold-any→ {rt = var (suc x)} {t ,- Γ} rs pt
+    = any-rename-suc (bisim-unfold-any→ {rt = var x} {Γ} rs pt)
 
-{-
--- Rational to NWF (not needed rn)
-∞bisim-unfold-eventually← : ∀ {X n} {P : X → Set}
-                         → {t : ∞NWFTree X} {rt : R.Tree X n} {Γ : R.Scope X n}
-                         → t ~ R.unfold Γ rt
-                         → R.Any P Γ rt
-                         → NWF.Any P t
--}
+
+-- Rational to NWF
+mutual
+  ∞bisim-unfold-any← : ∀ {X n} {P : X → Set}
+                           → {t : ∞NWFTree X} {rt : R.Tree X n} {Γ : R.Scope X n}
+                           → t ~ R.unfold Γ rt
+                           → R.Any P Γ rt
+                           → NWF.Any P t
+  ∞bisim-unfold-any← {P = P} rs (here px) = here (subst P (sym $ NWF.head rs) px)
+  ∞bisim-unfold-any← rs (step px) = there (bisim-unfold-any← (NWF.tree rs) px)
+  ∞bisim-unfold-any← rs (loop px) = {!!}
+
+  bisim-unfold-any← : ∀ {X n x} {P : X → Set}
+                    → {t : NWFTree X} {rt : R.Tree-step X n} {Γ : R.Scope X n}
+                    → NWF.Pointwise _≡_ t (unfold-subtree Γ (step x rt))
+                    → R.Any-step P x Γ rt
+                    → NWF.Any-step P t
+  bisim-unfold-any← {rt = node1 op t} (NWF.node1 rs) (node1 px) = NWF.node1 (∞bisim-unfold-any← rs px)
+  bisim-unfold-any← {rt = node2 op tl tr} (NWF.node2 rsl rsr) (node2l px) = NWF.node2l (∞bisim-unfold-any← rsl px)
+  bisim-unfold-any← {rt = node2 op tl tr} (NWF.node2 rsl rsr) (node2r px) = NWF.node2r (∞bisim-unfold-any← rsr px)
+  bisim-unfold-any← {rt = nodeη op t} (NWF.nodeη rs) (nodeη px) = NWF.nodeη (∞bisim-unfold-any← rs px)

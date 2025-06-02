@@ -7,6 +7,7 @@ open import Data.Nat
 open import Data.Nat.Properties
 open import Data.Fin as F using (Fin) renaming (_ℕ-ℕ_ to _-_)
 open import Data.Fin.Properties as F
+open import Data.Fin.Renaming
 open import Data.Thinning as Th hiding (id)
 open import Data.Sum as S
 open import Data.Product

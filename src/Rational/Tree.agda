@@ -1,5 +1,5 @@
 {-# OPTIONS --safe --guardedness #-}
-module Rational.TreeNew where
+module Rational.Tree where
 
 open import Data.Nat as N
 open import Data.Fin hiding (_-_) renaming (_ℕ-ℕ_ to _-_)
@@ -135,14 +135,13 @@ data Any {X} P where
   loop : ∀ {n x} {Γ : Scope X n} → Any P Γ (lookup Γ x) → Any P Γ (var x)
 
 data Any-step {X} P x where -- needs to know the last x that was stored so that the scope can be correct in the last step
-  leaf   : ∀ {n} {Γ : Scope X n} → Any-step P x Γ leaf
   node1  : ∀ {op n} {Γ : Scope X n} {t : Tree X n} → Any P Γ t → Any-step P x Γ (node1 op t)
   node2l : ∀ {op n} {Γ : Scope X n} {tl : Tree X n} {tr : Tree X n} → Any P Γ tl → Any-step P x Γ (node2 op tl tr)
   node2r : ∀ {op n} {Γ : Scope X n} {tl : Tree X n} {tr : Tree X n} → Any P Γ tr → Any-step P x Γ (node2 op tl tr)
   nodeη  : ∀ {op n} {Γ : Scope X n} {t : Tree X (suc n)} → Any P (step x (nodeη op t) ,- Γ) t → Any-step P x Γ (nodeη op t)
 
 _∈_ : {X : Set} → X → Tree X 0 → Set
-x ∈ t = Any (_≡ x) [] t
+x ∈ t = Any (x ≡_ ) [] t
 
 ----------------------------
 -- Unfolding to NWF Trees --

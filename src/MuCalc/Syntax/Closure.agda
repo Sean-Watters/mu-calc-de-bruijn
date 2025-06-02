@@ -5,6 +5,7 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Nat hiding (_≟_)
 open import Data.Nat.Properties
 open import Data.Fin as F using (Fin) renaming (_ℕ-ℕ_ to _-_)
+open import Data.Fin.Renaming
 open import Data.Product
 open import Data.Sum
 
@@ -18,7 +19,8 @@ open import MuCalc.Base
 open import MuCalc.Syntax.ExpansionMap
 open import MuCalc.Syntax.Substitution
 
-open import Rational.Tree as R hiding (Scope; ext; rescope; lookup; unwind; unfold)
+open import Rational.Tree as R hiding (Scope; rename; lookup; unfold)
+open import Rational.Tree.Properties using (∞bisim-unfold-any→)
 open import Codata.NWFTree as T
 
 -- Rewrite rules
@@ -102,11 +104,11 @@ closure-complete (μMLη op ξ) (thru .(μMLη op ξ) {{fp}} ◅ pxs) = there (n
 -- Computing the closure as a via the expansion map applied to the subformulas, represented as an
 -- inductive approximation of a rational tree.
 rational-closure : ∀ {At n} (Γ : Scope At n) (ϕ : μML At n) → R.Tree (μML At 0) n
-rational-closure Γ ξ@(var x) = loop x
-rational-closure Γ ξ@(μML₀ op) = leaf (expand Γ ξ)
-rational-closure Γ ξ@(μML₁ op ϕ) = node1 op (expand Γ ξ) (rational-closure Γ ϕ)
-rational-closure Γ ξ@(μML₂ op ϕl ϕr) = node2 op (expand Γ ξ) (rational-closure Γ ϕl) (rational-closure Γ ϕr)
-rational-closure Γ ξ@(μMLη op ϕ) = nodeη op (expand Γ ξ) (rational-closure (ξ ,- Γ) ϕ)
+rational-closure Γ ξ@(var x) = var x
+rational-closure Γ ξ@(μML₀ op) = step (expand Γ ξ) leaf
+rational-closure Γ ξ@(μML₁ op ϕ) = step (expand Γ ξ) (node1 op (rational-closure Γ ϕ))
+rational-closure Γ ξ@(μML₂ op ϕl ϕr) = step (expand Γ ξ) (node2 op (rational-closure Γ ϕl) (rational-closure Γ ϕr))
+rational-closure Γ ξ@(μMLη op ϕ) = step (expand Γ ξ) (nodeη op (rational-closure (ξ ,- Γ) ϕ))
 
 ---------------------------------
 -- Relating Formulas and Trees --
@@ -115,11 +117,11 @@ rational-closure Γ ξ@(μMLη op ϕ) = nodeη op (expand Γ ξ) (rational-closu
 -- A relation witnessing whether a rational tree represents the closure of a formula,
 -- via the expansion-of-subforumulas approach.
 data IsClosure {At : Set} {n : ℕ} (Γ : Scope At n) : μML At n → R.Tree (μML At 0) n → Set where
-  loop : (x : Fin n) → IsClosure Γ (var x) (loop x)
-  leaf : ∀ op → IsClosure Γ (μML₀ op) (leaf (μML₀ op))
-  node1 : ∀ op {ϕ : μML At n} {t : R.Tree (μML At 0) n} → IsClosure Γ ϕ t → IsClosure Γ (μML₁ op ϕ) (node1 op (expand Γ (μML₁ op ϕ)) t)
-  node2 : ∀ op {ϕl ϕr : μML At n} {tl tr : R.Tree (μML At 0) n} → IsClosure Γ ϕl tl → IsClosure Γ ϕr tr → IsClosure Γ (μML₂ op ϕl ϕr) (node2 op (expand Γ (μML₂ op ϕl ϕr)) tl tr)
-  nodeη : ∀ op {ϕ : μML At (suc n)} {t : R.Tree (μML At 0) (suc n)} → IsClosure ((μMLη op ϕ) ,- Γ) ϕ t → IsClosure Γ (μMLη op ϕ) (nodeη op (expand Γ (μMLη op ϕ)) t)
+  loop : (x : Fin n) → IsClosure Γ (var x) (var x)
+  leaf : ∀ op → IsClosure Γ (μML₀ op) (step (μML₀ op) leaf)
+  node1 : ∀ op {ϕ : μML At n} {t : R.Tree (μML At 0) n} → IsClosure Γ ϕ t → IsClosure Γ (μML₁ op ϕ) (step (expand Γ (μML₁ op ϕ)) (node1 op t))
+  node2 : ∀ op {ϕl ϕr : μML At n} {tl tr : R.Tree (μML At 0) n} → IsClosure Γ ϕl tl → IsClosure Γ ϕr tr → IsClosure Γ (μML₂ op ϕl ϕr) (step (expand Γ (μML₂ op ϕl ϕr)) (node2 op tl tr))
+  nodeη : ∀ op {ϕ : μML At (suc n)} {t : R.Tree (μML At 0) (suc n)} → IsClosure ((μMLη op ϕ) ,- Γ) ϕ t → IsClosure Γ (μMLη op ϕ) (step (expand Γ (μMLη op ϕ)) (nodeη op t))
 
 -- Coherence between scopes of formulas and scopes of rational trees.
 data ScCoh {At : Set} : ∀ {n} → Scope At n → R.Scope (μML At 0) n → Set where
@@ -141,7 +143,7 @@ rational-closure-IsClosure Γ (μMLη op ϕ) = nodeη op (rational-closure-IsClo
 
 expandvar-head : ∀ {At n} {Γ : Scope At n} {Δ : R.Scope (μML At 0) n} (x : Fin n)
                → ScCoh Γ Δ
-               → expand-var Γ (F.splitAt 0 x) ≡ R.head Δ (loop x)
+               → expand-var Γ (F.splitAt 0 x) ≡ R.head Δ (var x)
 expandvar-head {Γ = μMLη op ϕ ,- Γ} F.zero (nodeη op q ,- qs) = cong (μMLη op ∘ expand Γ) $
   begin
     rename (ext id) ϕ
@@ -174,7 +176,7 @@ rclos-bisim : ∀ {At n} {Γ : Scope At n} {Δ : R.Scope (μML At 0) n}
 rclos-bisim-tree : ∀ {At n} {Γ : Scope At n} {Δ : R.Scope (μML At 0) n}
                  → ScCoh Γ Δ → (ξ : μML At n)
                  → {t : R.Tree (μML At 0) n} → (cl : IsClosure Γ ξ t)
-                 → Pointwise _≡_ (∞NWFTree.tree (closure (expand Γ ξ))) (R.tree Δ t)
+                 → Pointwise _≡_ (∞NWFTree.tree (closure (expand Γ ξ))) (R.unfold-subtree Δ t)
 
 rclos-bisim Γ≈Δ ξ cl .∞Pointwise.head = rclos-bisim-head Γ≈Δ ξ cl
 rclos-bisim Γ≈Δ ξ cl .∞Pointwise.tree = rclos-bisim-tree Γ≈Δ ξ cl
@@ -219,3 +221,14 @@ rclos-bisim-sentence {At} ξ =
 ----------------------------------------------------
 -- Correctness for the Rational Closure Algorithm --
 ----------------------------------------------------
+
+
+rational-closure-sound : ∀ {At} (ξ : μML At 0) {ϕ : μML At 0}
+                       → (ϕ R.∈ (rational-closure [] ξ)) → (ϕ ∈-Closure ξ)
+rational-closure-sound ξ p = closure-sound ξ {!∞bisim-unfold-any← (rclos-bisim-sentence ξ) p!}
+
+-- And the other direction.
+-- Every formula in the closure is reached by the algorithm.
+rational-closure-complete : ∀ {At} (ξ : μML At 0) {ϕ : μML At 0}
+                          → (ϕ ∈-Closure ξ) → (ϕ R.∈ (rational-closure [] ξ))
+rational-closure-complete ξ p = ∞bisim-unfold-any→ (rclos-bisim-sentence ξ) (closure-complete ξ p)
