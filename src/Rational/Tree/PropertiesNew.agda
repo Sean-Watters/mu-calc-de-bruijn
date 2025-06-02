@@ -184,21 +184,13 @@ rename-lookup {Γ = tγ ,- Γ} {Δ = tδ ,- Δ} (inj θ p) (suc x) = rename-IsRe
   ≡⟨ rename-embed-inj (IsRenaming→≡ (rename-lookup θ x)) ⟩
     rename suc (lookup Δ (embed' θ x))
   ∎ where open ≡-Reasoning
-rename-lookup {Γ = Γ} {Δ = tδ ,- Δ} (pad θ) zero = rename-IsRenaming $
+rename-lookup {Γ = Γ} {Δ = tδ ,- Δ} (pad θ) x = rename-IsRenaming $
   begin
-    rename (suc ∘ (embed' θ)) (lookup Γ zero)
-  ≡⟨ {!!} ⟩
-    rename suc (lookup Δ (embed' θ zero))
-  ∎ where open ≡-Reasoning
-rename-lookup {Γ = Γ} {Δ = tδ ,- Δ} (pad θ) (suc x) = rename-IsRenaming $
-  begin
-    rename (suc ∘ (embed' θ)) (lookup Γ (suc x))
-  ≡⟨ rename-cong (λ _ → refl) (lookup Γ (suc x)) ⟩
-    rename (embed' (pad {t = tδ} θ)) (lookup Γ (suc x))
-  ≡⟨ rename-fusion (λ _ → refl) (lookup Γ (suc x)) ⟨
-    rename (ext (embed' θ)) (rename suc (lookup Γ (suc x)))
-  ≡⟨ rename-embed-inj $ IsRenaming→≡ $ rename-lookup θ (suc x) ⟩
-    rename suc (lookup Δ (embed' θ (suc x)))
+    rename (suc ∘ (embed' θ)) (lookup Γ x)
+  ≡⟨ rename-fusion (λ _ → refl) (lookup Γ x) ⟨
+    rename (ext (embed' θ)) (rename suc (lookup Γ x))
+  ≡⟨ rename-embed-inj $ IsRenaming→≡ $ rename-lookup θ x ⟩
+    rename suc (lookup Δ (embed' θ x))
   ∎ where open ≡-Reasoning
 
 -----------------------
