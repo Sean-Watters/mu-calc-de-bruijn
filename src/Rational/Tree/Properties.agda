@@ -282,6 +282,43 @@ any-rename-suc {n = n} {P} {Γ} {t} {s} pt
           (rename-cong (λ x → cong suc (embed'-id ⊑-refl x)) t)
           (any-rename {Γ = Γ} {Δ = s ,- Γ} {t} (pad ⊑-refl) pt)
 
+
+-----------------------------
+-- Properties of Unfolding --
+-----------------------------
+
+head-rename-suc' : ∀ {X n} (tγ : Tree X n) {{nvtγ : NonVar tγ}} (Γ : Scope X n) (t : Tree X n)
+                 → head Γ t ≡ head (tγ ,- Γ) (rename suc t)
+head-rename-suc' = {!!}
+
+head-lookup : ∀ {X n} (Γ : Scope X n) (x : Fin n) → head Γ (var x) ≡ head Γ (lookup Γ x)
+head-lookup (t ,- Γ) zero = head-rename-suc' t Γ t
+head-lookup (t ,- Γ) (suc x) =
+  begin
+    head (t ,- Γ) (var (suc x))
+  ≡⟨ head-lookup Γ x ⟩
+    head Γ (lookup Γ x)
+  ≡⟨ head-rename-suc' t Γ (lookup Γ x) ⟩
+    head (t ,- Γ) (lookup (t ,- Γ) (suc x))
+  ∎ where open ≡-Reasoning
+
+unfold-rename-suc : ∀ {X n} (tγ : Tree X n) {{nvtγ : NonVar tγ}} (Γ : Scope X n) (t : Tree X n)
+                  → unfold Γ t ~ unfold (tγ ,- Γ) (rename suc t)
+unfold-rename-suc = {!!}
+
+mutual
+  unfold-lookup : ∀ {X n} (Γ : Scope X n) (x : Fin n) → unfold Γ (var x) ~ unfold Γ (lookup Γ x)
+  unfold-lookup Γ x .NWF.head = head-lookup Γ x
+  unfold-lookup Γ x .NWF.tree = unfold-lookup-step Γ x
+
+  unfold-lookup-step : ∀ {X n} (Γ : Scope X n) (x : Fin n) → NWF.Pointwise _≡_ (unfold-subtree Γ (var x)) (unfold-subtree Γ (lookup Γ x))
+  unfold-lookup-step {X} (t ,- Γ) (suc x) = run-tree {!!} where open NWF.bisim-Reasoning X
+  unfold-lookup-step (step x leaf ,- Γ) zero = NWF.leaf
+  unfold-lookup-step (step x (node1 op t) ,- Γ) zero = NWF.node1 (unfold-rename-suc (step x (node1 op t)) Γ t)
+  unfold-lookup-step (step x (node2 op tl tr) ,- Γ) zero = NWF.node2 (unfold-rename-suc (step x (node2 op tl tr)) Γ tl) (unfold-rename-suc (step x (node2 op tl tr)) Γ tr)
+  unfold-lookup-step (step x (nodeη op t) ,- Γ) zero = NWF.nodeη {!unfold-rename-suc!}
+
+
 ---------------------------------------------------
 -- `Any` for R-trees and NWF-trees is equivalent --
 ---------------------------------------------------
@@ -294,10 +331,9 @@ mutual
                      → t ~ R.unfold Γ rt
                      → NWF.Any P t
                      → R.Any P Γ rt
-
-
   ∞bisim-unfold-any→ rs (here px) = here-head px (rs .NWF.head)
   ∞bisim-unfold-any→ rs (there pt) = bisim-unfold-any→ (rs .NWF.tree) pt
+
 
   bisim-unfold-any→ : ∀ {X n} {P : X → Set}
                     → {t : NWFTree X} {rt : R.Tree X n} {Γ : R.Scope X n}
@@ -328,7 +364,8 @@ mutual
                            → NWF.Any P t
   ∞bisim-unfold-any← {P = P} rs (here px) = here (subst P (sym $ NWF.head rs) px)
   ∞bisim-unfold-any← rs (step px) = there (bisim-unfold-any← (NWF.tree rs) px)
-  ∞bisim-unfold-any← rs (loop px) = {!!}
+  ∞bisim-unfold-any← {Γ = Γ} rs (loop {x = x} px) = ∞bisim-unfold-any← (NWF.~-trans rs (unfold-lookup Γ x)) px
+
 
   bisim-unfold-any← : ∀ {X n x} {P : X → Set}
                     → {t : NWFTree X} {rt : R.Tree-step X n} {Γ : R.Scope X n}

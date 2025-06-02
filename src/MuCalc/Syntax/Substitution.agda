@@ -342,4 +342,3 @@ sub-id (μML₁ op ϕ) eq = cong (μML₁ op) (sub-id ϕ eq)
 sub-id (μML₂ op ϕ ψ) eq = cong₂ (μML₂ op) (sub-id ϕ eq) (sub-id ψ eq)
 sub-id (μMLη op ϕ) eq = cong (μMLη op) (sub-id ϕ (ids-ext eq))
 
-
