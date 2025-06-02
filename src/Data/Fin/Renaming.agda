@@ -52,4 +52,3 @@ embed-ext : ∀ {i j} {θ : Thin i j} {f : Rename i j} → embed θ ≗ f → em
 embed-ext p zero = refl
 embed-ext p (suc x) = cong suc (p x)
 
--- TODO: making renaming generic on syntaxes with binding
