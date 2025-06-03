@@ -67,8 +67,8 @@ _++_ : ∀ {X a b} → Scope X a → Scope X b → Scope X (a N.+ b)
 [] ++ Δ = Δ
 (t ,- Γ) ++ Δ = _,-_ (rename (embed (plusR _)) t) {{rename-NonVar}} (Γ ++ Δ)
 
+-- A data type witnessing that renaming `tx` by `ρ` yields `ty`.
 mutual
-  -- A data type witnessing that renaming `tx` by `ρ` yields `ty`.
   data IsRenaming {X : Set} {n m : ℕ} (ρ : Rename n m) : (tx : Tree X n) (ty : Tree X m) → Set where
     step : ∀ {x y} {tx : Tree-step X n} {ty : Tree-step X m} → x ≡ y → IsRenaming-step ρ tx ty → IsRenaming ρ (step x tx) (step y ty)
     var : ∀ {x y} → ρ x ≡ y → IsRenaming ρ (var x) (var y)
@@ -113,8 +113,9 @@ embed' (pad θ) x = suc (embed' θ x)
 -- Equivalence of Trees --
 --------------------------
 
--- Two trees are equivalent if there's a thinning between their scopes that sends the variables to the right
--- places. Most of the time it will be more convenient to not use this type, and instead give it in curried form.
+-- Two trees are equivalent if there's a thinning between their scopes that sends the variables to the
+-- right places. Most of the time it will be more convenient to not use this type, and instead give it
+-- in curried form.
 [_⊢_]≈[_⊢_] : {X : Set} {n m : ℕ} (Γ : Scope X n) → (tx : Tree X n) → (Δ : Scope X m) → (ty : Tree X m) → Set
 [ Γ ⊢ tx ]≈[ Δ ⊢ ty ] = Σ[ θ ∈ Γ ⊑ Δ ] (IsRenaming (embed' θ) tx ty)
 
