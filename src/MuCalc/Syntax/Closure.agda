@@ -20,7 +20,7 @@ open import MuCalc.Syntax.ExpansionMap
 open import MuCalc.Syntax.Substitution
 
 open import Rational.Tree as R hiding (Scope; rename; lookup; unfold)
-open import Rational.Tree.Properties using (∞bisim-unfold-any→)
+open import Rational.Tree.Properties using (∞bisim-unfold-any→; ∞bisim-unfold-any←)
 open import Codata.NWFTree as T
 
 -- Rewrite rules
@@ -225,7 +225,7 @@ rclos-bisim-sentence {At} ξ =
 
 rational-closure-sound : ∀ {At} (ξ : μML At 0) {ϕ : μML At 0}
                        → (ϕ R.∈ (rational-closure [] ξ)) → (ϕ ∈-Closure ξ)
-rational-closure-sound ξ p = closure-sound ξ {!∞bisim-unfold-any← (rclos-bisim-sentence ξ) p!}
+rational-closure-sound ξ p = closure-sound ξ (∞bisim-unfold-any← (rclos-bisim-sentence ξ) p)
 
 -- And the other direction.
 -- Every formula in the closure is reached by the algorithm.

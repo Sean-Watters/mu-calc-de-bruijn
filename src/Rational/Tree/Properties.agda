@@ -1,4 +1,4 @@
-{-# OPTIONS --safe --guardedness --with-K #-}
+{-# OPTIONS --safe --guardedness #-}
 module Rational.Tree.Properties where
 
 open import Relation.Binary.PropositionalEquality
@@ -73,7 +73,7 @@ here-head {Γ = Γ} {R.var x} p refl
 -- Properties of `ext` --
 -------------------------
 
-ext-embed : ∀ {X n m} {s : Tree X n} {t : Tree X m} {{_ : NonVar s}} {{_ : NonVar t}}
+ext-embed : ∀ {X n m} {s : Tree X n} {t : Tree X m} {{nvs : NonVar s}} {{nvt : NonVar t}}
           → {Γ : Scope X n} {Δ : Scope X m} → (θ : Γ ⊑ Δ)
           → (r : IsRenaming (embed' θ) s t)
           → embed' (inj θ r) ≗ ext (embed' θ)
@@ -234,8 +234,6 @@ embed'-id (pad θ) x = ⊥-elim (t,Γ⋢Γ 1+n≰n θ)
     id t
   ∎ where open ≡-Reasoning
 
-
-
 -------------------------
 -- Properties of `Any` --
 -------------------------
@@ -349,29 +347,32 @@ unfold-rename-suc : ∀ {X n} (tγ : Tree X n) {{nvtγ : NonVar tγ}} (Γ : Scop
                   → unfold Γ t ~ unfold (tγ ,- Γ) (rename suc t)
 unfold-rename-suc tγ Γ t
   = unfold-bisim (pad ⊑-refl)
-                 (rename-IsRenaming (rename-cong (λ x → cong suc (embed'-id ⊑-refl x)) t))
+                 ((rename-IsRenaming (rename-cong (λ x → cong suc (embed'-id ⊑-refl x)) t)))
 
-mutual
-  unfold-lookup : ∀ {X n} (Γ : Scope X n) (x : Fin n)
-                → unfold Γ (var x) ~ unfold Γ (lookup Γ x)
-  unfold-lookup Γ x .NWF.head = head-lookup Γ x
-  unfold-lookup Γ x .NWF.tree = unfold-lookup-step Γ x
+unfold-lookup-step : ∀ {X n} (Γ : Scope X n) (x : Fin n)
+                   → NWF.Pointwise _≡_ (unfold-subtree Γ (var x)) (unfold-subtree Γ (lookup Γ x))
+unfold-lookup-step (step x leaf ,- Γ) zero
+  = NWF.leaf
+unfold-lookup-step (step x (node1 op t) ,- Γ) zero
+  = NWF.node1 (unfold-rename-suc (step x (node1 op t)) {{_}} Γ t) -- todo: on current agda {{_}} appears to not be the same as omitting it...bug??
+unfold-lookup-step (step x (node2 op tl tr) ,- Γ) zero
+  = NWF.node2 (unfold-rename-suc (step x (node2 op tl tr)) {{_}} Γ tl)
+              (unfold-rename-suc (step x (node2 op tl tr)) {{_}} Γ tr)
+unfold-lookup-step (step x (nodeη op t) ,- Γ) zero
+  = NWF.nodeη (unfold-bisim (inj {{nvs = _}} (pad {{nvt = _}} ⊑-refl) (step refl (nodeη op (rename-IsRenaming (rename-cong (ext-cong (λ u → cong suc (embed'-id ⊑-refl u))) t)))))
+                            (rename-IsRenaming (rename-cong (λ z → trans (ext-embed {{nvs = _}} (pad {{nvt = _}} ⊑-refl) _ z)
+                                                                         (ext-cong (λ u → cong suc (embed'-id ⊑-refl u)) z))
+                                                               t)))
+unfold-lookup-step {X} (t ,- Γ) (suc x)
+  = run-tree (`map-trans (`map-lift $ unfold-lookup-step Γ x)
+                         (`map-lift $ NWF.tree $ unfold-rename-suc t Γ (lookup Γ x)))
+  where open NWF.bisim-Reasoning X
 
-  unfold-lookup-step : ∀ {X n} (Γ : Scope X n) (x : Fin n)
-                     → NWF.Pointwise _≡_ (unfold-subtree Γ (var x)) (unfold-subtree Γ (lookup Γ x))
-  unfold-lookup-step (step x leaf ,- Γ) zero
-    = NWF.leaf
-  unfold-lookup-step (step x (node1 op t) ,- Γ) zero
-    = NWF.node1 (unfold-rename-suc (step x (node1 op t)) Γ t)
-  unfold-lookup-step (step x (node2 op tl tr) ,- Γ) zero
-    = NWF.node2 (unfold-rename-suc (step x (node2 op tl tr)) Γ tl)
-                (unfold-rename-suc (step x (node2 op tl tr)) Γ tr)
-  unfold-lookup-step (step x (nodeη op t) ,- Γ) zero
-    = NWF.nodeη {!unfold-rename-suc!}
-  unfold-lookup-step {X} (t ,- Γ) (suc x)
-    = run-tree (`map-trans (`map-lift $ unfold-lookup-step Γ x)
-                           (`map-lift $ NWF.tree $ unfold-rename-suc t Γ (lookup Γ x)))
-    where open NWF.bisim-Reasoning X
+-- And finally, unfolding a var is the same as looking it up in the scope then unfolding.
+unfold-lookup : ∀ {X n} (Γ : Scope X n) (x : Fin n)
+              → unfold Γ (var x) ~ unfold Γ (lookup Γ x)
+unfold-lookup Γ x .NWF.head = head-lookup Γ x
+unfold-lookup Γ x .NWF.tree = unfold-lookup-step Γ x
 
 
 ---------------------------------------------------
@@ -438,3 +439,4 @@ mutual
     = NWF.node2r (∞bisim-unfold-any← rsr px)
   bisim-unfold-any← {rt = nodeη op t} (NWF.nodeη rs) (nodeη px)
     = NWF.nodeη (∞bisim-unfold-any← rs px)
+
