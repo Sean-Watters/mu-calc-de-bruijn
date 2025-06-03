@@ -222,12 +222,24 @@ rclos-bisim-sentence {At} ξ =
 -- Correctness for the Rational Closure Algorithm --
 ----------------------------------------------------
 
+{-
+We have a coinductive closure algorithm (`closure`) that was easy to prove correct (via
+`closure-sound` and `closure-complete`).
 
+We have an inductive approximation of the closure as a tree with backedges represented as
+variables (`rational-closure`) --- it is finite by construction.
+
+We have proved that `closure` is bisimilar to the "unfolding" of `rational-closure` to an
+infinite cotree.
+
+We can now show that the finite algorithm is also correct, by transporting across the bisimulation.
+-}
+
+-- Every formula produced by the rational closure algorithm really is in the closure.
 rational-closure-sound : ∀ {At} (ξ : μML At 0) {ϕ : μML At 0}
                        → (ϕ R.∈ (rational-closure [] ξ)) → (ϕ ∈-Closure ξ)
 rational-closure-sound ξ p = closure-sound ξ (∞bisim-unfold-any← (rclos-bisim-sentence ξ) p)
 
--- And the other direction.
 -- Every formula in the closure is reached by the algorithm.
 rational-closure-complete : ∀ {At} (ξ : μML At 0) {ϕ : μML At 0}
                           → (ϕ ∈-Closure ξ) → (ϕ R.∈ (rational-closure [] ξ))
