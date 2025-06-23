@@ -155,17 +155,17 @@ head (t ,- Γ) (var zero) = head Γ t -- scopes aren't allowed to store vars exa
 head (t ,- Γ) (var (suc x)) = head Γ (var x)
 
 mutual
-  unfold : ∀ {X n} → (Γ : Scope X n) → Tree X n → ∞NWFTree X
-  unfold Γ t .T.head = head Γ t
-  unfold Γ t .T.tree = unfold-subtree Γ t
+  unravel : ∀ {X n} → (Γ : Scope X n) → Tree X n → ∞NWFTree X
+  unravel Γ t .T.head = head Γ t
+  unravel Γ t .T.tree = unravel-subtree Γ t
 
-  unfold-subtree : ∀ {X n} → (Γ : Scope X n) → Tree X n → NWFTree X
-  unfold-subtree Γ (step x leaf) = leaf
-  unfold-subtree Γ (step x (node1 op t)) = node1 op (unfold Γ t)
-  unfold-subtree Γ (step x (node2 op tl tr)) = node2 op (unfold Γ tl) (unfold Γ tr)
-  unfold-subtree Γ (step x (nodeη op t)) = nodeη op (unfold ((step x (nodeη op t)) ,- Γ) t)
-  unfold-subtree (t ,- Γ) (var zero) = unfold-subtree Γ t
-  unfold-subtree (t ,- Γ) (var (suc x)) = unfold-subtree Γ (var x)
+  unravel-subtree : ∀ {X n} → (Γ : Scope X n) → Tree X n → NWFTree X
+  unravel-subtree Γ (step x leaf) = leaf
+  unravel-subtree Γ (step x (node1 op t)) = node1 op (unravel Γ t)
+  unravel-subtree Γ (step x (node2 op tl tr)) = node2 op (unravel Γ tl) (unravel Γ tr)
+  unravel-subtree Γ (step x (nodeη op t)) = nodeη op (unravel ((step x (nodeη op t)) ,- Γ) t)
+  unravel-subtree (t ,- Γ) (var zero) = unravel-subtree Γ t
+  unravel-subtree (t ,- Γ) (var (suc x)) = unravel-subtree Γ (var x)
 
 ----------------
 -- Operations --

@@ -282,7 +282,7 @@ any-rename-suc {n = n} {P} {Γ} {t} {s} pt
 
 
 -----------------------------
--- Properties of Unfolding --
+-- Properties of Unraveling --
 -----------------------------
 
 head-rename-suc' : ∀ {X n} (tγ : Tree X n) {{nvtγ : NonVar tγ}} (Γ : Scope X n) (t : Tree X n)
@@ -313,66 +313,66 @@ eq-head (inj θ eq1) (var {suc x} refl) = eq-head θ (var refl)
 eq-head (pad θ) (var refl) = eq-head θ (var refl)
 
 
--- The key lemma for bisimulations of unfoldings; if the trees are equivalent, then their unfoldings
+-- The key lemma for bisimulations of unravelings; if the trees are equivalent, then their unravelings
 -- are bisimilar.
 -- TODO: The reverse is probably also true?
 mutual
-  unfold-bisim : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m}
+  unravel-bisim : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m}
                → (θ : Γ ⊑ Δ)
                → {tx : Tree X n} {ty : Tree X m}
                → IsRenaming (embed' θ) tx ty
-               → unfold Γ tx ~ unfold Δ ty
-  unfold-bisim θ eq .NWF.head = eq-head θ eq
-  unfold-bisim θ eq .NWF.tree = unfold-bisim-step θ eq
+               → unravel Γ tx ~ unravel Δ ty
+  unravel-bisim θ eq .NWF.head = eq-head θ eq
+  unravel-bisim θ eq .NWF.tree = unravel-bisim-step θ eq
 
-  unfold-bisim-step : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m}
+  unravel-bisim-step : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m}
                     → (θ : Γ ⊑ Δ)
                     → {tx : Tree X n} {ty : Tree X m}
                     → IsRenaming (embed' θ) tx ty
-                    → NWF.Pointwise _≡_ (unfold-subtree Γ tx) (unfold-subtree Δ ty)
-  unfold-bisim-step θ (step x≡y leaf)
+                    → NWF.Pointwise _≡_ (unravel-subtree Γ tx) (unravel-subtree Δ ty)
+  unravel-bisim-step θ (step x≡y leaf)
     = NWF.leaf
-  unfold-bisim-step θ (step x≡y (node1 op eq))
-    = NWF.node1 (unfold-bisim θ eq)
-  unfold-bisim-step θ (step x≡y (node2 op eql eqr))
-    = NWF.node2 (unfold-bisim θ eql) (unfold-bisim θ eqr)
-  unfold-bisim-step {Γ = Γ} {Δ} θ tx@{step x (nodeη op tx')} ty@{step y (nodeη op ty')} eq'@(step {x = x} {y} x≡y (nodeη op eq))
-    = NWF.nodeη (unfold-bisim (inj θ eq') (IsRenaming-subst (sym ∘ ext-embed θ _) eq))
-  unfold-bisim-step (inj θ eq1) {var zero} (var refl) = unfold-bisim-step θ eq1
-  unfold-bisim-step (inj θ eq1) {var (suc x)} (var refl) = unfold-bisim-step θ (var refl)
-  unfold-bisim-step (pad θ) (var refl) = unfold-bisim-step θ (var refl)
+  unravel-bisim-step θ (step x≡y (node1 op eq))
+    = NWF.node1 (unravel-bisim θ eq)
+  unravel-bisim-step θ (step x≡y (node2 op eql eqr))
+    = NWF.node2 (unravel-bisim θ eql) (unravel-bisim θ eqr)
+  unravel-bisim-step {Γ = Γ} {Δ} θ tx@{step x (nodeη op tx')} ty@{step y (nodeη op ty')} eq'@(step {x = x} {y} x≡y (nodeη op eq))
+    = NWF.nodeη (unravel-bisim (inj θ eq') (IsRenaming-subst (sym ∘ ext-embed θ _) eq))
+  unravel-bisim-step (inj θ eq1) {var zero} (var refl) = unravel-bisim-step θ eq1
+  unravel-bisim-step (inj θ eq1) {var (suc x)} (var refl) = unravel-bisim-step θ (var refl)
+  unravel-bisim-step (pad θ) (var refl) = unravel-bisim-step θ (var refl)
 
 
-unfold-rename-suc : ∀ {X n} (tγ : Tree X n) {{nvtγ : NonVar tγ}} (Γ : Scope X n) (t : Tree X n)
-                  → unfold Γ t ~ unfold (tγ ,- Γ) (rename suc t)
-unfold-rename-suc tγ Γ t
-  = unfold-bisim (pad ⊑-refl)
+unravel-rename-suc : ∀ {X n} (tγ : Tree X n) {{nvtγ : NonVar tγ}} (Γ : Scope X n) (t : Tree X n)
+                  → unravel Γ t ~ unravel (tγ ,- Γ) (rename suc t)
+unravel-rename-suc tγ Γ t
+  = unravel-bisim (pad ⊑-refl)
                  ((rename-IsRenaming (rename-cong (λ x → cong suc (embed'-id ⊑-refl x)) t)))
 
-unfold-lookup-step : ∀ {X n} (Γ : Scope X n) (x : Fin n)
-                   → NWF.Pointwise _≡_ (unfold-subtree Γ (var x)) (unfold-subtree Γ (lookup Γ x))
-unfold-lookup-step (step x leaf ,- Γ) zero
+unravel-lookup-step : ∀ {X n} (Γ : Scope X n) (x : Fin n)
+                   → NWF.Pointwise _≡_ (unravel-subtree Γ (var x)) (unravel-subtree Γ (lookup Γ x))
+unravel-lookup-step (step x leaf ,- Γ) zero
   = NWF.leaf
-unfold-lookup-step (step x (node1 op t) ,- Γ) zero
-  = NWF.node1 (unfold-rename-suc (step x (node1 op t)) {{_}} Γ t) -- todo: on current agda {{_}} appears to not be the same as omitting it...bug??
-unfold-lookup-step (step x (node2 op tl tr) ,- Γ) zero
-  = NWF.node2 (unfold-rename-suc (step x (node2 op tl tr)) {{_}} Γ tl)
-              (unfold-rename-suc (step x (node2 op tl tr)) {{_}} Γ tr)
-unfold-lookup-step (step x (nodeη op t) ,- Γ) zero
-  = NWF.nodeη (unfold-bisim (inj {{nvs = _}} (pad {{nvt = _}} ⊑-refl) (step refl (nodeη op (rename-IsRenaming (rename-cong (ext-cong (λ u → cong suc (embed'-id ⊑-refl u))) t)))))
+unravel-lookup-step (step x (node1 op t) ,- Γ) zero
+  = NWF.node1 (unravel-rename-suc (step x (node1 op t)) {{_}} Γ t) -- todo: on current agda {{_}} appears to not be the same as omitting it...bug??
+unravel-lookup-step (step x (node2 op tl tr) ,- Γ) zero
+  = NWF.node2 (unravel-rename-suc (step x (node2 op tl tr)) {{_}} Γ tl)
+              (unravel-rename-suc (step x (node2 op tl tr)) {{_}} Γ tr)
+unravel-lookup-step (step x (nodeη op t) ,- Γ) zero
+  = NWF.nodeη (unravel-bisim (inj {{nvs = _}} (pad {{nvt = _}} ⊑-refl) (step refl (nodeη op (rename-IsRenaming (rename-cong (ext-cong (λ u → cong suc (embed'-id ⊑-refl u))) t)))))
                             (rename-IsRenaming (rename-cong (λ z → trans (ext-embed {{nvs = _}} (pad {{nvt = _}} ⊑-refl) _ z)
                                                                          (ext-cong (λ u → cong suc (embed'-id ⊑-refl u)) z))
                                                                t)))
-unfold-lookup-step {X} (t ,- Γ) (suc x)
-  = run-tree (`map-trans (`map-lift $ unfold-lookup-step Γ x)
-                         (`map-lift $ NWF.tree $ unfold-rename-suc t Γ (lookup Γ x)))
+unravel-lookup-step {X} (t ,- Γ) (suc x)
+  = run-tree (`map-trans (`map-lift $ unravel-lookup-step Γ x)
+                         (`map-lift $ NWF.tree $ unravel-rename-suc t Γ (lookup Γ x)))
   where open NWF.bisim-Reasoning X
 
--- And finally, unfolding a var is the same as looking it up in the scope then unfolding.
-unfold-lookup : ∀ {X n} (Γ : Scope X n) (x : Fin n)
-              → unfold Γ (var x) ~ unfold Γ (lookup Γ x)
-unfold-lookup Γ x .NWF.head = head-lookup Γ x
-unfold-lookup Γ x .NWF.tree = unfold-lookup-step Γ x
+-- And finally, unraveling a var is the same as looking it up in the scope then unraveling.
+unravel-lookup : ∀ {X n} (Γ : Scope X n) (x : Fin n)
+              → unravel Γ (var x) ~ unravel Γ (lookup Γ x)
+unravel-lookup Γ x .NWF.head = head-lookup Γ x
+unravel-lookup Γ x .NWF.tree = unravel-lookup-step Γ x
 
 
 ---------------------------------------------------
@@ -382,61 +382,60 @@ unfold-lookup Γ x .NWF.tree = unfold-lookup-step Γ x
 
 -- NWF to Rational
 mutual
-  ∞bisim-unfold-any→ : ∀ {X n} {P : X → Set}
+  ∞bisim-unravel-any→ : ∀ {X n} {P : X → Set}
                      → {t : ∞NWFTree X} {rt : R.Tree X n} {Γ : R.Scope X n}
-                     → t ~ R.unfold Γ rt
+                     → t ~ R.unravel Γ rt
                      → NWF.Any P t
                      → R.Any P Γ rt
-  ∞bisim-unfold-any→ rs (here px) = here-head px (rs .NWF.head)
-  ∞bisim-unfold-any→ rs (there pt) = bisim-unfold-any→ (rs .NWF.tree) pt
+  ∞bisim-unravel-any→ rs (here px) = here-head px (rs .NWF.head)
+  ∞bisim-unravel-any→ rs (there pt) = bisim-unravel-any→ (rs .NWF.tree) pt
 
 
-  bisim-unfold-any→ : ∀ {X n} {P : X → Set}
+  bisim-unravel-any→ : ∀ {X n} {P : X → Set}
                     → {t : NWFTree X} {rt : R.Tree X n} {Γ : R.Scope X n}
-                    → NWF.Pointwise _≡_ t (R.unfold-subtree Γ rt)
+                    → NWF.Pointwise _≡_ t (R.unravel-subtree Γ rt)
                     → NWF.Any-step P t
                     → R.Any P Γ rt
-  bisim-unfold-any→ {rt = step x leaf} NWF.leaf ()
-  bisim-unfold-any→ {rt = step x (node1 op rt)} (NWF.node1 rs) (NWF.node1 pt)
-    = step (node1 (∞bisim-unfold-any→ rs pt))
-  bisim-unfold-any→ {rt = step x (node2 op rtl rtr)} (NWF.node2 rsl rsr) (NWF.node2l pt)
-    = step (node2l (∞bisim-unfold-any→ rsl pt))
-  bisim-unfold-any→ {rt = step x (node2 op rtl rtr)} (NWF.node2 rsl rsr) (NWF.node2r pt)
-    = step (node2r (∞bisim-unfold-any→ rsr pt))
-  bisim-unfold-any→ {rt = step x (nodeη op rt)} (NWF.nodeη rs) (NWF.nodeη pt)
-    = step (nodeη (∞bisim-unfold-any→ rs pt))
-  bisim-unfold-any→ {rt = var zero} {t ,- Γ} rs pt
-    = loop (any-rename-suc (bisim-unfold-any→ {rt = t} {Γ = Γ} rs pt))
-  bisim-unfold-any→ {rt = var (suc x)} {t ,- Γ} rs pt
-    = any-rename-suc (bisim-unfold-any→ {rt = var x} {Γ} rs pt)
+  bisim-unravel-any→ {rt = step x leaf} NWF.leaf ()
+  bisim-unravel-any→ {rt = step x (node1 op rt)} (NWF.node1 rs) (NWF.node1 pt)
+    = step (node1 (∞bisim-unravel-any→ rs pt))
+  bisim-unravel-any→ {rt = step x (node2 op rtl rtr)} (NWF.node2 rsl rsr) (NWF.node2l pt)
+    = step (node2l (∞bisim-unravel-any→ rsl pt))
+  bisim-unravel-any→ {rt = step x (node2 op rtl rtr)} (NWF.node2 rsl rsr) (NWF.node2r pt)
+    = step (node2r (∞bisim-unravel-any→ rsr pt))
+  bisim-unravel-any→ {rt = step x (nodeη op rt)} (NWF.nodeη rs) (NWF.nodeη pt)
+    = step (nodeη (∞bisim-unravel-any→ rs pt))
+  bisim-unravel-any→ {rt = var zero} {t ,- Γ} rs pt
+    = loop (any-rename-suc (bisim-unravel-any→ {rt = t} {Γ = Γ} rs pt))
+  bisim-unravel-any→ {rt = var (suc x)} {t ,- Γ} rs pt
+    = any-rename-suc (bisim-unravel-any→ {rt = var x} {Γ} rs pt)
 
 
 -- Rational to NWF
 mutual
-  ∞bisim-unfold-any← : ∀ {X n} {P : X → Set}
+  ∞bisim-unravel-any← : ∀ {X n} {P : X → Set}
                            → {t : ∞NWFTree X} {rt : R.Tree X n} {Γ : R.Scope X n}
-                           → t ~ R.unfold Γ rt
+                           → t ~ R.unravel Γ rt
                            → R.Any P Γ rt
                            → NWF.Any P t
-  ∞bisim-unfold-any← {P = P} rs (here px)
+  ∞bisim-unravel-any← {P = P} rs (here px)
     = here (subst P (sym $ NWF.head rs) px)
-  ∞bisim-unfold-any← rs (step px)
-    = there (bisim-unfold-any← (NWF.tree rs) px)
-  ∞bisim-unfold-any← {Γ = Γ} rs (loop {x = x} px)
-    = ∞bisim-unfold-any← (NWF.~-trans rs (unfold-lookup Γ x)) px
+  ∞bisim-unravel-any← rs (step px)
+    = there (bisim-unravel-any← (NWF.tree rs) px)
+  ∞bisim-unravel-any← {Γ = Γ} rs (loop {x = x} px)
+    = ∞bisim-unravel-any← (NWF.~-trans rs (unravel-lookup Γ x)) px
 
 
-  bisim-unfold-any← : ∀ {X n x} {P : X → Set}
+  bisim-unravel-any← : ∀ {X n x} {P : X → Set}
                     → {t : NWFTree X} {rt : R.Tree-step X n} {Γ : R.Scope X n}
-                    → NWF.Pointwise _≡_ t (unfold-subtree Γ (step x rt))
+                    → NWF.Pointwise _≡_ t (unravel-subtree Γ (step x rt))
                     → R.Any-step P x Γ rt
                     → NWF.Any-step P t
-  bisim-unfold-any← {rt = node1 op t} (NWF.node1 rs) (node1 px)
-    = NWF.node1 (∞bisim-unfold-any← rs px)
-  bisim-unfold-any← {rt = node2 op tl tr} (NWF.node2 rsl rsr) (node2l px)
-    = NWF.node2l (∞bisim-unfold-any← rsl px)
-  bisim-unfold-any← {rt = node2 op tl tr} (NWF.node2 rsl rsr) (node2r px)
-    = NWF.node2r (∞bisim-unfold-any← rsr px)
-  bisim-unfold-any← {rt = nodeη op t} (NWF.nodeη rs) (nodeη px)
-    = NWF.nodeη (∞bisim-unfold-any← rs px)
-
+  bisim-unravel-any← {rt = node1 op t} (NWF.node1 rs) (node1 px)
+    = NWF.node1 (∞bisim-unravel-any← rs px)
+  bisim-unravel-any← {rt = node2 op tl tr} (NWF.node2 rsl rsr) (node2l px)
+    = NWF.node2l (∞bisim-unravel-any← rsl px)
+  bisim-unravel-any← {rt = node2 op tl tr} (NWF.node2 rsl rsr) (node2r px)
+    = NWF.node2r (∞bisim-unravel-any← rsr px)
+  bisim-unravel-any← {rt = nodeη op t} (NWF.nodeη rs) (nodeη px)
+    = NWF.nodeη (∞bisim-unravel-any← rs px)

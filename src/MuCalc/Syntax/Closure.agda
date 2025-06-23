@@ -19,8 +19,8 @@ open import MuCalc.Base
 open import MuCalc.Syntax.ExpansionMap
 open import MuCalc.Syntax.Substitution
 
-open import Rational.Tree as R hiding (Scope; rename; lookup; unfold)
-open import Rational.Tree.Properties using (∞bisim-unfold-any→; ∞bisim-unfold-any←)
+open import Rational.Tree as R hiding (Scope; rename; lookup; unravel)
+open import Rational.Tree.Properties using (∞bisim-unravel-any→; ∞bisim-unravel-any←)
 open import Codata.NWFTree as T
 
 -- Rewrite rules
@@ -171,12 +171,12 @@ rclos-bisim-head Γ≈Δ (var x) (loop .x) = expandvar-head x Γ≈Δ
 rclos-bisim : ∀ {At n} {Γ : Scope At n} {Δ : R.Scope (μML At 0) n}
             → ScCoh Γ Δ → (ξ : μML At n)
             → {t : R.Tree (μML At 0) n} → (cl : IsClosure Γ ξ t)
-            → closure (expand Γ ξ) ~ R.unfold Δ t
+            → closure (expand Γ ξ) ~ R.unravel Δ t
 
 rclos-bisim-tree : ∀ {At n} {Γ : Scope At n} {Δ : R.Scope (μML At 0) n}
                  → ScCoh Γ Δ → (ξ : μML At n)
                  → {t : R.Tree (μML At 0) n} → (cl : IsClosure Γ ξ t)
-                 → Pointwise _≡_ (∞NWFTree.tree (closure (expand Γ ξ))) (R.unfold-subtree Δ t)
+                 → Pointwise _≡_ (∞NWFTree.tree (closure (expand Γ ξ))) (R.unravel-subtree Δ t)
 
 rclos-bisim Γ≈Δ ξ cl .∞Pointwise.head = rclos-bisim-head Γ≈Δ ξ cl
 rclos-bisim Γ≈Δ ξ cl .∞Pointwise.tree = rclos-bisim-tree Γ≈Δ ξ cl
@@ -208,14 +208,14 @@ rclos-bisim-tree (cl ,- Γ≈Δ) (var (F.suc x)) (loop .(F.suc x)) = rclos-bisim
 
 
 -- If the context is empty, then the expansion map is the identity, so we get the statement we wanted all along.
-rclos-bisim-sentence : ∀ {At} (ξ : μML At 0) → closure ξ ~ R.unfold R.[] (rational-closure [] ξ)
+rclos-bisim-sentence : ∀ {At} (ξ : μML At 0) → closure ξ ~ R.unravel R.[] (rational-closure [] ξ)
 rclos-bisim-sentence {At} ξ =
   begin
     closure ξ
   ≡⟨  cong closure (expand-nil ξ)  ⟩
     closure (expand [] ξ)
   ~⟨  rclos-bisim [] ξ (rational-closure-IsClosure [] ξ)  ⟩
-    R.unfold [] (rational-closure [] ξ)
+    R.unravel [] (rational-closure [] ξ)
   ∎ where open T.bisim-Reasoning (μML At 0)
 
 ----------------------------------------------------
@@ -238,9 +238,33 @@ We can now show that the finite algorithm is also correct, by transporting acros
 -- Every formula produced by the rational closure algorithm really is in the closure.
 rational-closure-sound : ∀ {At} (ξ : μML At 0) {ϕ : μML At 0}
                        → (ϕ R.∈ (rational-closure [] ξ)) → (ϕ ∈-Closure ξ)
-rational-closure-sound ξ p = closure-sound ξ (∞bisim-unfold-any← (rclos-bisim-sentence ξ) p)
+rational-closure-sound ξ p = closure-sound ξ (∞bisim-unravel-any← (rclos-bisim-sentence ξ) p)
 
 -- Every formula in the closure is reached by the algorithm.
 rational-closure-complete : ∀ {At} (ξ : μML At 0) {ϕ : μML At 0}
                           → (ϕ ∈-Closure ξ) → (ϕ R.∈ (rational-closure [] ξ))
-rational-closure-complete ξ p = ∞bisim-unfold-any→ (rclos-bisim-sentence ξ) (closure-complete ξ p)
+rational-closure-complete ξ p = ∞bisim-unravel-any→ (rclos-bisim-sentence ξ) (closure-complete ξ p)
+
+-------------------------------------------------------------
+-- Finiteness of the Closure *Relation*, and Closure Size --
+-------------------------------------------------------------
+
+-- Obtaining the closure size of a formula is not as simple as computing its rational closure then taking
+-- the size of the tree - the tree may contain duplicates. In other words, `∈-Closure` is prop-valued, while
+-- `R.∈ ∘ rational-closure` is set-valued.
+--
+-- One way to deduplicate the tree would be to flatten it to a fresh list.
+-- To get correctness to fall out, we should proceed in steps:
+--
+-- 1) Flatten a tree in the empty context to an ordinary list.
+-- 2) Deduplicate an ordinary list to a fresh list (which I think we already have).
+--
+-- We must show that each step preserves elementhood, s.t. everthing in the flattened list was
+-- in the tree, and everything in the tree is in the flattened list.
+--
+-- This should allow us to extend the bi-implication to the fresh list, but may not preserve enough structure
+-- to obtain an isomorphism. So we may also need:
+--
+-- 3) Map the original tree of formulas to a tree of `Fin n`, where n is the size of the deduplicated list, and
+--    the fins in the new tree are now pointers to formulas in the list. This should hopefully be enough to get
+--    the isomorphism. AS a bonus, n = closure-size.
