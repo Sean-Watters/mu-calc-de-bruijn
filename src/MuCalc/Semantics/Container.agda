@@ -90,6 +90,10 @@ MkCont (ϕ ∨ ψ) = MkCont ϕ ⟨+⟩ MkCont ψ
 MkCont (μ ϕ) = ⟨μ⟩ (⟨map⟩ dist-fin (MkCont ϕ))
 MkCont (ν ϕ) = ⟨ν⟩ (⟨map⟩ dist-fin (MkCont ϕ))
 
+-- Todo : MkCont for RTrees of formula symbols (aka the closure)
+-- MkContClos : {n : ℕ} → RTree (MuCalcSymbol At) n → Container (S × Fin n) S
+
+
 -- And finally, we can give the semantics of formulas with the type we wanted via
 -- the extension of the above container.
 ⟦_⟧ : ∀ {n} → μML At n → Vec (S → Set) n → S → Set

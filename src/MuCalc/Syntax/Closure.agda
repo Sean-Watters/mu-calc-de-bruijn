@@ -209,14 +209,7 @@ rclos-bisim-tree (cl ,- Γ≈Δ) (var (F.suc x)) (loop .(F.suc x)) = rclos-bisim
 
 -- If the context is empty, then the expansion map is the identity, so we get the statement we wanted all along.
 rclos-bisim-sentence : ∀ {At} (ξ : μML At 0) → closure ξ ~ R.unravel R.[] (rational-closure [] ξ)
-rclos-bisim-sentence {At} ξ =
-  begin
-    closure ξ
-  ≡⟨  cong closure (expand-nil ξ)  ⟩
-    closure (expand [] ξ)
-  ~⟨  rclos-bisim [] ξ (rational-closure-IsClosure [] ξ)  ⟩
-    R.unravel [] (rational-closure [] ξ)
-  ∎ where open T.bisim-Reasoning (μML At 0)
+rclos-bisim-sentence {At} ξ rewrite cong closure (expand-nil ξ) = rclos-bisim [] ξ (rational-closure-IsClosure [] ξ)
 
 ----------------------------------------------------
 -- Correctness for the Rational Closure Algorithm --

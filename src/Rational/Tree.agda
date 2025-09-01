@@ -89,7 +89,7 @@ mutual
 -- Thinnings of scopes. More abstraction would have been nice, but oh well.
 -- We define this mutually with the function that converts such a thinning to a renaming.
 data _⊑_ {X : Set} : {n m : ℕ} → Scope X n → Scope X m → Set
-erase : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m} → Γ ⊑ Δ → Thin n m
+-- erase : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m} → Γ ⊑ Δ → Thin n m
 embed' : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m} → Γ ⊑ Δ → Rename n m
 
 data _⊑_ {X} where
@@ -101,9 +101,9 @@ data _⊑_ {X} where
       → (s ,- Γ) ⊑ (t ,- Δ)
   pad : ∀ {n m} {t : Tree X m} {{nvt : NonVar t}} {Γ : Scope X n} {Δ : Scope X m} → Γ ⊑ Δ → Γ ⊑ (t ,- Δ)
 
-erase end = end
-erase (inj r θ) = inj (erase r)
-erase (pad θ) = pad (erase θ)
+-- erase end = end
+-- erase (inj r θ) = inj (erase r)
+-- erase (pad θ) = pad (erase θ)
 
 embed' (inj θ eq) zero = zero
 embed' (inj θ eq) (suc x) = suc (embed' θ x)
@@ -166,6 +166,7 @@ mutual
   unravel-subtree Γ (step x (nodeη op t)) = nodeη op (unravel ((step x (nodeη op t)) ,- Γ) t)
   unravel-subtree (t ,- Γ) (var zero) = unravel-subtree Γ t
   unravel-subtree (t ,- Γ) (var (suc x)) = unravel-subtree Γ (var x)
+
 
 ----------------
 -- Operations --

@@ -279,7 +279,17 @@ any-rename-suc {n = n} {P} {Γ} {t} {s} pt
   = let pt' = any-rename {Γ = Γ} {Δ = s ,- Γ} {t} (pad ⊑-refl) pt
     in subst (Any P (s ,- Γ)) (rename-cong (λ x → cong suc (embed'-id ⊑-refl x)) t) pt'
 
-
+{-
+-- Or, in one go from any-subst:
+any-rename-suc : ∀ {X n} {P : X → Set} {Γ : Scope X n} {t : Tree X n}
+               → {s : Tree X n} {{nvs : NonVar s}}
+               → Any P Γ t → Any P (s ,- Γ) (rename suc t)
+any-rename-suc {X} {n} {P} {Γ} {t} {s} ⦃ nvs ⦄ pt
+  = any-subst {Γ = Γ} {Δ = s ,- Γ}
+              (pad ⊑-refl)
+              (rename-IsRenaming (rename-cong (cong suc ∘ embed'-id ⊑-refl) t))
+              pt
+-}
 
 -----------------------------
 -- Properties of Unraveling --
@@ -315,7 +325,7 @@ eq-head (pad θ) (var refl) = eq-head θ (var refl)
 
 -- The key lemma for bisimulations of unravelings; if the trees are equivalent, then their unravelings
 -- are bisimilar.
--- TODO: The reverse is probably also true?
+-- NB: The reverse is clearly false.
 mutual
   unravel-bisim : ∀ {X n m} {Γ : Scope X n} {Δ : Scope X m}
                → (θ : Γ ⊑ Δ)
