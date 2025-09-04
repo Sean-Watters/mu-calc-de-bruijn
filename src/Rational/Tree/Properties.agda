@@ -158,12 +158,6 @@ IsRenaming→≡ (step refl (node2 op p q)) = cong₂ (λ z1 z2 → step _ (node
 IsRenaming→≡ (step refl (nodeη op p)) = cong (λ z → step _ (nodeη op z)) (IsRenaming→≡ p)
 IsRenaming→≡ (var p) = cong var p
 
-rename-embed-inj : ∀ {X} {n m}
-                 → {ρ : Rename n m} {tx : Tree X n} {ty : Tree X m}
-                 → rename ρ tx ≡ ty
-                 → rename (ext ρ) (rename suc tx) ≡ rename suc ty
-rename-embed-inj {ρ = ρ} {tx} refl = sym $ rename-ext ρ tx
-
 
 -- Thinning preserves lookup.
 rename-lookup : ∀ {X} {n m} {Γ : Scope X n} {Δ : Scope X m}
@@ -175,7 +169,9 @@ rename-lookup (inj {s = s} {t = t} θ p) zero refl = rename-IsRenaming $
     rename (embed' (inj θ p)) (rename suc s)
   ≡⟨ rename-cong (ext-embed θ p) (rename suc s) ⟩
     rename (ext (embed' θ)) (rename suc s)
-  ≡⟨ rename-embed-inj (IsRenaming→≡ p) ⟩
+  ≡⟨ rename-ext (embed' θ) s ⟨
+    rename suc (rename (embed' θ) s)
+  ≡⟨ cong (rename suc) (IsRenaming→≡ p) ⟩
     rename suc t
   ∎ where open ≡-Reasoning
 rename-lookup {Γ = tγ ,- Γ} {Δ = tδ ,- Δ} (inj θ p) (suc x) refl = rename-IsRenaming $
@@ -183,7 +179,9 @@ rename-lookup {Γ = tγ ,- Γ} {Δ = tδ ,- Δ} (inj θ p) (suc x) refl = rename
     rename (embed' (inj θ p)) (lookup (tγ ,- Γ) (suc x))
   ≡⟨ rename-cong (ext-embed θ p) (rename suc (lookup Γ x)) ⟩
     rename (ext (embed' θ)) (rename suc (lookup Γ x))
-  ≡⟨ rename-embed-inj (IsRenaming→≡ (rename-lookup θ x refl)) ⟩
+  ≡⟨ rename-ext (embed' θ) (lookup Γ x) ⟨
+    rename suc (rename (embed' θ) (lookup Γ x))
+  ≡⟨ cong (rename suc) (IsRenaming→≡ (rename-lookup θ x refl)) ⟩
     rename suc (lookup Δ (embed' θ x))
   ∎ where open ≡-Reasoning
 rename-lookup {Γ = Γ} {Δ = tδ ,- Δ} (pad θ) x refl = rename-IsRenaming $
@@ -191,7 +189,9 @@ rename-lookup {Γ = Γ} {Δ = tδ ,- Δ} (pad θ) x refl = rename-IsRenaming $
     rename (suc ∘ (embed' θ)) (lookup Γ x)
   ≡⟨ rename-fusion (λ _ → refl) (lookup Γ x) ⟨
     rename (ext (embed' θ)) (rename suc (lookup Γ x))
-  ≡⟨ rename-embed-inj $ IsRenaming→≡ $ rename-lookup θ x refl ⟩
+  ≡⟨ rename-ext (embed' θ) (lookup Γ x) ⟨
+    rename suc (rename (embed' θ) (lookup Γ x))
+  ≡⟨ cong (rename suc) (IsRenaming→≡ (rename-lookup θ x refl)) ⟩
     rename suc (lookup Δ (embed' θ x))
   ∎ where open ≡-Reasoning
 
