@@ -180,3 +180,14 @@ size (step x (nodeη op t)) = suc (size t)
 size (var x) = 0
 
 
+
+-----------------------------------------------------
+-- Flattening to Fresh List, and Deduplicated Size --
+-----------------------------------------------------
+
+module DecEq {X : Set} (_≟_ : Decidable (_≡_ {A = X})) where
+  open import Data.FreshList.InductiveInductive
+  open import Data.FreshList.UniqueList.Base
+  open import Data.FreshList.UniqueList.Neq _≟_
+
+  flatten : ∀ {n} → Tree X n → SortedList
