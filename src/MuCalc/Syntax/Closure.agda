@@ -119,23 +119,37 @@ rational-closure Γ ξ@(μMLη op ϕ) = step (expand Γ ξ) (nodeη op (rational
 data IsClosure {At : Set} {n : ℕ} (Γ : Scope At n) : μML At n → R.Tree (μML At 0) n → Set where
   loop : (x : Fin n) → IsClosure Γ (var x) (var x)
   leaf : ∀ op → IsClosure Γ (μML₀ op) (step (μML₀ op) leaf)
-  node1 : ∀ op {ϕ : μML At n} {t : R.Tree (μML At 0) n} → IsClosure Γ ϕ t → IsClosure Γ (μML₁ op ϕ) (step (expand Γ (μML₁ op ϕ)) (node1 op t))
-  node2 : ∀ op {ϕl ϕr : μML At n} {tl tr : R.Tree (μML At 0) n} → IsClosure Γ ϕl tl → IsClosure Γ ϕr tr → IsClosure Γ (μML₂ op ϕl ϕr) (step (expand Γ (μML₂ op ϕl ϕr)) (node2 op tl tr))
-  nodeη : ∀ op {ϕ : μML At (suc n)} {t : R.Tree (μML At 0) (suc n)} → IsClosure ((μMLη op ϕ) ,- Γ) ϕ t → IsClosure Γ (μMLη op ϕ) (step (expand Γ (μMLη op ϕ)) (nodeη op t))
+  node1 : ∀ op {ϕ : μML At n} {t : R.Tree (μML At 0) n}
+        → IsClosure Γ ϕ t
+        → IsClosure Γ (μML₁ op ϕ) (step (expand Γ (μML₁ op ϕ)) (node1 op t))
+  node2 : ∀ op {ϕl ϕr : μML At n} {tl tr : R.Tree (μML At 0) n}
+        → IsClosure Γ ϕl tl → IsClosure Γ ϕr tr
+        → IsClosure Γ (μML₂ op ϕl ϕr) (step (expand Γ (μML₂ op ϕl ϕr)) (node2 op tl tr))
+  nodeη : ∀ op {ϕ : μML At (suc n)} {t : R.Tree (μML At 0) (suc n)}
+        → IsClosure ((μMLη op ϕ) ,- Γ) ϕ t
+        → IsClosure Γ (μMLη op ϕ) (step (expand Γ (μMLη op ϕ)) (nodeη op t))
 
 -- Coherence between scopes of formulas and scopes of rational trees.
 data ScCoh {At : Set} : ∀ {n} → Scope At n → R.Scope (μML At 0) n → Set where
   [] : ScCoh [] []
-  _,-_ : ∀ {n} {Γ : Scope At n} {Γ₀ : μML At n} {{_ : IsFP Γ₀}} {Δ : R.Scope (μML At 0) n} {Δ₀ : R.Tree (μML At 0) n} {{_ : NonVar Δ₀}}
-       → IsClosure Γ Γ₀ Δ₀ → ScCoh Γ Δ → ScCoh (Γ₀ ,- Γ) (Δ₀ ,- Δ)
+  _,-_ : ∀ {n} {Γ : Scope At n} {Γ₀ : μML At n} {{_ : IsFP Γ₀}}
+               {Δ : R.Scope (μML At 0) n} {Δ₀ : R.Tree (μML At 0) n} {{_ : NonVar Δ₀}}
+       → IsClosure Γ Γ₀ Δ₀
+       → ScCoh Γ Δ
+       → ScCoh (Γ₀ ,- Γ) (Δ₀ ,- Δ)
 
 -- The rational tree produced has the same shape as the formula
 rational-closure-IsClosure : ∀ {At n} (Γ : Scope At n) (ϕ : μML At n) → IsClosure Γ ϕ (rational-closure Γ ϕ)
-rational-closure-IsClosure Γ (var x) = loop x
-rational-closure-IsClosure Γ (μML₀ op) = leaf op
-rational-closure-IsClosure Γ (μML₁ op ϕ) = node1 op (rational-closure-IsClosure Γ ϕ)
-rational-closure-IsClosure Γ (μML₂ op ϕl ϕr) = node2 op (rational-closure-IsClosure Γ ϕl) (rational-closure-IsClosure Γ ϕr)
-rational-closure-IsClosure Γ (μMLη op ϕ) = nodeη op (rational-closure-IsClosure (μMLη op ϕ ,- Γ) ϕ)
+rational-closure-IsClosure Γ (var x)
+  = loop x
+rational-closure-IsClosure Γ (μML₀ op)
+  = leaf op
+rational-closure-IsClosure Γ (μML₁ op ϕ)
+  = node1 op (rational-closure-IsClosure Γ ϕ)
+rational-closure-IsClosure Γ (μML₂ op ϕl ϕr)
+  = node2 op (rational-closure-IsClosure Γ ϕl) (rational-closure-IsClosure Γ ϕr)
+rational-closure-IsClosure Γ (μMLη op ϕ)
+  = nodeη op (rational-closure-IsClosure (μMLη op ϕ ,- Γ) ϕ)
 
 ------------------------------
 -- Proving the Bisimilarity --

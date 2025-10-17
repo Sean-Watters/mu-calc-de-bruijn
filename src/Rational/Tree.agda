@@ -116,6 +116,10 @@ embed' (pad θ) x = suc (embed' θ x)
 -- Two trees are equivalent if there's a thinning between their scopes that sends the variables to the
 -- right places. Most of the time it will be more convenient to not use this type, and instead give it
 -- in curried form.
+-- This is a directed notion, so in particular is not an equivalence relation...
+-- The more compositional thing to do would be to have a third pair of scope and tree `Λ ⊢ tz` which captures
+-- the common subset of Γ and Δ, and make a span with thinnings `Λ ⊑ Γ` and `Λ ⊑ Δ`. Then we do a roof lemma
+-- a la Conor, and we could probably even get an identity system out at the end.
 [_⊢_]≈[_⊢_] : {X : Set} {n m : ℕ} (Γ : Scope X n) → (tx : Tree X n) → (Δ : Scope X m) → (ty : Tree X m) → Set
 [ Γ ⊢ tx ]≈[ Δ ⊢ ty ] = Σ[ θ ∈ Γ ⊑ Δ ] (IsRenaming (embed' θ) tx ty)
 

@@ -5,6 +5,7 @@ open import Relation.Binary.PropositionalEquality
 open import Function
 open import Data.Fin as F using (Fin; zero; suc)
 open import Data.Fin.Renaming
+open import Data.Product
 open import Data.Nat
 open import Data.Empty
 open import Data.Thinning as Th hiding (id)
@@ -31,43 +32,38 @@ lookup-NonVar (t ,- Γ) (suc x) = rename-NonVar {{(lookup-NonVar Γ x)}}
 -- For the usual `Any`, this would just be `here`. But if `t` is a backedge, then
 -- we need to do some extra work.
 
-head-rename : ∀ {X n} → (Γ : Scope X n) (t : Tree X n) {{_ : NonVar t}}
-             → head Γ t ≡ head (t ,- Γ) (rename suc t)
-head-rename Γ (step x t) = refl
-
-head-rename-suc : ∀ {X n} (a b : Tree X n) {{_ : NonVar a}} {{_ : NonVar b}}
-                 → (Γ : Scope X n) (t : Tree X n)
-                 → head (a ,- Γ) (rename suc t) ≡ head (b ,- Γ) (rename suc t)
-head-rename-suc a b Γ (step x t) = refl
-head-rename-suc a b Γ (var x) = refl
+head-rename : ∀ {X n} → (Γ : Scope X n) (a t : Tree X n) {{_ : NonVar a}}
+             → head Γ t ≡ head (a ,- Γ) (rename suc t)
+head-rename Γ a (step x t) = refl
+head-rename Γ a (var x) = refl
 
 head∘var≡head∘lookup : ∀ {X n} → (Γ : Scope X n) (x : Fin n)
                       → head Γ (var x) ≡  head Γ (lookup Γ x)
-head∘var≡head∘lookup (t ,- Γ) zero =  head-rename Γ t
+head∘var≡head∘lookup (t ,- Γ) zero = head-rename Γ t t
 head∘var≡head∘lookup (t ,- Γ) (suc x) =
   begin
     head (t ,- Γ) (var (suc x))
   ≡⟨ head∘var≡head∘lookup Γ x ⟩
     head Γ (lookup Γ x)
-  ≡⟨  head-rename Γ (lookup Γ x) {{lookup-NonVar Γ x}}   ⟩
-    head _ (rename suc (lookup Γ x))
-  ≡⟨  head-rename-suc (lookup Γ x) t {{lookup-NonVar Γ x}} Γ (lookup Γ x)  ⟩
+  ≡⟨  head-rename Γ t (lookup Γ x) ⟩
+    head (t ,- Γ) (rename suc (lookup Γ x))
+  ≡⟨⟩
     head (t ,- Γ) (lookup (t ,- Γ) (suc x))
   ∎ where open ≡-Reasoning
 
 
 -- If we know that the tree is not a var, then `here` is easy.
-here-NonVar : ∀ {X n x} {P : X → Set} (Γ : Scope X n) (t : Tree X n) {{_ : NonVar t}}
+here-head-NonVar : ∀ {X n x} {P : X → Set} {Γ : Scope X n} (t : Tree X n) {{_ : NonVar t}}
      → P x → x ≡ head Γ t → Any P Γ t
-here-NonVar Γ (step x t) px refl = here px
+here-head-NonVar (step x t) px refl = here px
 
 -- P (head t) ⇒ Any P t
 here-head : ∀ {X n x} {P : X → Set} {Γ : R.Scope X n} {t : R.Tree X n}
-          → P x → x ≡ R.head Γ t → R.Any P Γ t
-here-head {Γ = Γ} {R.step x t} p refl
-  = R.here p
-here-head {Γ = Γ} {R.var x} p refl
-  = R.loop (here-NonVar Γ (lookup Γ x) ⦃ lookup-NonVar Γ x ⦄ p (head∘var≡head∘lookup Γ x))
+          → P x → x ≡ head Γ t → Any P Γ t
+here-head {t = step x t} px eq
+  = here-head-NonVar (step x t) px eq
+here-head {Γ = Γ} {R.var x} px refl
+  = loop (here-head-NonVar (lookup Γ x) ⦃ lookup-NonVar Γ x ⦄ px (head∘var≡head∘lookup Γ x))
 
 -------------------------
 -- Properties of `ext` --
