@@ -41,12 +41,19 @@ open Container
 data W {J : Set} (C : Container J J) : J → Set where
   sup : ∀ {j} → ⟦ C ⟧ (W C) j → W C j
 
-------------------------
--- Functoriality in I --
-------------------------
+-------------------
+-- Functoriality --
+-------------------
 
+-- In both indices
+⟨bimap⟩ : {I I' J J' : Set} → (I' → I) → (J' → J) → Container I J → Container I' J'
+⟨bimap⟩ f g (S ◃ P) = (S ∘ g) ◃ (λ s → P s ∘ f)
+
+
+-- In I
 ⟨map⟩ : {I I' J : Set} → (I' → I) → Container I J → Container I' J
-⟨map⟩ f (S ◃ P) = S ◃ (λ s i' → P s (f i'))
+⟨map⟩ f = ⟨bimap⟩ f id
+
 
 -----------------
 -- Combinators --
