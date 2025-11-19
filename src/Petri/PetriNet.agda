@@ -2,13 +2,16 @@
 module Petri.PetriNet where
 
 open import Data.Product
+open import Data.Nat as ℕ
+open import Data.Fin
+open import Data.List hiding (unfold)
 open import Relation.Binary.PropositionalEquality
 
 open import Relation.Unary.Finiteness.WithK
 open import Data.Kripke
 open Kripke
 
-record Net : Set₁ where
+record PetriNet : Set₁ where
   field
     -- A finite set of places (circles)
     Place : Set
@@ -18,62 +21,60 @@ record Net : Set₁ where
     Transition : Set
     Transition-finite : Enumerated Transition
 
-    -- Arcs go from places to transitions (the "incoming" arcs of that transition),
-    -- and from transitions to places (the "outgoing" arcs).
-    ArcI : Place → Transition → Set -- "incoming"
-    ArcO : Transition → Place → Set -- "outgoing"
+  -- A marking is a map which tells you how many tokens are at each place.
+  -- todo: generalise to arbitrary (X : Set)? Could parameterise, or have it be another family on places
+  -- if we do that, we need X to be a monoid...at minimum...
+  Marking = Place → ℕ
 
-    -- Every place gets a set of colours/types that the tokens there can have
-    Colour : Place → Set
-
-    -- Every transition needs to say how to map the colours of its input places to
-    -- the colours of its output places
-    colour-map : ∀ {p t p'} → ArcI p t → ArcO t p' → (Colour p → Colour p')
-
----------------------------------------------------------------------------------------------------------
-
--- Parameterised over a set of tokens
-record PetriNet (Tok : Set) : Set₁ where
-  constructor PNet
-
-  -- There is a net, obviously.
   field
-    net : Net
-  open Net net
+    -- Each transition has a source and target marking that says how many tokens it consumes from each
+    -- input and output place (respectively) when it fires. This can also be interpreted as the number
+    -- of incoming and outgoing arcs; in this semantics, a transition firing moves exactly 1 token along each arc.
+    source target : Transition → Marking -- source τ p ≈ the number of arcs from p to τ
 
-  -- A marking is an assignment of a place and colour to each individual token in the token set.
-  Marking : Set
-  Marking = Tok → Σ[ p ∈ Place ] (Colour p)
+  _M≤_ : Marking → Marking → Set
+  m M≤ m' = ∀ p → m p ℕ.≤ m' p
 
-  -- The net also has a marking.
-  field
-    marking : Marking
+  IsEnabled : Marking → Transition → Set
+  IsEnabled m t = source t M≤ m
 
-  -- When a transition "fires", it moves some tokens from the input place to the output place,
-  -- mapping the colours appropriately.
-  fire : Transition → Marking
-  fire t = {!individual token semantics here!}
-
-  -- Given a new marking, we can replace the current marking in this net.
-  update : Marking → PetriNet Tok
-  update m = record
-              { net = net
-              ; marking = m
-              }
+  -- When a transition "fires", it moves some tokens from the input place to the output place.
+  -- W
+  fire : Marking → Transition → Marking
+  fire m t = {! m - source t + target t!}
 
   -- m is a possible next marking if there is some transition t, such that when t fires,
   -- m is indeed the result.
-  IsSuccessor : Marking → Set
-  IsSuccessor m = Σ[ t ∈ Transition ] (fire t ≗ m)
+  IsSuccessor : Marking → Marking → Set
+  -- IsSuccessor m m' = Σ[ t ∈ Transition ] {!(fire m t ≗ m')!} -- todo: this doesn't account for transitions firing in parallel
+  IsSuccessor m m' = Σ[ ts ∈ List Transition ] {!fire each transition in the list consecutively (it's commutative so theres a unique result), then the result should be equal to m'!}
 
-  -- m is a reachable marking if there is a finite chain of transitions firing takes us there
-  IsReachable : Marking → Set
-  IsReachable = {!Reflexive transitive closure of IsSuccessor!}
-open PetriNet
+  -- m' is a reachable marking if there is a finite chain of transitions firing takes us there
+  IsReachable : Marking → Marking → Set
+  IsReachable m m' = {!Reflexive transitive closure of IsSuccessor!}
+
+record ColouredPetriNet : Set₁ where
+  field
+    net : PetriNet
+
+  open PetriNet net
+
+  field
+    -- Every place gets a set of colours/types that the tokens there can have
+    Colour : Place → Set
+
+  MarkingColour : Marking → Set
+  MarkingColour m = ∀ p → Fin (m p) → Colour p
+
+  field
+    colour-map : ∀ (t : Transition) → MarkingColour (source t) → MarkingColour (target t)
+
 
 ---------------------------------------------------------------------------------------------------------
 
-unfold : ∀ {Tok} → PetriNet Tok → (Kripke {!!})
-unfold {Tok} P .S = Marking P
-unfold {Tok} P ._~>_ m m' = IsSuccessor (update P m) m' -- is m' a successor in the net P with marking M?
-unfold {Tok} P .V x m = {!what do the atoms do?!}
+open PetriNet
+
+unfold : PetriNet → (Kripke {!!})
+unfold P .S = Marking P
+unfold P ._~>_ = IsSuccessor P
+unfold P .V x m = {!!}
