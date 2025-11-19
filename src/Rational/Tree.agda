@@ -109,6 +109,8 @@ embed' (inj θ eq) zero = zero
 embed' (inj θ eq) (suc x) = suc (embed' θ x)
 embed' (pad θ) x = suc (embed' θ x)
 
+
+
 --------------------------
 -- Equivalence of Trees --
 --------------------------
@@ -120,8 +122,77 @@ embed' (pad θ) x = suc (embed' θ x)
 -- The more compositional thing to do would be to have a third pair of scope and tree `Λ ⊢ tz` which captures
 -- the common subset of Γ and Δ, and make a span with thinnings `Λ ⊑ Γ` and `Λ ⊑ Δ`. Then we do a roof lemma
 -- a la Conor, and we could probably even get an identity system out at the end.
-[_⊢_]≈[_⊢_] : {X : Set} {n m : ℕ} (Γ : Scope X n) → (tx : Tree X n) → (Δ : Scope X m) → (ty : Tree X m) → Set
-[ Γ ⊢ tx ]≈[ Δ ⊢ ty ] = Σ[ θ ∈ Γ ⊑ Δ ] (IsRenaming (embed' θ) tx ty)
+[_⊢_]≈>[_⊢_] : {X : Set} {n m : ℕ} (Γ : Scope X n) → (tx : Tree X n) → (Δ : Scope X m) → (ty : Tree X m) → Set
+[ Γ ⊢ tx ]≈>[ Δ ⊢ ty ] = Σ[ θ ∈ Γ ⊑ Δ ] (IsRenaming (embed' θ) tx ty)
+
+-- Can we just forcibly symmetrise it (eg, (A ≈ B) := (A ≈> B) ⊎ (B ≈> A)) and get an equivalence relation that way?
+-- No; this breaks transitivity. If we have A ≈> B <≈ C, then we in particular have A ≈ B ≈ C, but we cannot obtain
+-- A ≈ C by composition of thinnings.
+--
+-- In the special case of thinnings between natural numbers, thinnings are total. There is always a thinning in at least
+-- one direction between any two numbers, and if there is a thinning in both directions, then the numbers are equal.
+-- Thinnings for natural numbers are simply one particular proof-relevant presentation of the ≤ relation for natural numbers.
+--
+-- However for richer scopes --- lists over any type larger than the unit --- we lose totality. Consider: if A and C are singleton
+-- lists each containing a distinct (up to renaming) tree, then while they can both inject into a common B (which could for example
+-- be exactly their union up to renaming), there can be no thinning between A and C themselves; they are incomparable.
+
+module Counterexample where
+  open import Relation.Nullary
+  open import Data.Empty
+
+  t1 : Tree ℕ 0
+  t1 = step 0 leaf
+
+  t2 : Tree ℕ 0
+  t2 = step 1 leaf
+
+  A : Scope ℕ 1
+  A = t1 ,- []
+
+  B : Scope ℕ 2
+  B = rename suc t2 ,- (t1 ,- [])
+
+  C : Scope ℕ 1
+  C = t2 ,- []
+
+  A≈>B : A ⊑ B
+  A≈>B = pad (inj end (step refl leaf))
+
+  C≈>B : C ⊑ B
+  C≈>B = inj (pad end) (step refl leaf)
+
+  A≉>C : ¬ (A ⊑ C)
+  A≉>C (inj end (step () _))
+
+  C≉>A : ¬ (C ⊑ A)
+  C≉>A (inj end (step () _))
+
+--------------------------
+-- CoSpans of Thinnings --
+--------------------------
+
+-- A cospan of scopes Γ and Δ in the category of thinnings is a scope U, together with thinnings
+-- Γ ⊑ U ⊒ Δ
+record CoSpan {X : Set} {n m : ℕ} (Γ : Scope X n) (Δ : Scope X m) : Set where
+  field
+    {u} : ℕ
+    {point} : Scope X u -- U for Union
+    legL : Γ ⊑ point
+    legR : Δ ⊑ point
+open CoSpan
+
+record [_⊢_]≈[_⊢_] {X : Set} {n m : ℕ} (Γ : Scope X n) (tx : Tree X n) (Δ : Scope X m) (ty : Tree X m) : Set where
+  field
+    cospan : CoSpan Γ Δ
+
+  field
+    tree : Tree X (cospan .u)
+    renL : IsRenaming (embed' (cospan .legL)) tx tree
+    renR : IsRenaming (embed' (cospan .legR)) ty tree
+
+-- I think this notion of ≈ should be an equivalence relation. But the proof would involve constructing scopes Γ ++ Δ,
+-- which seems like it would get annoying.
 
 ---------
 -- Any --
@@ -189,9 +260,9 @@ size (var x) = 0
 -- Flattening to Fresh List, and Deduplicated Size --
 -----------------------------------------------------
 
-module DecEq {X : Set} (_≟_ : Decidable (_≡_ {A = X})) where
-  open import Data.FreshList.InductiveInductive
-  open import Data.FreshList.UniqueList.Base
-  open import Data.FreshList.UniqueList.Neq _≟_
+-- module DecEq {X : Set} (_≟_ : Decidable (_≡_ {A = X})) where
+--   open import Data.FreshList.InductiveInductive
+--   open import Data.FreshList.UniqueList.Base
+--   open import Data.FreshList.UniqueList.Neq _≟_
 
-  flatten : ∀ {n} → Tree X n → SortedList
+--   flatten : ∀ {n} → Tree X n → SortedList
