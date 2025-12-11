@@ -38,10 +38,13 @@ record PetriNet : Set₁ where
   IsEnabled : Marking → Transition → Set
   IsEnabled m t = source t M≤ m
 
+  subtract-source : ∀ {m t} → IsEnabled m t → Marking
+  subtract-source {m} {t} p = {!m - source t!}
+
   -- When a transition "fires", it moves some tokens from the input place to the output place.
   -- W
   fire : Marking → Transition → Marking
-  fire m t = {! m - source t + target t!}
+  fire m t = {! if IsEnabled m t then { subtract-source m t + target t }!}
 
   -- m is a possible next marking if there is some transition t, such that when t fires,
   -- m is indeed the result.
