@@ -3,28 +3,32 @@ module Petri.PetriNet where
 
 open import Data.Product
 open import Data.Nat as ℕ
+open import Data.Nat.Properties as ℕ
+open import Data.Nat.Minus as ℕ using ()
 open import Data.Fin
-open import Data.List hiding (unfold)
+open import Data.List hiding (unfold; lookup)
+open import Data.Vec as Vec
+open import Data.Vec.Relation.Binary.Pointwise.Inductive as Vec using (Pointwise)
+open import Data.Vec.Extras as Vec
 open import Relation.Binary.PropositionalEquality
 
-open import Relation.Unary.Finiteness.WithK
+open import Relation.Nullary
 open import Data.Kripke
 open Kripke
 
 record PetriNet : Set₁ where
   field
-    -- A finite set of places (circles)
-    Place : Set
-    Place-finite : Enumerated Place
+    -- A finite number of places (circles)
+    Place : ℕ
 
-    -- A finite set of transitions (boxes)
+    -- A finite number of transitions (boxes)
     Transition : Set
-    Transition-finite : Enumerated Transition
 
-  -- A marking is a map which tells you how many tokens are at each place.
+  -- A marking is a map which tells you how many tokens are at each place. It's more convenient to encode
+  -- these as a vector rather than a function.
   -- todo: generalise to arbitrary (X : Set)? Could parameterise, or have it be another family on places
   -- if we do that, we need X to be a monoid...at minimum...
-  Marking = Place → ℕ
+  Marking = Vec ℕ Place
 
   field
     -- Each transition has a source and target marking that says how many tokens it consumes from each
@@ -33,13 +37,25 @@ record PetriNet : Set₁ where
     source target : Transition → Marking -- source τ p ≈ the number of arcs from p to τ
 
   _M≤_ : Marking → Marking → Set
-  m M≤ m' = ∀ p → m p ℕ.≤ m' p
+  _M≤_ = Vec.Pointwise ℕ._≤_
+  --∀ p → m p ℕ.≤ m' p
 
+  _M≤?_ : ∀ m n → Dec (m M≤ n)
+  _M≤?_ = Vec.decidable ℕ._≤?_
+
+
+  minus : {n m : Marking} → n M≤ m → Marking
+  minus {n} {m} p = Vec.pointwise-minus n m p
+
+  -- Transition is enabled in the marking
   IsEnabled : Marking → Transition → Set
   IsEnabled m t = source t M≤ m
 
+  isEnabled? : ∀ m t → Dec (IsEnabled m t)
+  isEnabled? m t = (source t) M≤? m
+
   subtract-source : ∀ {m t} → IsEnabled m t → Marking
-  subtract-source {m} {t} p = {!m - source t!}
+  subtract-source p = minus p
 
   -- When a transition "fires", it moves some tokens from the input place to the output place.
   -- W
@@ -64,10 +80,12 @@ record ColouredPetriNet : Set₁ where
 
   field
     -- Every place gets a set of colours/types that the tokens there can have
-    Colour : Place → Set
+    Colour : Vec Set Place
+      --Place → Set
 
   MarkingColour : Marking → Set
-  MarkingColour m = ∀ p → Fin (m p) → Colour p
+  MarkingColour m = ∀ (p : Fin Place) → Vec (lookup Colour p) (lookup m p)
+    --∀ p → Fin (m p) → Colour p
 
   field
     colour-map : ∀ (t : Transition) → MarkingColour (source t) → MarkingColour (target t)
@@ -81,3 +99,4 @@ unfold : PetriNet → (Kripke {!!})
 unfold P .S = Marking P
 unfold P ._~>_ = IsSuccessor P
 unfold P .V x m = {!!}
+
