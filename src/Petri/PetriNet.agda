@@ -1,23 +1,27 @@
-{-# OPTIONS --with-K #-}
+{-# OPTIONS --guardedness #-}
 module Petri.PetriNet where
 
 open import Data.Bool
 open import Data.Product
 open import Data.Nat as ℕ
 open import Data.Nat.Properties as ℕ
-open import Data.Nat.Minus as ℕ using ()
 open import Data.Fin
-open import Data.List hiding (unfold; lookup)
+open import Data.List as List hiding (unfold; lookup)
 open import Data.Vec as Vec
-open import Data.Vec.Relation.Binary.Pointwise.Inductive as VecPw using (Pointwise)
-open import Data.Vec.Extras as Vec
+open import Function
 open import Relation.Binary.PropositionalEquality
-
 open import Relation.Nullary
+
+
+open import Codata.AltCoList
 open import Data.Kripke
 open Kripke
-
+open import Data.Nat.Minus as ℕ using ()
+open import Data.Vec.Extras as Vec
+open import Data.Vec.Relation.Binary.Pointwise.Inductive as VecPw using (Pointwise)
 import Petri.Marking
+
+---------------------------------------------------------------------------------------------
 
 record PetriNet : Set₁ where
   field
@@ -95,6 +99,12 @@ record ColouredPetriNet : Set₁ where
 
 ---------------------------------------------------------------------------------------------------------
 
+
+
+
+
+
+
 record PetriNetAbstract : Set₁ where
   field
     Place : Set
@@ -115,10 +125,35 @@ record PetriNetAbstract : Set₁ where
         → MarkingAbstract
   minus m₁ m₀ lt p = ℕ.minus (lt p)
 
+  -- Can t fire at m₀, and if so, is m₁ the result?
   VerifyFire : Transition → MarkingAbstract → MarkingAbstract → Set
-  VerifyFire t m₀ m₁ = Σ[ tE ∈ IsEnabled m₀ t ] (∀ p → m₁ p ℕ.≥ (minus m₀ (source t) tE p) ℕ.+ (target t p))
+  VerifyFire t m₀ m₁ = Σ[ tE ∈ IsEnabled m₀ t ]
+                       (∀ p → m₁ p ℕ.≥ (minus m₀ (source t) tE p) ℕ.+ (target t p))
 
-  --VerifyFiringSeq : codata structure alternating between (lists of transitions) (since they can fire in parallel) and markings
+  sum-arcs : (Transition → MarkingAbstract) → List Transition → MarkingAbstract
+  sum-arcs arc ts p = List.foldr ℕ._+_ 0 (List.map ((_$ p) ∘ arc) ts)
+
+  AllEnabled : MarkingAbstract → List Transition → Set
+  AllEnabled m ts = ∀ p → sum-arcs source ts p ℕ.≤ m p
+
+  -- Morally should be Bags rather than lists, but since we're depending on finiteness/traversability, that's a pain.
+  -- Fresh lists would be a very big dependency to bring in.
+  VerifyFireParallel : List Transition → MarkingAbstract → MarkingAbstract → Set
+  VerifyFireParallel ts m₀ m₁ = Σ[ E ∈ AllEnabled m₀ ts ]
+                                (∀ p → m₁ p ℕ.≥ (minus m₀ (sum-arcs source ts) E p ℕ.+ (sum-arcs target ts p)))
+
+  -- A firing sequence is an alternating co-list of markings interspersed by lists of transitions.
+  -- It may or may not be an infinite sequence. If it terminates, it is guaranteed to terminate at a marking.
+  -- A nonempty firing sequence denotes starting at some marking, firing some transitions in parallel, arriving
+  -- at the next marking, and so on.
+  FiringSeq : Set
+  FiringSeq = AltCoList MarkingAbstract (List Transition)
+
+  -- A predicate which validates a firing sequence as being correct for this petri net.
+  VerifyFiringSeq : FiringSeq → Set
+  VerifyFiringSeq mts = {!!}
+
+--VerifyFiringSeq : codata structure alternating between (lists of transitions) (since they can fire in parallel) and markings
 
 record ColouredPetriNetAbstract : Set₁ where
   field
