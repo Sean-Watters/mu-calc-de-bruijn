@@ -126,8 +126,8 @@ record PetriNetAbstract : Set₁ where
   minus m₁ m₀ lt p = ℕ.minus (lt p)
 
   -- Can t fire at m₀, and if so, is m₁ the result?
-  VerifyFire : Transition → MarkingAbstract → MarkingAbstract → Set
-  VerifyFire t m₀ m₁ = Σ[ tE ∈ IsEnabled m₀ t ]
+  VerifyFire : MarkingAbstract → Transition → MarkingAbstract → Set
+  VerifyFire m₀ t m₁ = Σ[ tE ∈ IsEnabled m₀ t ]
                        (∀ p → m₁ p ℕ.≥ (minus m₀ (source t) tE p) ℕ.+ (target t p))
 
   sum-arcs : (Transition → MarkingAbstract) → List Transition → MarkingAbstract
@@ -149,7 +149,8 @@ record PetriNetAbstract : Set₁ where
   FiringSeq : Set
   FiringSeq = AltCoList MarkingAbstract (List Transition)
 
-  -- A predicate which validates a firing sequence as being correct for this petri net.
+  -- A witness of correctness for a firing sequence is a co-list of witnesses that each Marking-Transitions-Marking
+  -- triple is correct (ie, a co-list of VerifyFireParallel).
   VerifyFiringSeq : FiringSeq → Set
   VerifyFiringSeq mts = {!!}
 
