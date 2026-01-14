@@ -1,5 +1,4 @@
-{-# OPTIONS --guardedness #-}
-module Petri.PetriNet where
+module Petri.Net.Finitary where
 
 open import Data.Bool
 open import Data.Product
@@ -13,7 +12,6 @@ open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary
 
 
-open import Codata.AltCoList
 open import Data.Kripke
 open Kripke
 open import Data.Nat.Minus as ℕ using ()
@@ -105,69 +103,8 @@ record ColouredPetriNet : Set₁ where
 
 
 
-record PetriNetAbstract : Set₁ where
-  field
-    Place : Set
-    Transition : Set
-
-  MarkingAbstract : Set
-  MarkingAbstract = Place → ℕ
-
-  field
-    source target : Transition → MarkingAbstract -- source τ p ≈ the number of arcs from p to τ
-
-  IsEnabled : MarkingAbstract → Transition → Set
-  IsEnabled m t = ∀ p → source t p ℕ.≤ m p
-
-  -- we can do (m₁ - m₀)  if  (m₀ ≤ m₁)
-  minus : (m₁ m₀ : MarkingAbstract)
-        → (∀ p → m₀ p ℕ.≤ m₁ p)
-        → MarkingAbstract
-  minus m₁ m₀ lt p = ℕ.minus (lt p)
-
-  -- Can t fire at m₀, and if so, is m₁ the result?
-  VerifyFire : MarkingAbstract → Transition → MarkingAbstract → Set
-  VerifyFire m₀ t m₁ = Σ[ tE ∈ IsEnabled m₀ t ]
-                       (∀ p → m₁ p ℕ.≥ (minus m₀ (source t) tE p) ℕ.+ (target t p))
-
-  sum-arcs : (Transition → MarkingAbstract) → List Transition → MarkingAbstract
-  sum-arcs arc ts p = List.foldr ℕ._+_ 0 (List.map ((_$ p) ∘ arc) ts)
-
-  AllEnabled : MarkingAbstract → List Transition → Set
-  AllEnabled m ts = ∀ p → sum-arcs source ts p ℕ.≤ m p
-
-  -- Morally should be Bags rather than lists, but since we're depending on finiteness/traversability, that's a pain.
-  -- Fresh lists would be a very big dependency to bring in.
-  VerifyFireParallel : MarkingAbstract → List Transition → MarkingAbstract → Set
-  VerifyFireParallel m₀ ts m₁ = Σ[ E ∈ AllEnabled m₀ ts ]
-                                (∀ p → m₁ p ℕ.≥ (minus m₀ (sum-arcs source ts) E p ℕ.+ (sum-arcs target ts p)))
-
-  -- A firing sequence is an alternating co-list of markings interspersed by lists of transitions.
-  -- It may or may not be an infinite sequence. If it terminates, it is guaranteed to terminate at a marking.
-  -- A nonempty firing sequence denotes starting at some marking, firing some transitions in parallel, arriving
-  -- at the next marking, and so on.
-  FiringSeq : Set
-  FiringSeq = AltCoList MarkingAbstract (List Transition)
-
-  -- A witness of correctness for a firing sequence is a co-list of witnesses that each Marking-Transitions-Marking
-  -- triple is correct (ie, a co-list of VerifyFireParallel).
-  VerifyFiringSeq : FiringSeq → Set
-  VerifyFiringSeq = CoLift VerifyFireParallel
 
 --VerifyFiringSeq : codata structure alternating between (lists of transitions) (since they can fire in parallel) and markings
-
-record ColouredPetriNetAbstract : Set₁ where
-  field
-    ColourP ColourT : Set
-
-    Place : ColourP → Set
-    Transition : ColourT → Set
-
-  MarkingAbstract : ColourP → Set
-  MarkingAbstract c = Place c → ℕ
-
-  field
-    source target : (cp : ColourP) (ct : ColourT) → Transition ct → MarkingAbstract cp
 
 
 open PetriNet
