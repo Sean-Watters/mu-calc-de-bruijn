@@ -138,8 +138,8 @@ record PetriNetAbstract : Set₁ where
 
   -- Morally should be Bags rather than lists, but since we're depending on finiteness/traversability, that's a pain.
   -- Fresh lists would be a very big dependency to bring in.
-  VerifyFireParallel : List Transition → MarkingAbstract → MarkingAbstract → Set
-  VerifyFireParallel ts m₀ m₁ = Σ[ E ∈ AllEnabled m₀ ts ]
+  VerifyFireParallel : MarkingAbstract → List Transition → MarkingAbstract → Set
+  VerifyFireParallel m₀ ts m₁ = Σ[ E ∈ AllEnabled m₀ ts ]
                                 (∀ p → m₁ p ℕ.≥ (minus m₀ (sum-arcs source ts) E p ℕ.+ (sum-arcs target ts p)))
 
   -- A firing sequence is an alternating co-list of markings interspersed by lists of transitions.
@@ -152,7 +152,7 @@ record PetriNetAbstract : Set₁ where
   -- A witness of correctness for a firing sequence is a co-list of witnesses that each Marking-Transitions-Marking
   -- triple is correct (ie, a co-list of VerifyFireParallel).
   VerifyFiringSeq : FiringSeq → Set
-  VerifyFiringSeq mts = {!!}
+  VerifyFiringSeq = CoLift VerifyFireParallel
 
 --VerifyFiringSeq : codata structure alternating between (lists of transitions) (since they can fire in parallel) and markings
 

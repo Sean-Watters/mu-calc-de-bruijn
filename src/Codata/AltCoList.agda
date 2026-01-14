@@ -49,13 +49,30 @@ data AltCoList (X : Set ℓx) (Y : Set ℓy) : Set (ℓx ⊔ ℓy) where
 -- Such a lifting will itself be a co-list of P's, with the initial state of the next P being the final
 -- state of the previous.
 
--- NB: This is the pure inductive version that can only witness correctness for finite prefixes
--- of the alternating co-list.
+-- NB: This is the pure inductive version that can only witness correctness for finite alternating co-lists.
 -- The proper coinductive lifting is the next step.
 data Lift {X : Set ℓx} {Y : Set ℓy} (P : X → Y → X → Set ℓp) : AltCoList X Y → Set (ℓx ⊔ ℓy ⊔ ℓp) where
   [] : Lift P []
   [x] : {x : X} → Lift P (ne (x ∷ []))
-  _∷_ : {x₀ x₁ : X} {y : Y} {ys : ACLY X Y}
+  _∷_ : ∀ {x₀ y x₁} {ys : ACLY X Y}
       → P x₀ y x₁
       → Lift P (ne (x₁ ∷ ys))
       → Lift P (ne (x₀ ∷ (y ∷ (x₁ ∷ ys))))
+
+
+-- And this is the proper coinductive lifting that can actually be used for genuinely infinite lists.
+mutual
+  record CoLift∞ {X : Set ℓx} {Y : Set ℓy} (P : X → Y → X → Set ℓp)
+         (x₀ : X) (y : Y) (x₁ : X) (ys : ACLY X Y)
+         : Set (ℓx ⊔ ℓy ⊔ ℓp) where
+    coinductive
+    field
+      head : P x₀ y x₁
+      tail : CoLift P (ne (x₁ ∷ ys))
+
+  data CoLift {X : Set ℓx} {Y : Set ℓy} (P : X → Y → X → Set ℓp) : AltCoList X Y → Set (ℓx ⊔ ℓy ⊔ ℓp) where
+    [] : CoLift P []
+    [x] : {x : X} → CoLift P (ne (x ∷ []))
+    _∷_ : ∀ {x₀ y x₁} {ys : ACLY X Y}
+        → CoLift∞ P x₀ y x₁ ys
+        → CoLift P (ne (x₀ ∷ (y ∷ (x₁ ∷ ys))))
