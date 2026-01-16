@@ -3,12 +3,14 @@
 module Petri.Net.Set where
 
 open import Codata.AltCoList
+open import Data.Bool
 open import Data.Product
 open import Data.List as List hiding (unfold; lookup)
 open import Data.Fin
 open import Data.Nat as ℕ
 open import Data.Nat.Properties as ℕ
 open import Data.Nat.Minus as ℕ using ()
+open import Data.Sum
 open import Function
 open import Relation.Binary.PropositionalEquality
 
@@ -80,39 +82,70 @@ record PetriNet : Set₁ where
 -------------------------------------------------------
 
 
--- TODO: Something about this feels wrong; I'm not sure the colours are doing
--- the right thing. More clear to have sets of P's/T's and families of colours?
-
+-- As in Jensen & Kristensen 2009
+-- Non-heirarchical (AKA non modular), from Chatper 4.
+-- Compared to the above, we add types to the places, guards to the transitions, and typed expressions to the arcs.
+-- The concept of tokens are abstracted to "typed data".
 record ColouredPetriNet : Set₁ where
   field
-    -- Places and transitions get colours, AKA types.
-    -- (Or probably more accurately, descriptions of types)
-    ColourP ColourT : Set
+    -- Net structure
+    Place : Set
+    Transition : Set
 
-    -- We then have colour-indexed families of places and transitions
-    -- (for each colour, a set of P's/T's which have that colour)
-    Place : ColourP → Set
-    Transition : ColourT → Set
+  Arc = Transition → Place → Set
+  field
+    Source : Arc
+    Target : Arc
 
+    -- A set of colour sets, and the decoding function that inteprets these as
+    -- actual Agda types.
+    ColourUniverse : Set
+    ⟦_⟧c : ColourUniverse → Set
 
-  -- How many tokens (AKA variables of type `c`) are at each place?
-  Marking : ColourP → Set
-  Marking c = Place c → ℕ
+    -- Each place is assigned a colouring set for its tokens
+    Colour : Place → ColourUniverse
 
-  -- -- Wait, what is this doing??
-  -- MarkingColour : ∀ {cp} → Marking cp → Set
-  -- MarkingColour {cp} m = (p : Place cp) → Fin (m p) → ColourP
-
-
-  Arc = {cp : ColourP} {ct : ColourT} → Transition ct → Marking cp
+    -- NB: Doing colours this way was a design choice. We could have just had
+    -- `Colour : Place → Set` and deleted `ColourUniverse` and `⟦_⟧`, but imo
+    -- it's neater this way. Separates the matter of what colour sets are allowed
+    -- from the assignment of colour sets to places.
 
   field
-    -- Arcs must be indexed by the colours of both the place and transition
-    source target : Arc
+    -- A global set of variables to be used in guard and arc expressions.
+    -- This is the way Jensen & Kristensen cook it, and it might be ergonomic
+    -- for building nets, but maybe not the most neat way from a theory pov.
+    Var : Set
 
-    -- -- Wait, what is this doing?
-    -- colour-map : ∀ {cp₀ ct cp₁} (t : Transition ct) → MarkingColour {cp₀} (source t) → MarkingColour {cp₁} (target t)
+    -- The language which the guard functions are expressed in
+    GuardExpr : (Var : Set) → Set
 
+    -- Each transition is assigned an expression for whether it's enabled or not, which
+    -- can make use of whatever structure the colours have
+    guard : Transition → GuardExpr Var
+
+    -- Every guard expression is valued in booleans
+    ⟦_⟧g : GuardExpr Var → Bool
+
+
+  field
+    -- The language of well-typed arc expressions
+    ArcExpr : (Var : Set) → ColourUniverse → Set
+
+    -- Likewise, each arc is assigned an expression saying what it does
+    source-expr : ∀ {t p} → Source t p → ArcExpr Var (Colour p)
+    target-expr : ∀ {t p} → Target t p → ArcExpr Var (Colour p)
+
+    -- Arc expressions are valued in colours
+    ⟦_⟧a : ∀ {Col} → ArcExpr Var Col → ⟦ Col ⟧c
+
+
+  -- A marking for a net is an assignment of typed data to each place???
+  -- TODO - is that right?
+  Marking : Set
+  Marking = ∀ (p : Place) → ⟦ Colour p ⟧c
+
+
+  {-
   ---------------------------
 
   IsEnabled : ∀ {cp ct} → Marking cp → Transition ct → Set
@@ -152,3 +185,5 @@ record ColouredPetriNet : Set₁ where
 
   IsFiringSeq : MarkingSeq → Set
   IsFiringSeq = Lift λ m₀ ts m₁ → IsParallelFiring (proj₂ m₀) ts (proj₂ m₁)
+
+  -}
