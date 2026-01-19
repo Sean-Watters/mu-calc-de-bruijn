@@ -13,6 +13,7 @@ open import Data.Nat.Minus as ℕ using ()
 open import Data.Sum
 open import Function
 open import Relation.Binary.PropositionalEquality
+open import Relation.Nullary
 
 
 ------------------------------------------------
@@ -116,6 +117,8 @@ record ColouredPetriNet : Set₁ where
     -- for building nets, but maybe not the most neat way from a theory pov.
     Var : Set
 
+    -- ⟦_⟧v : Var → ColourUniverse
+
     -- The language which the guard functions are expressed in
     GuardExpr : (Var : Set) → Set
 
@@ -123,8 +126,13 @@ record ColouredPetriNet : Set₁ where
     -- can make use of whatever structure the colours have
     guard : Transition → GuardExpr Var
 
-    -- Every guard expression is valued in booleans
-    ⟦_⟧g : GuardExpr Var → Bool
+    -- Traditionally, every guard expression is valued in booleans.
+    -- For us, that means it's a decidable prop.
+    ⟦_⟧g : GuardExpr Var → Set
+    ⟦_⟧g? : ∀ g → Dec ⟦ g ⟧g
+
+    -- -- Is the variable used in this expression?
+    -- InGuard : Var → GuardExpr Var → Set
 
 
   field
@@ -139,51 +147,71 @@ record ColouredPetriNet : Set₁ where
     ⟦_⟧a : ∀ {Col} → ArcExpr Var Col → ⟦ Col ⟧c
 
 
-  -- A marking for a net is an assignment of typed data to each place???
-  -- TODO - is that right?
+  -- A marking for a net is a list of typed tokens assigned to each place.
+  -- This should really be a multiset instead, but until I see evidence that we actually
+  -- need the equational theory of multisets, lists will suffice.
   Marking : Set
-  Marking = ∀ (p : Place) → ⟦ Colour p ⟧c
+  Marking = ∀ (p : Place) → List ⟦ Colour p ⟧c
+
+  -- -- A binding of a transition t is a function that maps each variable used in that t's
+  -- -- guard to an element of that variable's colour set.
+  -- Binding : Transition → Set
+  -- Binding t = ∀ {v} → InGuard v (guard t) → ⟦ ⟦ v ⟧v ⟧c
+  -- -- I think this is irrelevant to this formulation, since vars are necessarily
+  -- given meaning by ⟦_⟧a and ⟦_⟧g....though they may not agree....hmmmm.....
+
+  --
+  IsEnabled : (t : Transition) → Set
+  IsEnabled t = ⟦ guard t ⟧g
+              × {!∀ {p} → source-expr {t} {p}!}
 
 
-  {-
-  ---------------------------
 
-  IsEnabled : ∀ {cp ct} → Marking cp → Transition ct → Set
-  IsEnabled {cp} {ct} m t = ∀ (p : Place cp) → source t p ℕ.≤ m p
+-- Abstracting away the tokens, and replacing expressions with directly embedded agda functions
+-- and predicates.
+record SemanticCPN : Set₁ where
 
-  minus : ∀ {c} (m₁ m₀ : Marking c)
-        → (∀ p → m₀ p ℕ.≤ m₁ p)
-        → Marking c
-  minus m₁ m₀ lt p = ℕ.minus (lt p)
+  -- Basic data
+  field
+    Place : Set
+    Transition : Set
 
-  IsFiring : ∀ {cp₀ ct cp₁} → Marking cp₀ → Transition ct → Marking cp₁ → Set
-  IsFiring {cp₀} {ct} {cp₁} m₀ t m₁
-    = Σ[ tE ∈ IsEnabled m₀ t ]
-      (∀ (p₀ : Place cp₀) (p₁ : Place cp₁) → m₁ p₁ ≡ (minus m₀ (source t) tE p₀) ℕ.+ (target t p₁))
+    -- Every transition has some source and target arcs, connecting it to some places.
+    Source Target : Transition → Place → Set
 
-  ---------------------------
+    -- Each place gets a type of data that it can store...
+    Colour : Place → Set
 
-  sum-arcs : Arc → List (Σ[ ct ∈ ColourT ] (Transition ct)) → {cp : ColourP} → Marking cp
-  sum-arcs arc ts p = List.foldr ℕ._+_ 0 (List.map apply-arc ts) where
-    apply-arc : Σ[ ct ∈ ColourT ] (Transition ct) → ℕ
-    apply-arc (ct , t) = arc t p
+  -- The full input data to a transition is the product of all of the data at its source places.
+  InputData : Transition → Set
+  InputData t = Σ[ p ∈ Place ] (Source t p) × Colour p
 
-  AllEnabled : ∀ {cp} → Marking cp → List (Σ[ ct ∈ ColourT ] (Transition ct)) → Set
-  AllEnabled m ts = ∀ p → sum-arcs source ts p ℕ.≤ m p
+  -- And likewise for the output data.
+  OutputData : Transition → Set
+  OutputData t = Σ[ p ∈ Place ] (Target t p) × Colour p
 
-  -- Morally should be Bags rather than lists, but since we're depending on finiteness/traversability, that's a pain.
-  -- Fresh lists would be a very big dependency to bring in.
-  IsParallelFiring : ∀ {cp₀ cp₁} → Marking cp₀ → List (Σ[ ct ∈ ColourT ] (Transition ct)) → Marking cp₁ → Set
-  IsParallelFiring {cp₀} {cp₁} m₀ ts m₁
-    = Σ[ tsE ∈ AllEnabled m₀ ts ]
-      (∀ (p₀ : Place cp₀) (p₁ : Place cp₁) → m₁ p₁ ≡ (minus m₀ (sum-arcs source ts) tsE p₀ ℕ.+ (sum-arcs target ts p₁)))
+  -- Inscriptions
+  field
+    -- The transition tells us how to transform data at its source places into data at
+    -- its target places, but we also have to update the source data...
+    TransformInputs : (t : Transition) → {!Fuck, it's a lens, isn't it!}
 
-  ---------------------------
+    -- Every transition gets a decidable "guard" which decides if the
+    -- transition is allowed to be enabled, based on the data at its
+    -- source and target places.
+    Guard : (t : Transition) → InputData t → OutputData t → Set
 
-  MarkingSeq : Set
-  MarkingSeq = AltCoList (Σ[ cp ∈ ColourP ] (Marking cp)) (List (Σ[ ct ∈ ColourT ] (Transition ct)))
+  -- In this setting, a marking is just an assignment of typed data to each place.
+  Marking : Set
+  Marking = ∀ p → Colour p
 
-  IsFiringSeq : MarkingSeq → Set
-  IsFiringSeq = Lift λ m₀ ts m₁ → IsParallelFiring (proj₂ m₀) ts (proj₂ m₁)
+  IsFiring : Marking → Transition → Marking → Set
+  IsFiring m₀ t m₁ = ∀ {sp tp} (sa : Source t sp) (ta : Target t tp)
+                   → Guard t (sp , sa , m₀ sp) (tp , ta , m₀ tp) -- if we are allowed to fire t at m₀...
+                   → {!...then firing t at m₀ transforms the data at the places such that we end up at m₁!}
 
-  -}
+  -- Decidability stuff
+  field
+    Source? : ∀ t p → Dec (Source t p)
+    Target? : ∀ t p → Dec (Target t p)
+    Guard? : ∀ {t} i o → Dec (Guard t i o)
