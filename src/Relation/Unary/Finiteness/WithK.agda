@@ -4,8 +4,10 @@ module Relation.Unary.Finiteness.WithK where
 open import Algebra.Structures.Propositional
 open import Data.Unit
 open import Data.Empty
+open import Data.Bool using (Bool; true; false; _∧_; _∨_; not)
 open import Data.List
 open import Data.List.Relation.Unary.Any hiding (lookup)
+open import Data.List.Relation.Unary.Any.Properties using (¬Any[])
 open import Data.Product
 open import Data.List.Membership.Propositional
 open import Data.Nat
@@ -17,6 +19,7 @@ open import Data.Fin.Properties using (toℕ-inject₁; toℕ-cancel-<; toℕ-fr
 open import Data.Fin.MoreProps renaming (>-isPropStrictTotalOrder to Fin-STO)
 open import Relation.Binary.Isomorphism
 open import Relation.Binary.PropositionalEquality
+open import Relation.Nullary
 
 open import Induction.WellFounded
 
@@ -42,6 +45,40 @@ is-strong-enumeration {X} X-STO L = (x : X) → member X-STO x L
 -- nb: this one is proof relevant!
 StronglyEnumerated : {X : Set} {_<_ : X → X → Set} (X-STO : IsPropStrictTotalOrder _≡_ _<_) → Set
 StronglyEnumerated {X} X-STO = Σ[ L ∈ SortedList X-STO ] is-strong-enumeration X-STO L
+
+------------------
+-- Decidability --
+------------------
+
+lemma : {Y : Bool → Set}
+      → (∀ b → Y b) ≃ (Y true × Y false)
+lemma .to x = (x true) , (x false)
+lemma .from (xt , xf) false = xf
+lemma .from (xt , xf) true = xt
+lemma .from-to a with a true | a false
+... | zt | zf = {!zt !}
+lemma .to-from b = refl
+
+
+
+bool-dec : ∀ {Y : Bool → Set}
+         → (Y-dec : ∀ b → Dec (Y b))
+         → Dec (∀ b → Y b)
+bool-dec Y-dec = {!(Y-dec true) ×-dec (Y-dec false)!}
+
+-- fin-dec : ∀ n {Y : Fin n → Set}
+--         → ((x : Fin → Dec (Y x))
+--         → Dec ((x : Fin n) → Y x)
+-- fin-dec zero Y-dec = yes λ ()
+-- fin-dec (suc n) Y-dec = {!fin-dec {n}!}
+
+-- enum-dec : ∀ {X} { Y : X → Set }
+--          → Enumerated X
+--          → ((x : X) → Dec (Y x))
+--          → Dec ((x : X) → Y x)
+-- enum-dec ([] , L-enum) Y-dec = yes λ x → ⊥-elim (¬Any[] (L-enum x))
+-- enum-dec (x ∷ L , L-enum) Y-dec .does = (Y-dec x .does) ∧ (enum-dec (L , {!!}) Y-dec .does)
+
 
 ---------------
 -- Instances --
