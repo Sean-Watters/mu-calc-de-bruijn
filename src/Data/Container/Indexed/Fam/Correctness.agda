@@ -73,7 +73,7 @@ module BinarySum (ext : Extensionality 0ℓ 0ℓ) where
 -- of an index, and the meaning of its corresponding container
 module IndexedSum (ext : Extensionality 0ℓ 0ℓ) where
   correct : (X : I → Set) → (Y : J → Set) → (C : {j : J} → Y j → Container I J)
-          → ⟦ ⟨Σ⟩ {X = Y} C ⟧ X ≃ᵢ λ j → (Σ[ y ∈ Y j ] ⟦ C y ⟧ X j)
+          → ⟦ ⟨Σ⟩ Y C ⟧ X ≃ᵢ λ j → (Σ[ y ∈ Y j ] ⟦ C y ⟧ X j)
   to (correct X Y C) ((y , s) , f) = y , s , f
   from (correct X Y C) (y , s , f) = (y , s) , f
   from-to (correct X Y C) _ = refl
