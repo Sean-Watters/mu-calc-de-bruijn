@@ -20,6 +20,7 @@ record PolyCPN : Set₁ where
 
     -- Every transition has some source and target arcs, connecting it to some places.
     Source Target : Transition → Place → `Set`
+    -- Todo: This should be a prop
 
     -- Each place gets a type of data that it can store...
     Colour : Place → `Set`
@@ -30,7 +31,7 @@ record PolyCPN : Set₁ where
 
   -- And likewise for the output data.
   OutputData : Transition → `Set`
-  OutputData t = `Σ` Place (λ p → Target t p `×` Colour p)
+  OutputData t = `Σ` Place (λ p → Target t p `×` Colour p) -- This feels wrong
 
   -- In this setting, a marking is just an assignment of typed data to each
   -- if we want multiple "coloured tokens", that has to be internalised in our
@@ -42,7 +43,8 @@ record PolyCPN : Set₁ where
   field
     -- The transition tells us how to transform data at its source places into data at
     -- its target places, but we also have to update the source data.
-    TransformInputs : (t : Transition) → (InputData t ⇒ (InputData t `×` OutputData t))
+    TransformInputs : (t : Transition) → {! (InputData t ⇒ (InputData t `×` OutputData t)) !}
+    -- TODO - problem. we don't want to map place-by-place like this.
 
 --   IsFiring : Marking → Transition → Marking → Set
 --   IsFiring m₀ t m₁ = Guard t m₀ -- if we are allowed to fire t at m₀...
