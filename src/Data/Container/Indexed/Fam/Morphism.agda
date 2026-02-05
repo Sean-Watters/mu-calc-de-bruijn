@@ -25,3 +25,4 @@ record _⇒_ {I J : Set} (C : Container I J) (D : Container I J) : Set where
 
 ⟨⊥-elim⟩ : ∀ {I J} {C : Container I J} → ⟨⊥⟩ ⇒ C
 ⟨⊥-elim⟩ = ⊥-elim ▷ λ { {s = ()} }
+

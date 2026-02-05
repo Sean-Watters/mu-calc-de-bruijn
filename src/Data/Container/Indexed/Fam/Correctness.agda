@@ -35,6 +35,23 @@ module Constant (ext : Extensionality 0ℓ 0ℓ) where
   from-to (correct X Y) (x , _) = cong (x ,_) (exti ext (ext λ {()}))
   to-from (correct X Y) x = refl
 
+-- In particular, the unit container is the unit
+module Unit (ext : Extensionality 0ℓ 0ℓ) where
+  correct : (Y : J → Set) (j : J) → ⟦ ⟨⊤⟩ ⟧ Y j ≃ ⊤
+  correct Y j .to x = tt
+  correct Y j .from _ = tt , λ ()
+  correct Y j .from-to (tt , snd) = cong (tt ,_) (exti ext (ext (λ ())))
+  correct Y j .to-from tt = refl
+
+-- And the empty container is the empty type
+module Empty (ext : Extensionality 0ℓ 0ℓ) where
+  correct : (Y : J → Set) (j : J) → ⟦ ⟨⊥⟩ ⟧ Y j ≃ ⊥
+  correct Y j .to (() , snd)
+  correct Y j .from ()
+  correct Y j .from-to = λ ()
+  correct Y j .to-from = λ ()
+
+
 -- The meaning of a product of containers is the product of their
 -- meanings.
 module BinaryProduct (ext : Extensionality 0ℓ 0ℓ) where

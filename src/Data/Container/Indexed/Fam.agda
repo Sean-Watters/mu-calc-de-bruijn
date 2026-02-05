@@ -76,11 +76,13 @@ private
 ⟨const⟩ : (J → Set) → Container I J
 ⟨const⟩ P = P ▷ (const (const ⊥))
 
+-- The Empty Container
 ⟨⊥⟩ : Container I J
 ⟨⊥⟩ = ⟨const⟩ (const ⊥)
 
+-- The Unit Container
 ⟨⊤⟩ : Container I J
-⟨⊤⟩ = ⟨const⟩ (const ⊥)
+⟨⊤⟩ = ⟨const⟩ (const ⊤)
 
 -- Binary Product.
 -- Shapes are pairs of shapes from the left and right;

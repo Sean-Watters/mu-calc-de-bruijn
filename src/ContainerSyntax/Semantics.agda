@@ -18,8 +18,8 @@ open import ContainerSyntax.Base
 -- Can add coinduction once this is all working.
 
 AsCont : ∀ {n} → Ty n → Container (Fin n) ⊤
-AsCont `0` = ⟨const⟩ (const ⊥)
-AsCont `1` = ⟨const⟩ (const ⊤)
+AsCont `0` = ⟨⊥⟩
+AsCont `1` = ⟨⊤⟩
 AsCont (l `+` r) = AsCont l ⟨+⟩ AsCont r
 AsCont (l `×` r) = AsCont l ⟨×⟩ AsCont r
 AsCont (`Σ` X f) = ⟨Σ⟩ (const X) (λ x → AsCont (f x))
