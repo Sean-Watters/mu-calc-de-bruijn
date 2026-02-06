@@ -12,7 +12,7 @@ open import Data.Container.Indexed.Fam renaming (⟦_⟧ to ⟦_⟧c)
 open import Function
 open import Relation.Binary.PropositionalEquality hiding (J)
 
-open import ContainerSyntax.Base
+open import ContainerSyntax.Type hiding (lookup)
 
 -- Working only with inductive types for now.
 -- Can add coinduction once this is all working.

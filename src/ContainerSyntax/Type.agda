@@ -1,5 +1,5 @@
 -- {-# OPTIONS --rewriting #-}
-module ContainerSyntax.Base where
+module ContainerSyntax.Type where
 
 open import Level renaming (suc to lsuc)
 open import Data.Unit
@@ -112,6 +112,14 @@ data All {ℓ : Level} (P : {n : ℕ} → Ty n → Set ℓ) : ∀ {n} → Contex
   [] : All P []
   _-,_ : ∀ {n} {ty : Ty n} {tys : Context n} → All P tys → P ty → All P (tys -, ty)
 
+
+lookup : ∀ {n} → Context n → (x : Fin n) → Ty (n ℕ-ℕ (suc x))
+lookup (Γ -, ty) Fin.zero = ty
+lookup (Γ -, ty) (suc x) = lookup Γ x
+
+unwind : ∀ {n} → Context n → (x : Fin n) → Context (n ℕ-ℕ (suc x))
+unwind (Γ -, ty) Fin.zero = Γ
+unwind (Γ -, ty) (suc x) = unwind Γ x
 
 -- -- For some reason you can only overload names if theyre both constructors or both pattern synonyms, so
 -- -- we have to do it this way in order to also have this as a pattern synonym for lists

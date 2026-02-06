@@ -5,7 +5,7 @@ open import Level using () renaming (zero to 0ℓ)
 open import Data.Unit
 open import Data.Product
 
-open import ContainerSyntax.Base
+open import ContainerSyntax.Type
 open import ContainerSyntax.Morphism
 open import ContainerSyntax.Semantics
 

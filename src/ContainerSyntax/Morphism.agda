@@ -1,7 +1,7 @@
 
 module ContainerSyntax.Morphism where
 
-open import ContainerSyntax.Base
+open import ContainerSyntax.Type
 open import ContainerSyntax.Semantics renaming (⟦_⟧ to ⟦_⟧ty)
 
 open import Data.Empty
@@ -25,9 +25,9 @@ record _⇒_ {n : ℕ} (X Y : Ty n) : Set₁ where
 
 open _⇒_
 
--- TODO - implement lens semantics
-AsLens : {n : ℕ} {X Y : Ty n} → X ⇒ Y → (AsCont X) Lens.⇒ (AsCont Y)
-AsLens = {!!}
+-- -- TODO - implement lens semantics
+-- AsLens : {n : ℕ} {X Y : Ty n} → X ⇒ Y → (AsCont X) Lens.⇒ (AsCont Y)
+-- AsLens = {!!}
 
 -- TODO - extension of that lens to a polymorphic function
 
