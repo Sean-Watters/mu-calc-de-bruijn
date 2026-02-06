@@ -1,4 +1,4 @@
-
+{-# OPTIONS --guardedness #-}
 module ContainerSyntax.Term where
 
 open import Data.Unit
@@ -11,17 +11,38 @@ open import Data.Fin
 
 open import ContainerSyntax.Type
 
-data Tm : {n : ℕ} → (Γ : Context n) → Ty n → Set₁ where
-  `tt`   : ∀ {n} {Γ : Context n} → Tm Γ `1`
+mutual
+  data Tm {n : ℕ} (Γ : Context n) : Ty n → Set₁ where
+    `tt`   : Tm Γ `1`
 
-  `injL` : ∀ {n} {Γ : Context n} {L R : Ty n} → Tm Γ L → Tm Γ (L `+` R)
-  `injR` : ∀ {n} {Γ : Context n} {L R : Ty n} → Tm Γ R → Tm Γ (L `+` R)
+    `injL` : {L R : Ty n} → Tm Γ L → Tm Γ (L `+` R)
+    `injR` : {L R : Ty n} → Tm Γ R → Tm Γ (L `+` R)
 
-  _`,`_  : ∀ {n} {Γ : Context n} {L R : Ty n} → Tm Γ L → Tm Γ R → Tm Γ (L `×` R)
+    _`,`_  : {L R : Ty n} → Tm Γ L → Tm Γ R → Tm Γ (L `×` R)
+    _`,,`_ : {X : Set} {P : X → Ty n} → (x : X) → Tm Γ (P x) → Tm Γ (`Σ` X P)
 
-  _`,,`_ : ∀ {n} {Γ : Context n} {X : Set} {P : X → Ty n} → (x : X) → Tm Γ (P x) → Tm Γ (`Σ` X P)
+    `sup`  : {T : Ty (suc n)} → Tm (Γ -, (`μ` T)) T → Tm Γ (`μ` T)
+    `inf`  : {T : Ty (suc n)} → ∞Tm (Γ -, (`ν` T)) T → Tm Γ (`ν` T)
 
-  `sup`  : ∀ {n} {Γ : Context n} {T : Ty (suc n)} → Tm (Γ -, (`μ` T)) T → Tm Γ (`μ` T)
+    -- Easy to use, maybe annoying to do proofs about?
+    `v`    : {x : Fin n} → Tm (unwind Γ x) (lookup Γ x) → Tm Γ (`var` x)
 
-  -- Easy to use, maybe annoying to do proofs about?
-  `v`    : ∀ {n} {Γ : Context n} {x : Fin n} → Tm (unwind Γ x) (lookup Γ x) → Tm Γ (`var` x)
+  record ∞Tm {n : ℕ} (Γ : Context n) (ty : Ty n) : Set₁ where
+    coinductive
+    field
+      force : Tm Γ ty
+
+-- If a term never traverses a ν, then it's definitely finite.
+-- But TODO - there are finite terms that do traverse ν. How to handle?
+data Finite {n : ℕ} {Γ : Context n} : {ty : Ty n} → Tm Γ ty → Set₁ where
+    `tt`   : Finite `tt`
+
+    `injL` : {L R : Ty n} {l : Tm Γ L} → Finite l → Finite {ty = L `+` R} (`injL` l)
+    `injR` : {L R : Ty n} {r : Tm Γ L} → Finite r → Finite {ty = L `+` R}(`injL` r)
+
+    _`,`_  : {L R : Ty n} {l : Tm Γ L} {r : Tm Γ R} → Finite l → Finite r → Finite (l `,` r)
+    _`,,`_ : {X : Set} {P : X → Ty n} → (x : X) → { px : Tm Γ (P x)} → Finite px → Finite {ty = `Σ` X P} (x `,,` px)
+
+    `sup`  : {T : Ty (suc n)} (x : Tm (Γ -, (`μ` T)) T) → Finite x → Finite (`sup` x)
+
+    `v`    : {x : Fin n} {Γ!!x : Tm (unwind Γ x) (lookup Γ x)} → Finite Γ!!x → Finite (`v` Γ!!x)

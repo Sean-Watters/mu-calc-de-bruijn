@@ -24,7 +24,7 @@ data Ty (n : ℕ) : Set₁ where
 
 -- LFP and GFP
   `μ`_ : Ty (suc n) → Ty n
-  -- `ν`_ : Ty (suc n) → Ty n
+  `ν`_ : Ty (suc n) → Ty n
 
 -- Fixpoint variables
   `var` : Fin n → Ty n

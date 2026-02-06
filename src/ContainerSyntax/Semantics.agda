@@ -1,3 +1,4 @@
+{-# OPTIONS --guardedness #-}
 module ContainerSyntax.Semantics where
 
 open import Level using () renaming (zero to 0ℓ)
@@ -9,6 +10,7 @@ open import Data.Vec as Vec
 open import Data.Product
 open import Data.Sum as Sum
 open import Data.Container.Indexed.Fam renaming (⟦_⟧ to ⟦_⟧c)
+open import Data.Container.Indexed.Fam.Guardedness
 open import Function
 open import Relation.Binary.PropositionalEquality hiding (J)
 
@@ -24,6 +26,7 @@ AsCont (l `+` r) = AsCont l ⟨+⟩ AsCont r
 AsCont (l `×` r) = AsCont l ⟨×⟩ AsCont r
 AsCont (`Σ` X f) = ⟨Σ⟩ (const X) (λ x → AsCont (f x))
 AsCont (`μ` ty) = ⟨μ⟩ (⟨mapI⟩ Sum.[ suc , const Fin.zero ] (AsCont ty))
+AsCont (`ν` ty) = {! ⟨ν⟩ (⟨mapI⟩ Sum.[ suc , const Fin.zero ] (AsCont ty)) !}
 AsCont {n} (`var` x) = (const ⊤) ▷ (λ _ y → x ≡ y)
 
 -- Still just working with the inductive fragment.
