@@ -1,11 +1,6 @@
-module Data.Container.Indexed.Fam where
+{-# OPTIONS --safe #-}
 
--- The standard library uses so-called "pow-style" indexed
--- containers, where all the positions ("responses") live 
--- in one set, and you get a "next" function for picking out
--- their indices. This makes taking fixed points much harder, so
--- we instead use the "fam-style" presentation of Altenkirch et al,
--- with an indexed familty of positions.
+module Data.Container.Indexed.Fam.Combinator where
 
 open import Level using (Level) renaming (suc to lsuc)
 open import Data.Empty
@@ -18,49 +13,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Axiom.Extensionality.Propositional using (Extensionality)
 open import Relation.Binary.Isomorphism
 
-----------
--- Base --
-----------
-
--- Indexed containers, fam style
-record Container (I J : Set) : Set₁ where
-  constructor _▷_
-  field
-    Shape : J → Set
-    Position : {j : J} → Shape j → I → Set
+open import Data.Container.Indexed.Fam.Base
 open Container
-
--- The meaning/extension of a container is the indexed functor that it represents.
-⟦_⟧ : {I J : Set} → Container I J → (I → Set) → (J → Set)
-⟦ S ▷ P ⟧ F j = Σ[ s ∈ S j ] (∀ {i} → P s i → F i)
-
-
--- Indexed W-types. AKA how to generate families of inductive data types
--- from indexed containers.
--- W-types are trees with node arity given by the set of shapes, and
-data W {J : Set} (C : Container J J) : J → Set where
-  sup : ∀ {j} → ⟦ C ⟧ (W C) j → W C j
-
--------------------
--- Functoriality --
--------------------
-
--- In both indices
-⟨bimap⟩ : {I I' J J' : Set} → (I' → I) → (J' → J) → Container I J → Container I' J'
-⟨bimap⟩ f g (S ▷ P) = (S ∘ g) ▷ (λ s → P s ∘ f)
-
-
--- In I
-⟨mapI⟩ : {I I' J : Set} → (I' → I) → Container I J → Container I' J
-⟨mapI⟩ f = ⟨bimap⟩ f id
-
--- In J
-⟨mapJ⟩ : {I J J' : Set} → (J' → J) → Container I J → Container I J'
-⟨mapJ⟩ f = ⟨bimap⟩ id f
-
------------------
--- Combinators --
------------------
 
 private
   variable
@@ -127,33 +81,3 @@ _⟨+⟩_ : Container I J → Container I J → Container I J
 -- ⟨Σ⟩ {X = X} P = (λ j → Σ[ x ∈ X ] Shape (P x) j)
 --               ▷ (λ { (x , s) i → Position (P x) s i })
 
---------------------
--- Least Fixpoint --
---------------------
-
-data Path {I J : Set}
-          (S : J → Set)
-          (PI : {j : J} → S j → I → Set)
-          (PJ : {j : J} → S j → J → Set)
-          : {j : J} → W (S ▷ PJ) j → I → Set where
-  path : {j : J} {s : S j} {f : {j : J} → PJ s j → W (S ▷ PJ) j} {i : I}
-       → PI s i
-       ⊎ (Σ[ j' ∈ J ] Σ[ p ∈ PJ s j' ] Path S PI PJ (f p) i)
-       → Path S PI PJ (sup (s , f)) i
-
-⟨μ⟩ : {I J : Set} →  Container (I ⊎ J) J → Container I J
-⟨μ⟩ {I} {J} (S ▷ P) =
-  let PI : {j : J} → S j → I → Set
-      PI s i = P s (inj₁ i)
-
-      PJ : {j : J} → S j → J → Set
-      PJ s j = P s (inj₂ j)
-
-  in (W (S ▷ PJ)) ▷ Path S PI PJ
-
-
------------------------
--- Greatest Fixpoint --
------------------------
-
--- see ...Fam.SizedTypes

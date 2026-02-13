@@ -1,5 +1,6 @@
 {-# OPTIONS --sized-types #-}
-module Data.Container.Indexed.Fam.SizedTypes where
+
+module Data.Container.Indexed.Fam.SizedTypes.Nu where
 
 open import Axiom.Extensionality.Propositional using (Extensionality) renaming (implicit-extensionality to exti)
 open import Level
@@ -7,15 +8,9 @@ open import Size
 open import Codata.Sized.Thunk using (Thunk; force)
 open import Data.Sum
 open import Data.Product
-open import Data.Container.Indexed.Fam
 
--- Indexed M-types.
--- Dual to W-types; so this is the way to generate families of
--- coinductive codata types from indexed containers.
--- In general we get possibly-infinite trees.
-data M {J : Set} (C : Container J J) (κ : Size) : J → Set where
-  inf :  ∀ {j} → ⟦ C ⟧ (λ j' → Thunk (λ α → M C α j) κ) j → M C κ j
-
+open import Data.Container.Indexed.Fam.Base
+open import Data.Container.Indexed.Fam.SizedTypes.M
 
 
 -- M-types are possibly infinite trees, so paths through them are co-lists
