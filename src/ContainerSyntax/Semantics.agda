@@ -18,9 +18,6 @@ open import Relation.Binary.PropositionalEquality hiding (J)
 
 open import ContainerSyntax.Type hiding (lookup)
 
--- Working only with inductive types for now.
--- Can add coinduction once this is all working.
-
 AsCont : ∀ {n} → Ty n → Container (Fin n) ⊤
 AsCont `0` = ⟨⊥⟩
 AsCont `1` = ⟨⊤⟩
@@ -31,7 +28,6 @@ AsCont (`μ` ty) = ⟨μ⟩ (⟨mapI⟩ Sum.[ suc , const Fin.zero ] (AsCont ty)
 AsCont (`ν` ty) = ⟨ν⟩ (⟨mapI⟩ Sum.[ suc , const Fin.zero ] (AsCont ty))
 AsCont {n} (`var` x) = (const ⊤) ◁ (λ _ y → x ≡ y)
 
--- Still just working with the inductive fragment.
 -- We want to think of the meaning of one of these type terms as a functor `(Set^n) → Set`,
 -- where n is the number of free variables, s.t. the `Set^n` represents the meanings of those vars.
 -- The extension of a container is some functor `Set → Set`.
