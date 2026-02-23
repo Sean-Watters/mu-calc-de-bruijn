@@ -3,7 +3,8 @@ module Data.Container.Indexed.Fam.Correctness where
 
 open import Level
 open import Axiom.Extensionality.Propositional using (Extensionality) renaming (implicit-extensionality to exti)
-open import Data.Container.Indexed.Fam
+open import Data.Container.Indexed.Fam.Base
+open import Data.Container.Indexed.Fam.Combinator
 open import Data.Product
 open import Data.Empty
 open import Data.Sum

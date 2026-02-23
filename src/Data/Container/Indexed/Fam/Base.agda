@@ -25,7 +25,7 @@ open import Relation.Binary.Isomorphism
 
 -- Indexed containers, fam style
 record Container (I J : Set) : Set₁ where
-  constructor _▷_
+  constructor _◁_
   field
     Shape : J → Set
     Position : {j : J} → Shape j → I → Set
@@ -33,8 +33,15 @@ open Container public
 
 -- The meaning/extension of a container is the indexed functor that it represents.
 ⟦_⟧ : {I J : Set} → Container I J → (I → Set) → (J → Set)
-⟦ S ▷ P ⟧ F j = Σ[ s ∈ S j ] (∀ {i} → P s i → F i)
+⟦ S ◁ P ⟧ F j = Σ[ s ∈ S j ] (∀ {i} → P s i → F i)
 
+-- And it actually is a functor
+⟦_⟧-map : {I J : Set}
+        → (C : Container I J)
+        → {X Y : I → Set}
+        → (∀ {i : I} → X i → Y i)
+        → (∀ {j : J} → ⟦ C ⟧ X j  → ⟦ C ⟧ Y j)
+⟦ C ⟧-map f (s , g) = s , (f ∘ g)
 
 -------------------
 -- Functoriality --
@@ -42,7 +49,7 @@ open Container public
 
 -- In both indices
 ⟨bimap⟩ : {I I' J J' : Set} → (I' → I) → (J' → J) → Container I J → Container I' J'
-⟨bimap⟩ f g (S ▷ P) = (S ∘ g) ▷ (λ s → P s ∘ f)
+⟨bimap⟩ f g (S ◁ P) = (S ∘ g) ◁ (λ s → P s ∘ f)
 
 
 -- In I

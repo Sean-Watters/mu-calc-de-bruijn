@@ -1,4 +1,4 @@
-
+{-# OPTIONS --guardedness #-}
 module ContainerSyntax.Examples where
 
 open import Data.Nat
