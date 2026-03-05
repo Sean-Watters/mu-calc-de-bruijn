@@ -93,6 +93,8 @@ record ColouredPetriNet : Set₁ where
     Place : Set
     Transition : Set
 
+  -- The arcs are proof-relevant relations between transitions and places (AKA spans).
+  -- This allegedly bakes in the guards???
   Arc = Transition → Place → Set
   field
     Source : Arc
@@ -111,59 +113,10 @@ record ColouredPetriNet : Set₁ where
     -- it's neater this way. Separates the matter of what colour sets are allowed
     -- from the assignment of colour sets to places.
 
-  field
-    -- A global set of variables to be used in guard and arc expressions.
-    -- This is the way Jensen & Kristensen cook it, and it might be ergonomic
-    -- for building nets, but maybe not the most neat way from a theory pov.
-    Var : Set
-
-    -- ⟦_⟧v : Var → ColourUniverse
-
-    -- The language which the guard functions are expressed in
-    GuardExpr : (Var : Set) → Set
-
-    -- Each transition is assigned an expression for whether it's enabled or not, which
-    -- can make use of whatever structure the colours have
-    guard : Transition → GuardExpr Var
-
-    -- Traditionally, every guard expression is valued in booleans.
-    -- For us, that means it's a decidable prop.
-    ⟦_⟧g : GuardExpr Var → Set
-    ⟦_⟧g? : ∀ g → Dec ⟦ g ⟧g
-
-    -- -- Is the variable used in this expression?
-    -- InGuard : Var → GuardExpr Var → Set
-
-
-  field
-    -- The language of well-typed arc expressions
-    ArcExpr : (Var : Set) → ColourUniverse → Set
-
-    -- Likewise, each arc is assigned an expression saying what it does
-    source-expr : ∀ {t p} → Source t p → ArcExpr Var (Colour p)
-    target-expr : ∀ {t p} → Target t p → ArcExpr Var (Colour p)
-
-    -- Arc expressions are valued in colours
-    ⟦_⟧a : ∀ {Col} → ArcExpr Var Col → ⟦ Col ⟧c
-
-
-  -- A marking for a net is a list of typed tokens assigned to each place.
-  -- This should really be a multiset instead, but until I see evidence that we actually
-  -- need the equational theory of multisets, lists will suffice.
+  -- A marking for a net is a lump of typed data assigned to each place.
   Marking : Set
-  Marking = ∀ (p : Place) → List ⟦ Colour p ⟧c
-
-  -- -- A binding of a transition t is a function that maps each variable used in that t's
-  -- -- guard to an element of that variable's colour set.
-  -- Binding : Transition → Set
-  -- Binding t = ∀ {v} → InGuard v (guard t) → ⟦ ⟦ v ⟧v ⟧c
-  -- -- I think this is irrelevant to this formulation, since vars are necessarily
-  -- given meaning by ⟦_⟧a and ⟦_⟧g....though they may not agree....hmmmm.....
+  Marking = ∀ (p : Place) → ⟦ Colour p ⟧c
 
   --
-  IsEnabled : (t : Transition) → Set
-  IsEnabled t = ⟦ guard t ⟧g
-              × {!∀ {p} → source-expr {t} {p}!}
-
-
-
+  IsEnabled : Marking → Transition → Set
+  IsEnabled m t = ∀ p → Source t p ⊎ Target t p → {!m p!}

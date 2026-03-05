@@ -31,6 +31,7 @@ record Container (I J : Set) : Set₁ where
     Position : {j : J} → Shape j → I → Set
 open Container public
 
+
 -- The meaning/extension of a container is the indexed functor that it represents.
 ⟦_⟧ : {I J : Set} → Container I J → (I → Set) → (J → Set)
 ⟦ S ◁ P ⟧ F j = Σ[ s ∈ S j ] (∀ {i} → P s i → F i)
@@ -46,6 +47,8 @@ open Container public
 -------------------
 -- Functoriality --
 -------------------
+
+-- (In the sense of the reindexing functor)
 
 -- In both indices
 ⟨bimap⟩ : {I I' J J' : Set} → (I' → I) → (J' → J) → Container I J → Container I' J'

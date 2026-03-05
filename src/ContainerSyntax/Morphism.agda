@@ -1,4 +1,4 @@
-
+{-# OPTIONS --guardedness #-}
 module ContainerSyntax.Morphism where
 
 open import ContainerSyntax.Type
@@ -14,7 +14,7 @@ open import Data.Nat
 
 open import Function
 
-open import Data.Container.Indexed.Fam
+open import Data.Container.Indexed.Fam.Base
 open import Data.Container.Indexed.Fam.Morphism as Lens hiding (_⇒_)
 
 

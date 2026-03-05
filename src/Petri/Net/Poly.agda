@@ -1,4 +1,4 @@
-
+{-# OPTIONS --guardedness #-}
 module Petri.Net.Poly where
 
 open import Level using () renaming (zero to 0ℓ)
@@ -19,8 +19,8 @@ record PolyCPN : Set₁ where
     Transition : Set
 
     -- Every transition has some source and target arcs, connecting it to some places.
+    -- This being proof-relevant bakes in the guards for us.
     Source Target : Transition → Place → `Set`
-    -- Todo: This should be a prop
 
     -- Each place gets a type of data that it can store...
     Colour : Place → `Set`
@@ -43,17 +43,13 @@ record PolyCPN : Set₁ where
   field
     -- The transition tells us how to transform data at its source places into data at
     -- its target places, but we also have to update the source data.
-    TransformInputs : (t : Transition) → {! (InputData t ⇒ (InputData t `×` OutputData t)) !}
-    -- TODO - problem. we don't want to map place-by-place like this.
+    TransformInputs : (t : Transition)
+                    → (InputData t `×` OutputData t) ⇒ (InputData t `×` OutputData t)
+
+    -- A Thought: Shouldnt there be a "language" for transforming the data? If it's too rich
+    -- we probably end up turing complete, but is it also interesting to look at what happens
+    -- with more minimal examples?
 
 --   IsFiring : Marking → Transition → Marking → Set
 --   IsFiring m₀ t m₁ = Guard t m₀ -- if we are allowed to fire t at m₀...
 --                    → {!...then firing t at m₀ transforms the data at the places such that we end up at m₁!}
-
---   -- field
---     -- Source? : ∀ t p → Dec (Source t p)
---     -- Target? : ∀ t p → Dec (Target t p)
---     -- Guard? : ∀ {t} i o → Dec (Guard t i o)
-
--- -- TODO: The guards get baked into one of the other fields via proof relevance (a span!), but
--- -- I forget which or how. Source/Target? Or was it TransformInputs?

@@ -28,12 +28,12 @@ mutual
     `v`    : {x : Fin n} → Tm (unwind Γ x) (lookup Γ x) → Tm Γ (`var` x)
 
   record ∞Tm {n : ℕ} (Γ : Context n) (ty : Ty n) : Set₁ where
+    constructor ♯
     coinductive
     field
-      force : Tm Γ ty
+      ♭ : Tm Γ ty
 
--- If a term never traverses a ν, then it's definitely finite.
--- But TODO - there are finite terms that do traverse ν. How to handle?
+-- Finite terms.
 data Finite {n : ℕ} {Γ : Context n} : {ty : Ty n} → Tm Γ ty → Set₁ where
     `tt`   : Finite `tt`
 
@@ -44,5 +44,6 @@ data Finite {n : ℕ} {Γ : Context n} : {ty : Ty n} → Tm Γ ty → Set₁ whe
     _`,,`_ : {X : Set} {P : X → Ty n} → (x : X) → { px : Tm Γ (P x)} → Finite px → Finite {ty = `Σ` X P} (x `,,` px)
 
     `sup`  : {T : Ty (suc n)} (x : Tm (Γ -, (`μ` T)) T) → Finite x → Finite (`sup` x)
+    `inf`  : {T : Ty (suc n)} (x : Tm (Γ -, (`ν` T)) T) → Finite x → Finite (`inf` (♯ x))
 
     `v`    : {x : Fin n} {Γ!!x : Tm (unwind Γ x) (lookup Γ x)} → Finite Γ!!x → Finite (`v` Γ!!x)
