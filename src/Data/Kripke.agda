@@ -1,3 +1,4 @@
+{-# OPTIONS --safe #-}
 module Data.Kripke where
 
 record Kripke (At : Set) : Set₁ where

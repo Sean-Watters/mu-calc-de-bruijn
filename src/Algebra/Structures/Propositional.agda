@@ -1,3 +1,4 @@
+{-# OPTIONS --safe #-}
 open import Algebra
 open import Data.Product
 open import Relation.Binary hiding (Irrelevant)

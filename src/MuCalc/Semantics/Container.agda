@@ -1,4 +1,4 @@
-{-# OPTIONS --sized-types #-}
+{-# OPTIONS --guardedness #-}
 
 open import Algebra.Structures.Propositional
 open import Relation.Binary.PropositionalEquality
@@ -20,8 +20,10 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty
 open import Data.Product
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Container.Indexed.Fam renaming (⟦_⟧ to ⟨⟦_⟧⟩)
-open import Data.Container.Indexed.Fam.SizedTypes
+open import Data.Container.Indexed.Fam.Base renaming (⟦_⟧ to ⟨⟦_⟧⟩)
+open import Data.Container.Indexed.Fam.Guardedness.Nu
+open import Data.Container.Indexed.Fam.Combinator
+open import Data.Container.Indexed.Fam.Mu
 open import Data.Container.Indexed.Fam.Correctness
 
 open import Function
@@ -76,19 +78,19 @@ dist-fin {n} (inj₂ s) = s , fzero
 
 -- Now to draw the rest of the owl!
 MkCont : {n : ℕ} → μML At n → Container (S × Fin n) S
-MkCont {n} (var x) = (const ⊤) ◃ λ { {t} _ (s , y) → s ≡ t × x ≡ y}
+MkCont {n} (var x) = (const ⊤) ◁ λ { {t} _ (s , y) → s ≡ t × x ≡ y}
 MkCont ⊤' = ⟨const⟩ (const ⊤)
 MkCont ⊥' = ⟨const⟩ (const ⊥)
 MkCont (μML₀ (at x)) = ⟨const⟩ (V x)
 MkCont (μML₀ (¬at x)) = ⟨const⟩ (λ s → ¬ (V x s))
 MkCont (■ ϕ) = (λ s → (x : Σ[ t ∈ S ] (s ~> t)) → Shape (MkCont ϕ) (proj₁ x)) -- this is *not* an instance of the indexed product, since we need a shape at t, not s.
-              ◃ λ { {s} σ x → Σ[ t ∈ S ] Σ[ sRt ∈ (s ~> t) ] Position (MkCont ϕ) (σ (t , sRt)) x }
+              ◁ λ { {s} σ x → Σ[ t ∈ S ] Σ[ sRt ∈ (s ~> t) ] Position (MkCont ϕ) (σ (t , sRt)) x }
 MkCont (◆ ϕ) = (λ s → Σ[ t ∈ S ] (s ~> t) × Shape (MkCont ϕ) t)
-              ◃ λ { {s} (t , sRt , σ) x →  Position (MkCont ϕ) σ x }
+              ◁ λ { {s} (t , sRt , σ) x →  Position (MkCont ϕ) σ x }
 MkCont (ϕ ∧ ψ) = MkCont ϕ ⟨×⟩ MkCont ψ
 MkCont (ϕ ∨ ψ) = MkCont ϕ ⟨+⟩ MkCont ψ
-MkCont (μ ϕ) = ⟨μ⟩ (⟨map⟩ dist-fin (MkCont ϕ))
-MkCont (ν ϕ) = ⟨ν⟩ (⟨map⟩ dist-fin (MkCont ϕ))
+MkCont (μ ϕ) = ⟨μ⟩ (⟨mapI⟩ dist-fin (MkCont ϕ))
+MkCont (ν ϕ) = ⟨ν⟩ (⟨mapI⟩ dist-fin (MkCont ϕ))
 
 -- Todo : MkCont for RTrees of formula symbols (aka the closure)
 -- MkContClos : {n : ℕ} → RTree (MuCalcSymbol At) n → Container (S × Fin n) S
