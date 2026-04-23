@@ -1,6 +1,6 @@
 {-# OPTIONS --safe #-}
 
-module Data.Container.Indexed.Fam.Combinator where
+module Data.Container.Indexed.Fam.Combinator.Base where
 
 open import Level using (Level) renaming (suc to lsuc)
 open import Data.Empty
@@ -80,5 +80,3 @@ _⟨+⟩_ : Container I J → Container I J → Container I J
 -- ⟨Σ⟩ : {X : Set} → (X → Container I J) → Container I J
 -- ⟨Σ⟩ {X = X} P = (λ j → Σ[ x ∈ X ] Shape (P x) j)
 --               ◁ (λ { (x , s) i → Position (P x) s i })
-
---
