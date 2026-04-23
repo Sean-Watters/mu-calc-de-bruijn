@@ -114,8 +114,14 @@ module Exponential where
 
   open BinaryProduct renaming (correct to ×-correct)
 
-  curry : (X : I → Set) (C D E : Container I J) (j : J)
-        → ⟦ (C ⟨×⟩ D) ⟨→⟩ E ⟧ X j
-        → ⟦ C ⟨→⟩ (D ⟨→⟩ E) ⟧ X j
-  curry X C D E j (s , p) .proj₁ = Σ.curry s
-  curry X C D E j (s , p) .proj₂ {i} f = p λ sC pC → {!f!}
+  curry : (X : I → Set) (C D E : Container I J)
+        → (C ⟨×⟩ D) ⇒ E
+        → C ⇒ (D ⟨→⟩ E)
+  curry X C D E (fw ▷ bw) ._⇒_.fw = Σ.curry fw
+  curry X C D E (fw ▷ bw) ._⇒_.bw f = {!f!} -- I think this makes it clears that the bw part of ⟨→⟩ is wrong
+
+  uncurry : (X : I → Set) (C D E : Container I J)
+          → C ⇒ (D ⟨→⟩ E)
+          → (C ⟨×⟩ D) ⇒ E
+  uncurry X C D E (fw ▷ bw) ._⇒_.fw = Σ.uncurry fw
+  uncurry X C D E (fw ▷ bw) ._⇒_.bw p = {!bw!}
