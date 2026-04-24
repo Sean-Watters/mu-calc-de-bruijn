@@ -5,6 +5,7 @@ open import Data.Empty
 open import Data.Unit
 open import Data.Sum
 open import Data.Product
+open import Data.Maybe
 open import Function
 open import Relation.Binary.Isomorphism
 open import Relation.Binary.PropositionalEquality hiding (J)
@@ -58,7 +59,14 @@ IsNatural {C = C} {D = D} P j f = Σ[ f' ∈ C ⇒ D ] (⟪ f' ⟫ {P} ≗ f) wh
 
 -- Exponentiation of containers, AKA internal hom.
 -- Given containers C,D, there is a container D^C which internalises the homset C⇒D.
--- It's defined much the same way as the homset itself:
 _⟨→⟩_ : (C D : Container I J) → Container I J
-(C ⟨→⟩ D) .Shape j = C .Shape j → D .Shape j
-(C ⟨→⟩ D) .Position {j} fw i = (s : C .Shape j) → D .Position (fw s) i → C .Position s i
+(C ⟨→⟩ D) .Shape j = (s : C .Shape j) → Σ[ t ∈ D .Shape j ] (∀ i → D .Position t i → Maybe (C .Position s i)) -- Why Maybe??!?!?
+(C ⟨→⟩ D) .Position {j} fw i = Σ[ s ∈ C .Shape j ] Σ[ q ∈ D .Position (fw s .proj₁) i ] q ≡ {!!}
+
+{-
+-- Versus: the thing I assumed would be right; directly internalising the definition of morphism
+-- with the forwards pass as the shapes and the backwards pass as the positions.
+_⟨→⟩_ : (C D : Container I J) → Container I J
+(C ⟨→⟩ D) .Shape j = (s : C .Shape j) → Σ[ t ∈ D .Shape j ] (∀ i → D .Position t i → Maybe (C .Position s i))
+(C ⟨→⟩ D) .Position {j} fw i = {!!}
+-}
