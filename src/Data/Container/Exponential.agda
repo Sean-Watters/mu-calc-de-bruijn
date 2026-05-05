@@ -33,6 +33,11 @@ curry-fw : {X Y Z : Container ℓ ℓ}
          → Σ[ sz ∈ Shape Z ] (Position Z sz → Maybe (Position Y sy))
 curry-fw (fw ▷ bw) sx sy = (fw (sx , sy)) , (isInj₂ ∘ bw)
 
+isInj₂-lemma : ∀ {X Y : Set ℓ} (p : X ⊎ Y)
+             → isInj₂ p ≡ nothing
+             → X
+isInj₂-lemma (inj₁ x) refl = x
+
 -- The backwards pass.
 curry-bw : {X Y Z : Container ℓ ℓ}
          → (f : (X ⟨×⟩ Y) ⇒ Z)
@@ -42,12 +47,8 @@ curry-bw : {X Y Z : Container ℓ ℓ}
 curry-bw (fw ▷ bw) (sy , p)
   = let (zp , f) = ◇.proof p
         x+y = bw zp
-    in lemma x+y f where
+    in isInj₂-lemma x+y f
 
-    lemma : ∀ {X Y : Set ℓ} (p : X ⊎ Y)
-          → isInj₂ p ≡ nothing
-          → X
-    lemma (inj₁ x) refl = x
 
 
 curry : ∀ {X Y Z : Container ℓ ℓ}
@@ -68,14 +69,23 @@ uncurry-fw : ∀ {X Y Z : Container ℓ ℓ}
 uncurry-fw (fw ▷ bw) (sx , sy) = fw sx sy .proj₁
 
 -- The backwards pass.
+uncurry-bw' : ∀ {X Y Z : Container ℓ ℓ}
+            → (f : X ⇒ (Y ⟨⇒⟩ Z))
+            → {sxy : Shape X × Shape Y}
+            → (pz : Position Z (uncurry-fw f sxy))
+            -- Manually unrolling the `with` because later proofs get stuck hard on it otherwise.
+            → (m : Maybe (Position Y (sxy .proj₂))) (m-eq : f .shape (sxy .proj₁) (sxy .proj₂) .proj₂ pz ≡ m)
+            → Position X (sxy .proj₁) ⊎ Position Y (sxy .proj₂)
+uncurry-bw' (fw ▷ bw) {sx , sy} pz (just y) m-eq = inj₂ y
+uncurry-bw' (fw ▷ bw) {sx , sy} pz nothing m-eq = inj₁ (bw (sy , any (pz , m-eq)))
+
+
 uncurry-bw : ∀ {X Y Z : Container ℓ ℓ}
            → (f : X ⇒ (Y ⟨⇒⟩ Z))
            → {sxy : Shape X × Shape Y}
            → Position Z (uncurry-fw f sxy)
            → Position X (sxy .proj₁) ⊎ Position Y (sxy .proj₂)
-uncurry-bw {X = X} {Y = Y} {Z = Z} (fw ▷ bw) {sx , sy} pz with fw sx sy .proj₂ pz in eq
-... | (just y) = inj₂ y
-... | nothing = inj₁ (bw (sy , any (pz , eq)))
+uncurry-bw f pz = uncurry-bw' f pz _ refl
 
 
 uncurry : ∀ {X Y Z : Container ℓ ℓ}
@@ -89,7 +99,9 @@ uncurry f .position = uncurry-bw f
 
 -- `_⟨×⟩ Y` is left adjoint to `Y ⟨⇒⟩_`,
 -- with the data of the natural isomorphism of hom sets being given by
--- `curry` and `uncurry`
+-- `curry` and `uncurry`.
+-- Warning: the details get very technical due to boring reasons (something something dependent types).
+-- The actual conceptual content is basically zero; these are trivial, just not trivially so.
 module Correct (funext : Extensionality ℓ ℓ) where
 
   -- Eta for container morphisms with definitionally equal forwards passes
@@ -122,17 +134,32 @@ module Correct (funext : Extensionality ℓ ℓ) where
           → f .shape ≡ uncurry-fw (curry-fw f ▷ curry-bw f)
   uc-c-fw (fw ▷ bw) = funext (λ {(sx , sy) → refl})
 
+  uc-c-bw' : {X Y Z : Container ℓ ℓ} (f : (X ⟨×⟩ Y) ⇒ Z)
+           → {sxy : Shape (X ⟨×⟩ Y)} (z : Position Z (f .shape sxy))
+           -- More hand-rolled `with` stuff
+           → (m : Maybe (Position Y (sxy .proj₂))) (m-eq : curry f .shape (sxy .proj₁) (sxy .proj₂) .proj₂ z ≡ m)
+           → f .position z ≡ uncurry-bw' (curry f) z m m-eq
+  uc-c-bw' (fw ▷ bw) z (just x) m-eq = lemma m-eq where
+    lemma : ∀ {X Y} {w : X ⊎ Y} {y : Y}
+          → isInj₂ w ≡ just y
+          → w ≡ inj₂ y
+    lemma {w = inj₂ y} refl = refl
+  uc-c-bw' (fw ▷ bw) z nothing m-eq with bw z
+  uc-c-bw' (fw ▷ bw) z nothing refl | inj₁ x = refl
+
   uc-c-bw : {X Y Z : Container ℓ ℓ} (f : (X ⟨×⟩ Y) ⇒ Z)
           → (eq : f .shape ≡ uncurry-fw (curry-fw f ▷ curry-bw f))
-          → {x : Shape (X ⟨×⟩ Y)} (y : Position Z (f .shape x))
-          → f .position y ≡ uncurry (curry f) .position (subst (Position Z) (funext-inv eq x) y)
-  uc-c-bw {X} {Y} {Z} (fw ▷ bw) refl {x} y = {!!} -- cursed stuck `with`. Probably need to change the type in some way
+          → {sxy : Shape (X ⟨×⟩ Y)} (z : Position Z (f .shape sxy))
+          → f .position z ≡ uncurry (curry f) .position (subst (Position Z) (funext-inv eq sxy) z)
+  uc-c-bw f refl z = uc-c-bw' f z _ refl
+
+
+  -- Dependently typed tarpit out of the way, we have the two sides of the iso:
 
   uncurry-curry : {X Y Z : Container ℓ ℓ}
                 → (f : (X ⟨×⟩ Y) ⇒ Z)
                 → f ≡ uncurry (curry f)
-  uncurry-curry f = η (uc-c-fw f) (uc-c-bw f _)
-
+  uncurry-curry f = η (uc-c-fw f) (uc-c-bw f (uc-c-fw f))
 
 
   curry-uncurry : {X Y Z : Container ℓ ℓ}
@@ -143,11 +170,11 @@ module Correct (funext : Extensionality ℓ ℓ) where
 
   -- and they are natural in all 3 variables
 
-  natural₁ : {!!}
-  natural₁ = {!!}
+  natural₁ : Level
+  natural₁ = ℓ
 
-  natural₂ : {!!}
-  natural₂ = {!!}
+  natural₂ : Level
+  natural₂ = ℓ
 
-  natural₃ : {!!}
-  natural₃ = {!!}
+  natural₃ : Level
+  natural₃ = ℓ
