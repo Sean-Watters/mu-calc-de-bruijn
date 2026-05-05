@@ -136,7 +136,7 @@ module Correct (funext : Extensionality ℓ ℓ) where
 
   uc-c-bw' : {X Y Z : Container ℓ ℓ} (f : (X ⟨×⟩ Y) ⇒ Z)
            → {sxy : Shape (X ⟨×⟩ Y)} (z : Position Z (f .shape sxy))
-           -- More hand-rolled `with` stuff
+           -- Another very specific hand-rolled with-abstraction. This feels like dark magic at this point.
            → (m : Maybe (Position Y (sxy .proj₂))) (m-eq : curry f .shape (sxy .proj₁) (sxy .proj₂) .proj₂ z ≡ m)
            → f .position z ≡ uncurry-bw' (curry f) z m m-eq
   uc-c-bw' (fw ▷ bw) z (just x) m-eq = lemma m-eq where
@@ -154,7 +154,7 @@ module Correct (funext : Extensionality ℓ ℓ) where
   uc-c-bw f refl z = uc-c-bw' f z _ refl
 
 
-  -- Dependently typed tarpit out of the way, we have the two sides of the iso:
+  -- Dependently typed tarpit out of the way, we have the first side of the iso:
 
   uncurry-curry : {X Y Z : Container ℓ ℓ}
                 → (f : (X ⟨×⟩ Y) ⇒ Z)
