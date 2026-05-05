@@ -165,16 +165,16 @@ module Correct (funext : Extensionality ℓ ℓ) where
   curry-uncurry : {X Y Z : Container ℓ ℓ}
                 → (f : X ⇒ (Y ⟨⇒⟩ Z))
                 → f ≡ curry (uncurry f)
-  curry-uncurry (fw ▷ bw) = {!!}
+  curry-uncurry f = {!!}
 
 
   -- and they are natural in all 3 variables
 
-  natural₁ : Level
-  natural₁ = ℓ
+  natural₁ : {!!}
+  natural₁ = {!!}
 
-  natural₂ : Level
-  natural₂ = ℓ
+  natural₂ : {!!}
+  natural₂ = {!!}
 
-  natural₃ : Level
-  natural₃ = ℓ
+  natural₃ : {!!}
+  natural₃ = {!!}
