@@ -8,6 +8,7 @@ open import Data.Container.Combinator using () renaming (_×_ to _⟨×⟩_)
 open import Data.Container.Relation.Unary.Any as ◇ using (any)
 open import Data.Maybe
 open import Data.Product as Product hiding (curry; uncurry)
+open import Data.Product.Properties using ( Σ-≡,≡→≡)
 open import Data.Sum as Sum
 open import Function
 open import Relation.Binary.PropositionalEquality as ≡
@@ -29,8 +30,8 @@ _⟨⇒⟩_ : (C D : Container ℓ ℓ) → Container ℓ ℓ
 -- The forwards pass.
 curry-fw : {X Y Z : Container ℓ ℓ}
          → (X ⟨×⟩ Y) ⇒ Z
-         → (sx : Shape X) (sy : Shape Y)
-         → Σ[ sz ∈ Shape Z ] (Position Z sz → Maybe (Position Y sy))
+         → (sx : Shape X)
+         → (sy : Shape Y) → Σ[ sz ∈ Shape Z ] (Position Z sz → Maybe (Position Y sy))
 curry-fw (fw ▷ bw) sx sy = (fw (sx , sy)) , (isInj₂ ∘ bw)
 
 isInj₂-lemma : ∀ {X Y : Set ℓ} (p : X ⊎ Y)
@@ -45,8 +46,8 @@ curry-bw : {X Y Z : Container ℓ ℓ}
          → Σ[ sy ∈ Shape Y ] (◇ Z (_≡ nothing) (curry-fw f sx sy))
          → Position X sx
 curry-bw (fw ▷ bw) (sy , p)
-  = let (zp , f) = ◇.proof p
-        x+y = bw zp
+  = let (pz , f) = ◇.proof p
+        x+y = bw pz
     in isInj₂-lemma x+y f
 
 
@@ -117,6 +118,7 @@ module Correct (funext : Extensionality ℓ ℓ) where
              → ∀ x → f x ≡ g x
   funext-inv refl _ = refl
 
+
   -- Extensional version
   η : {X Y : Container ℓ ℓ}
     → {fs gs : Shape X → Shape Y}
@@ -139,7 +141,7 @@ module Correct (funext : Extensionality ℓ ℓ) where
            -- Another very specific hand-rolled with-abstraction. This feels like dark magic at this point.
            → (m : Maybe (Position Y (sxy .proj₂))) (m-eq : curry f .shape (sxy .proj₁) (sxy .proj₂) .proj₂ z ≡ m)
            → f .position z ≡ uncurry-bw' (curry f) z m m-eq
-  uc-c-bw' (fw ▷ bw) z (just x) m-eq = lemma m-eq where
+  uc-c-bw' (fw ▷ bw) z (just y) m-eq = lemma m-eq where
     lemma : ∀ {X Y} {w : X ⊎ Y} {y : Y}
           → isInj₂ w ≡ just y
           → w ≡ inj₂ y
@@ -162,10 +164,31 @@ module Correct (funext : Extensionality ℓ ℓ) where
   uncurry-curry f = η (uc-c-fw f) (uc-c-bw f (uc-c-fw f))
 
 
+  -- And now for the other direction.
+
+  c-uc-fw : {X Y Z : Container ℓ ℓ}
+          → (f : X ⇒ (Y ⟨⇒⟩ Z))
+          → f .shape ≡ curry-fw (uncurry-fw f ▷ uncurry-bw f)
+  c-uc-fw {X = X} {Y} {Z} (fw ▷ bw) = funext (λ x → funext (λ y → Σ-≡,≡→≡ (refl , (funext (λ z → lemma x y z _ refl))))) where
+    lemma : (sx : Shape X) (sy : Shape Y)
+          → (pz : Z .Position (fw sx sy .proj₁))
+          → (m : Maybe (Position Y sy)) (m-eq : fw sx sy .proj₂ pz ≡ m)
+          → m ≡ isInj₂ (uncurry-bw' (fw ▷ bw) pz m m-eq)
+    lemma sx sy pz (just py) m-eq = refl
+    lemma sx sy pz nothing m-eq = refl
+
+  c-uc-bw : {X Y Z : Container ℓ ℓ}
+          → (f : X ⇒ (Y ⟨⇒⟩ Z))
+          → {sx : Shape X}
+          → (py : Position (Y ⟨⇒⟩ Z) (f .shape sx)) -- which is `Σ[ sy ∈ Y .Shape ] (◇ Z (_≡ nothing) (fw sx sy))`
+          → f .position py
+          ≡ curry-bw (uncurry f) (subst (λ fw → Σ[ sy ∈ Y .Shape ] (◇ Z (_≡ nothing) (fw sy))) (funext-inv (c-uc-fw f) sx) py)
+  c-uc-bw (fw ▷ bw) py = {!!}
+
   curry-uncurry : {X Y Z : Container ℓ ℓ}
                 → (f : X ⇒ (Y ⟨⇒⟩ Z))
                 → f ≡ curry (uncurry f)
-  curry-uncurry f = {!!}
+  curry-uncurry f = η (c-uc-fw f) {! c-uc-bw f (c-uc-fw f) !}
 
 
   -- and they are natural in all 3 variables
