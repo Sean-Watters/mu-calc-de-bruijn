@@ -19,9 +19,23 @@ private variable
 
 -- The exponential container. AKA the internal hom of containers.
 -- Due to (Altenkirch, Levy, and Staton; 2010)
+--
+-- Shapes of exponentials are maps from C-shapes to a pair of a D-shape and a *partial* map
+-- from D-positions to C-positions. Given some (s : C.Shape), you get a (t : D.Shape)
+-- and an (f : D.Pos t → Maybe (C.Pos s)). That is, shapes are "container morphisms with a
+-- partial backwards pass". We think of these as "open container morphisms"; our positions will
+-- be set up to point to exactly the components of the backwards pass that were left empty,
+-- so that they can be filled once we take the extension of the exponential.
+--
+-- Then, positions of exponentials with shape `Sh = c ↦ (d,f)` consist of:
+-- a C-shape `s`, and a D-position `q` (for some implicit D-shape),
+-- such that for the map `f` given by `Sh(s)`, we have `f(q) ≡ nothing`.
+--
+
 _⟨⇒⟩_ : (C D : Container ℓ ℓ) → Container ℓ ℓ
 (C ⟨⇒⟩ D) .Shape = (s : C .Shape) → ⟦ D ⟧ (Maybe (C .Position s))
 (C ⟨⇒⟩ D) .Position fw = Σ[ s ∈ C .Shape ] (◇ D (_≡ nothing) (fw s))
+--                     ≅ Σ[ s ∈ C .Shape ] Σ[ t ∈ D .Shape ] Σ[ p ∈ D .Position t ] (fw s .proj₂ p ≡ nothing)
 
 
 ----------------------------------
@@ -177,18 +191,37 @@ module Correct (funext : Extensionality ℓ ℓ) where
     lemma sx sy pz (just py) m-eq = refl
     lemma sx sy pz nothing m-eq = refl
 
+
   c-uc-bw : {X Y Z : Container ℓ ℓ}
           → (f : X ⇒ (Y ⟨⇒⟩ Z))
           → {sx : Shape X}
-          → (py : Position (Y ⟨⇒⟩ Z) (f .shape sx)) -- which is `Σ[ sy ∈ Y .Shape ] (◇ Z (_≡ nothing) (fw sx sy))`
-          → f .position py
-          ≡ curry-bw (uncurry f) (subst (λ fw → Σ[ sy ∈ Y .Shape ] (◇ Z (_≡ nothing) (fw sy))) (funext-inv (c-uc-fw f) sx) py)
-  c-uc-bw (fw ▷ bw) py = {!!}
+          → (sy : Y .Shape) (pz : Z .Position (f .shape sx sy .proj₁)) (eq1 : f .shape sx sy .proj₂ pz ≡ nothing)
+          -- {!(subst (λ fw → Σ[ sy ∈ Y .Shape ] (◇ Z (_≡ nothing) (fw sy))) (funext-inv (c-uc-fw f) sx) py)!}
+          → (m : Maybe (Y .Position sy)) (eq2 : f .shape sx sy .proj₂ pz ≡ m)
+          → (eq3 : isInj₂ (uncurry-bw' f pz m eq2) ≡ nothing)
+          → f .position (sy , any (pz , eq1))
+          ≡ isInj₂-lemma (uncurry-bw' f pz m eq2) eq3
+  c-uc-bw (fw ▷ bw) {sx} sy pz eq1 nothing eq2 refl = {!!} -- this is currently an instance of UIP, but maybe that's just because eq1 and eq2 are currently assumed distinct?
+    -- begin
+    --   bw (py , any (pz , eq1))
+    -- ≡⟨ {!!} ⟩
+    --   isInj₂-lemma (uncurry-bw' (fw ▷ bw) pz' (fw sx sy .proj₂ pz') refl) eq2
+    -- ≡⟨⟩
+    --   curry-bw (uncurry (fw ▷ bw)) (sy , any (pz' , eq2))
+    -- ∎ where open ≡-Reasoning
+
+  -- c-uc-bw : {X Y Z : Container ℓ ℓ}
+  --         → (f : X ⇒ (Y ⟨⇒⟩ Z))
+  --         → {sx : Shape X}
+  --         → (py : Position (Y ⟨⇒⟩ Z) (f .shape sx)) -- which is `Σ[ sy ∈ Y .Shape ] (◇ Z (_≡ nothing) (fw sx sy))`
+  --         → f .position py
+  --         ≡ curry-bw (uncurry f) (subst (λ fw → Σ[ sy ∈ Y .Shape ] (◇ Z (_≡ nothing) (fw sy))) (funext-inv (c-uc-fw f) sx) py)
+  -- c-uc-bw (fw ▷ bw) {sx} (sy , any (pz , eq1)) = {!!}
 
   curry-uncurry : {X Y Z : Container ℓ ℓ}
                 → (f : X ⇒ (Y ⟨⇒⟩ Z))
                 → f ≡ curry (uncurry f)
-  curry-uncurry f = η (c-uc-fw f) {! c-uc-bw f (c-uc-fw f) !}
+  curry-uncurry f = η (c-uc-fw f) {! c-uc-bw f  !}
 
 
   -- and they are natural in all 3 variables
