@@ -34,6 +34,8 @@ record _⇒_ (C : Container I J) (D : Container I J) : Set where
 infixr 20 _⇒_
 
 -- A variant which is truly J-indexed, to play around with
+-- "Fibred hom of indexed containers" -Timo
+-- Possibly the wrong thing for now?
 record IHom (C : Container I J) (D : Container I J) (j : J) : Set where
   constructor _▷_
   field
@@ -57,16 +59,3 @@ IsNatural {C = C} {D = D} P j f = Σ[ f' ∈ C ⇒ D ] (⟪ f' ⟫ {P} ≗ f) wh
 ⟨⊥-elim⟩ : ⟨⊥⟩ ⇒ C
 ⟨⊥-elim⟩ = ⊥-elim ▷ λ { {s = ()} }
 
--- Exponentiation of containers, AKA internal hom.
--- Given containers C,D, there is a container D^C which internalises the homset C⇒D.
-_⟨→⟩_ : (C D : Container I J) → Container I J
-(C ⟨→⟩ D) .Shape j = (s : C .Shape j) → Σ[ t ∈ D .Shape j ] (∀ i → D .Position t i → Maybe (C .Position s i)) -- Why Maybe??!?!?
-(C ⟨→⟩ D) .Position {j} fw i = Σ[ s ∈ C .Shape j ] Σ[ q ∈ D .Position (fw s .proj₁) i ] q ≡ {!!}
-
-{-
--- Versus: the thing I assumed would be right; directly internalising the definition of morphism
--- with the forwards pass as the shapes and the backwards pass as the positions.
-_⟨→⟩_ : (C D : Container I J) → Container I J
-(C ⟨→⟩ D) .Shape j = (s : C .Shape j) → Σ[ t ∈ D .Shape j ] (∀ i → D .Position t i → Maybe (C .Position s i))
-(C ⟨→⟩ D) .Position {j} fw i = {!!}
--}

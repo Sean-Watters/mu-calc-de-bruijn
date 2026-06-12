@@ -10,6 +10,7 @@ open import Data.Maybe
 open import Data.Product as Product hiding (curry; uncurry)
 open import Data.Product.Properties using ( Σ-≡,≡→≡)
 open import Data.Sum as Sum
+open import Data.Sum.MoreProps
 open import Function
 open import Relation.Binary.PropositionalEquality as ≡
 open import Relation.Binary.Isomorphism
@@ -48,16 +49,12 @@ curry-fw : {X Y Z : Container ℓ ℓ}
          → (sy : Shape Y) → Σ[ sz ∈ Shape Z ] (Position Z sz → Maybe (Position Y sy))
 curry-fw (fw ▷ bw) sx sy = (fw (sx , sy)) , (isInj₂ ∘ bw)
 
-isInj₂-lemma : ∀ {X Y : Set ℓ} (p : X ⊎ Y)
-             → isInj₂ p ≡ nothing
-             → X
-isInj₂-lemma (inj₁ x) refl = x
-
 -- The backwards pass.
 curry-bw : {X Y Z : Container ℓ ℓ}
          → (f : (X ⟨×⟩ Y) ⇒ Z)
          → {sx : Shape X}
-         → Σ[ sy ∈ Shape Y ] (◇ Z (_≡ nothing) (curry-fw f sx sy))
+         → Position (Y ⟨⇒⟩ Z) (curry-fw f sx)
+         -- → Σ[ sy ∈ Shape Y ] (◇ Z (_≡ nothing) (curry-fw f sx sy))
          → Position X sx
 curry-bw (fw ▷ bw) (sy , p)
   = let (pz , f) = ◇.proof p
