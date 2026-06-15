@@ -9,7 +9,6 @@ open import Data.Product
 open import Data.Nat
 open import Data.Empty
 open import Data.Thinning as Th hiding (id)
-open import MuCalc.Base using (Op₁; Op₂; Opη)
 open import Codata.NWFTree as NWF using (∞NWFTree; NWFTree; _~_; here; there)
 open import Rational.Tree as R
 open import Relation.Nullary
@@ -89,20 +88,20 @@ ext-embed θ r (suc x) = refl
 
 rename-cong : ∀ {X n m} {ρ1 ρ2 : Rename n m} → ρ1 ≗ ρ2 → rename {X} ρ1 ≗ rename ρ2
 rename-cong eq (step x leaf) = refl
-rename-cong eq (step x (node1 op t))
-  = cong (λ z → step x (node1 op z)) (rename-cong eq t)
-rename-cong eq (step x (node2 op tl tr))
-  = cong₂ (λ l r → step x (node2 op l r)) (rename-cong eq tl) (rename-cong eq tr)
-rename-cong eq (step x (nodeη op t))
-  = cong (λ z → step x (nodeη op z)) (rename-cong (ext-cong eq) t)
+rename-cong eq (step x (node1 t))
+  = cong (λ z → step x (node1 z)) (rename-cong eq t)
+rename-cong eq (step x (node2 tl tr))
+  = cong₂ (λ l r → step x (node2 l r)) (rename-cong eq tl) (rename-cong eq tr)
+rename-cong eq (step x (nodeη t))
+  = cong (λ z → step x (nodeη z)) (rename-cong (ext-cong eq) t)
 rename-cong eq (var x)
   = cong var (eq x)
 
 rename-id : ∀ {X n} → rename {X} (id {A = Fin n}) ≗ id
 rename-id (step x leaf) = refl
-rename-id (step x (node1 op t)) = cong (λ a → step x (node1 op a)) (rename-id t)
-rename-id (step x (node2 op tl tr)) = cong₂ (λ a b → step x (node2 op a b)) (rename-id tl) (rename-id tr)
-rename-id (step x (nodeη op t)) = cong (λ a → step x (nodeη op a)) $
+rename-id (step x (node1 t)) = cong (λ a → step x (node1 a)) (rename-id t)
+rename-id (step x (node2 tl tr)) = cong₂ (λ a b → step x (node2 a b)) (rename-id tl) (rename-id tr)
+rename-id (step x (nodeη t)) = cong (λ a → step x (nodeη a)) $
   begin
     rename (ext id) t
   ≡⟨ rename-cong ext-id t ⟩
@@ -117,9 +116,9 @@ rename-fusion : ∀ {At i j k} {ρ1 : Rename j k} {ρ2 : Rename i j} {ρ3 : Rena
               → ρ1 ∘ ρ2 ≗ ρ3
               → (rename {At} ρ1) ∘ (rename ρ2) ≗ rename ρ3
 rename-fusion eq (step x leaf) = refl
-rename-fusion eq (step x (node1 op t)) = cong (λ z → step x (node1 op z)) (rename-fusion eq t)
-rename-fusion eq (step x (node2 op tl tr)) = cong₂ (λ u v → step x (node2 op u v)) (rename-fusion eq tl) (rename-fusion eq tr)
-rename-fusion eq (step x (nodeη op t)) = cong (λ z → step x (nodeη op z)) (rename-fusion (ext-fusion eq) t)
+rename-fusion eq (step x (node1 t)) = cong (λ z → step x (node1 z)) (rename-fusion eq t)
+rename-fusion eq (step x (node2 tl tr)) = cong₂ (λ u v → step x (node2 u v)) (rename-fusion eq tl) (rename-fusion eq tr)
+rename-fusion eq (step x (nodeη t)) = cong (λ z → step x (nodeη z)) (rename-fusion (ext-fusion eq) t)
 rename-fusion eq (var x) = cong var (eq x)
 
 -- renaming by `suc` commutes with arbitrary renamings via `ext`
@@ -140,18 +139,18 @@ rename-IsRenaming : ∀ {X n m} {ρ : Rename n m} {tx : Tree X n} {ty : Tree X m
                   → rename ρ tx ≡ ty
                   → IsRenaming ρ tx ty
 rename-IsRenaming {tx = step x leaf} refl = step refl leaf
-rename-IsRenaming {tx = step x (node1 op t)} refl = step refl (node1 op (rename-IsRenaming refl))
-rename-IsRenaming {tx = step x (node2 op tl tr)} refl = step refl (node2 op (rename-IsRenaming refl) (rename-IsRenaming refl))
-rename-IsRenaming {tx = step x (nodeη op t)} refl = step refl (nodeη op (rename-IsRenaming refl))
+rename-IsRenaming {tx = step x (node1 t)} refl = step refl (node1 (rename-IsRenaming refl))
+rename-IsRenaming {tx = step x (node2 tl tr)} refl = step refl (node2 (rename-IsRenaming refl) (rename-IsRenaming refl))
+rename-IsRenaming {tx = step x (nodeη t)} refl = step refl (nodeη (rename-IsRenaming refl))
 rename-IsRenaming {tx = var x} refl = var refl
 
 IsRenaming→≡ : ∀ {X n m} {ρ : Rename n m} {tx : Tree X n} {ty : Tree X m}
              → IsRenaming ρ tx ty
              → rename ρ tx ≡ ty
 IsRenaming→≡ (step refl leaf) = refl
-IsRenaming→≡ (step refl (node1 op p)) = cong (λ z → step _ (node1 op z)) (IsRenaming→≡ p)
-IsRenaming→≡ (step refl (node2 op p q)) = cong₂ (λ z1 z2 → step _ (node2 op z1 z2)) (IsRenaming→≡ p) (IsRenaming→≡ q)
-IsRenaming→≡ (step refl (nodeη op p)) = cong (λ z → step _ (nodeη op z)) (IsRenaming→≡ p)
+IsRenaming→≡ (step refl (node1 p)) = cong (λ z → step _ (node1 z)) (IsRenaming→≡ p)
+IsRenaming→≡ (step refl (node2 p q)) = cong₂ (λ z1 z2 → step _ (node2 z1 z2)) (IsRenaming→≡ p) (IsRenaming→≡ q)
+IsRenaming→≡ (step refl (nodeη p)) = cong (λ z → step _ (nodeη z)) (IsRenaming→≡ p)
 IsRenaming→≡ (var p) = cong var p
 
 
@@ -195,10 +194,10 @@ IsRenaming-subst : ∀ {X n m} {ρ1 ρ2 : Rename n m} {tx : Tree X n} {ty : Tree
                  → ρ1 ≗ ρ2
                  → IsRenaming ρ1 tx ty → IsRenaming ρ2 tx ty
 IsRenaming-subst eq (step refl leaf) = step refl leaf
-IsRenaming-subst eq (step refl (node1 op x)) = step refl (node1 op (IsRenaming-subst eq x))
-IsRenaming-subst eq (step refl (node2 op x x₁)) = step refl
-                                                   (node2 op (IsRenaming-subst eq x) (IsRenaming-subst eq x₁))
-IsRenaming-subst eq (step refl (nodeη op x)) = step refl (nodeη op (IsRenaming-subst (ext-cong eq) x))
+IsRenaming-subst eq (step refl (node1 x)) = step refl (node1 (IsRenaming-subst eq x))
+IsRenaming-subst eq (step refl (node2 x x₁)) = step refl
+                                                   (node2 (IsRenaming-subst eq x) (IsRenaming-subst eq x₁))
+IsRenaming-subst eq (step refl (nodeη x)) = step refl (nodeη (IsRenaming-subst (ext-cong eq) x))
 IsRenaming-subst eq (var x) = var (trans (sym $ eq _) x)
 
 
@@ -250,11 +249,11 @@ mutual
                  → (θ : Γ ⊑ Δ)
                  → IsRenaming-step (embed' θ) tx ty
                  → Any-step P x Γ tx → Any-step P y Δ ty
-  any-subst-step x≡y θ (node1 op eq) (node1 ptx) = node1 (any-subst θ eq ptx)
-  any-subst-step x≡y θ (node2 op eql eqr) (node2l ptx) = node2l (any-subst θ eql ptx)
-  any-subst-step x≡y θ (node2 op eql eqr) (node2r ptx) = node2r (any-subst θ eqr ptx)
-  any-subst-step {x = x} {y} x≡y θ (nodeη op eq) (nodeη ptx)
-    = nodeη (any-subst (inj θ (step x≡y (nodeη op eq))) (IsRenaming-subst (sym ∘ ext-embed θ (step x≡y (nodeη op eq))) eq) ptx)
+  any-subst-step x≡y θ (node1 eq) (node1 ptx) = node1 (any-subst θ eq ptx)
+  any-subst-step x≡y θ (node2 eql eqr) (node2l ptx) = node2l (any-subst θ eql ptx)
+  any-subst-step x≡y θ (node2 eql eqr) (node2r ptx) = node2r (any-subst θ eqr ptx)
+  any-subst-step {x = x} {y} x≡y θ (nodeη eq) (nodeη ptx)
+    = nodeη (any-subst (inj θ (step x≡y (nodeη eq))) (IsRenaming-subst (sym ∘ ext-embed θ (step x≡y (nodeη eq))) eq) ptx)
 
 
 
@@ -338,11 +337,11 @@ mutual
                     → NWF.Pointwise _≡_ (unravel-subtree Γ tx) (unravel-subtree Δ ty)
   unravel-bisim-step θ (step x≡y leaf)
     = NWF.leaf
-  unravel-bisim-step θ (step x≡y (node1 op eq))
+  unravel-bisim-step θ (step x≡y (node1 eq))
     = NWF.node1 (unravel-bisim θ eq)
-  unravel-bisim-step θ (step x≡y (node2 op eql eqr))
+  unravel-bisim-step θ (step x≡y (node2 eql eqr))
     = NWF.node2 (unravel-bisim θ eql) (unravel-bisim θ eqr)
-  unravel-bisim-step {Γ = Γ} {Δ} θ tx@{step x (nodeη op tx')} ty@{step y (nodeη op ty')} eq'@(step {x = x} {y} x≡y (nodeη op eq))
+  unravel-bisim-step {Γ = Γ} {Δ} θ tx@{step x (nodeη tx')} ty@{step y (nodeη ty')} eq'@(step {x = x} {y} x≡y (nodeη eq))
     = NWF.nodeη (unravel-bisim (inj θ eq') (IsRenaming-subst (sym ∘ ext-embed θ _) eq))
   unravel-bisim-step (inj θ eq1) {var zero} (var refl) = unravel-bisim-step θ eq1
   unravel-bisim-step (inj θ eq1) {var (suc x)} (var refl) = unravel-bisim-step θ (var refl)
@@ -359,13 +358,13 @@ unravel-lookup-step : ∀ {X n} (Γ : Scope X n) (x : Fin n)
                    → NWF.Pointwise _≡_ (unravel-subtree Γ (var x)) (unravel-subtree Γ (lookup Γ x))
 unravel-lookup-step (step x leaf ,- Γ) zero
   = NWF.leaf
-unravel-lookup-step (step x (node1 op t) ,- Γ) zero
-  = NWF.node1 (unravel-rename-suc (step x (node1 op t)) {{_}} Γ t) -- todo: on current agda {{_}} appears to not be the same as omitting it...bug??
-unravel-lookup-step (step x (node2 op tl tr) ,- Γ) zero
-  = NWF.node2 (unravel-rename-suc (step x (node2 op tl tr)) {{_}} Γ tl)
-              (unravel-rename-suc (step x (node2 op tl tr)) {{_}} Γ tr)
-unravel-lookup-step (step x (nodeη op t) ,- Γ) zero
-  = NWF.nodeη (unravel-bisim (inj {{nvs = _}} (pad {{nvt = _}} ⊑-refl) (step refl (nodeη op (rename-IsRenaming (rename-cong (ext-cong (λ u → cong suc (embed'-id ⊑-refl u))) t)))))
+unravel-lookup-step (step x (node1 t) ,- Γ) zero
+  = NWF.node1 (unravel-rename-suc (step x (node1 t)) {{_}} Γ t) -- todo: on current agda {{_}} appears to not be the same as omitting it...bug??
+unravel-lookup-step (step x (node2 tl tr) ,- Γ) zero
+  = NWF.node2 (unravel-rename-suc (step x (node2 tl tr)) {{_}} Γ tl)
+              (unravel-rename-suc (step x (node2 tl tr)) {{_}} Γ tr)
+unravel-lookup-step (step x (nodeη t) ,- Γ) zero
+  = NWF.nodeη (unravel-bisim (inj {{nvs = _}} (pad {{nvt = _}} ⊑-refl) (step refl (nodeη (rename-IsRenaming (rename-cong (ext-cong (λ u → cong suc (embed'-id ⊑-refl u))) t)))))
                             (rename-IsRenaming (rename-cong (λ z → trans (ext-embed {{nvs = _}} (pad {{nvt = _}} ⊑-refl) _ z)
                                                                          (ext-cong (λ u → cong suc (embed'-id ⊑-refl u)) z))
                                                                t)))
@@ -403,13 +402,13 @@ mutual
                     → NWF.Any-step P t
                     → R.Any P Γ rt
   bisim-unravel-any→ {rt = step x leaf} NWF.leaf ()
-  bisim-unravel-any→ {rt = step x (node1 op rt)} (NWF.node1 rs) (NWF.node1 pt)
+  bisim-unravel-any→ {rt = step x (node1 rt)} (NWF.node1 rs) (NWF.node1 pt)
     = step (node1 (∞bisim-unravel-any→ rs pt))
-  bisim-unravel-any→ {rt = step x (node2 op rtl rtr)} (NWF.node2 rsl rsr) (NWF.node2l pt)
+  bisim-unravel-any→ {rt = step x (node2 rtl rtr)} (NWF.node2 rsl rsr) (NWF.node2l pt)
     = step (node2l (∞bisim-unravel-any→ rsl pt))
-  bisim-unravel-any→ {rt = step x (node2 op rtl rtr)} (NWF.node2 rsl rsr) (NWF.node2r pt)
+  bisim-unravel-any→ {rt = step x (node2 rtl rtr)} (NWF.node2 rsl rsr) (NWF.node2r pt)
     = step (node2r (∞bisim-unravel-any→ rsr pt))
-  bisim-unravel-any→ {rt = step x (nodeη op rt)} (NWF.nodeη rs) (NWF.nodeη pt)
+  bisim-unravel-any→ {rt = step x (nodeη rt)} (NWF.nodeη rs) (NWF.nodeη pt)
     = step (nodeη (∞bisim-unravel-any→ rs pt))
   bisim-unravel-any→ {rt = var zero} {t ,- Γ} rs pt
     = loop (any-rename-suc (bisim-unravel-any→ {rt = t} {Γ = Γ} rs pt))
@@ -437,11 +436,11 @@ mutual
                     → NWF.Pointwise _≡_ t (unravel-subtree Γ (step x rt))
                     → R.Any-step P x Γ rt
                     → NWF.Any-step P t
-  bisim-unravel-any← {rt = node1 op t} (NWF.node1 rs) (node1 px)
+  bisim-unravel-any← {rt = node1 t} (NWF.node1 rs) (node1 px)
     = NWF.node1 (∞bisim-unravel-any← rs px)
-  bisim-unravel-any← {rt = node2 op tl tr} (NWF.node2 rsl rsr) (node2l px)
+  bisim-unravel-any← {rt = node2 tl tr} (NWF.node2 rsl rsr) (node2l px)
     = NWF.node2l (∞bisim-unravel-any← rsl px)
-  bisim-unravel-any← {rt = node2 op tl tr} (NWF.node2 rsl rsr) (node2r px)
+  bisim-unravel-any← {rt = node2 tl tr} (NWF.node2 rsl rsr) (node2r px)
     = NWF.node2r (∞bisim-unravel-any← rsr px)
-  bisim-unravel-any← {rt = nodeη op t} (NWF.nodeη rs) (nodeη px)
+  bisim-unravel-any← {rt = nodeη t} (NWF.nodeη rs) (nodeη px)
     = NWF.nodeη (∞bisim-unravel-any← rs px)

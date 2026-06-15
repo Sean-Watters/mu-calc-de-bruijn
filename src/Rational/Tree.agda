@@ -9,7 +9,6 @@ open import Data.Thinning as Th hiding (id)
 open import Function using (_$_)
 open import Relation.Binary.PropositionalEquality
 
-open import MuCalc.Base using (Op₁; Op₂; Opη)
 open import Codata.NWFTree as T hiding (Any; Any-step; head; tree; _∈_; here)
 
 
@@ -22,9 +21,9 @@ mutual
 
   data Tree-step (X : Set) (n : ℕ) : Set where
     leaf : Tree-step X n
-    node1 : (op : Op₁) → (t : Tree X n) → Tree-step X n
-    node2 : (op : Op₂) → (tl : Tree X n) → (tr : Tree X n) → Tree-step X n
-    nodeη : (op : Opη) → (t : Tree X (suc n)) → Tree-step X n -- μ/ν nodes are the variable binders
+    node1 : (t : Tree X n) → Tree-step X n
+    node2 : (tl : Tree X n) → (tr : Tree X n) → Tree-step X n
+    nodeη : (t : Tree X (suc n)) → Tree-step X n -- μ/ν nodes are the variable binders
 
 
 -- A useful predicate on trees
@@ -52,9 +51,9 @@ mutual
   rename-step : ∀ {X n m} → Rename n m
                → Tree-step X n → Tree-step X m
   rename-step ρ leaf = leaf
-  rename-step ρ (node1 op t) = node1 op (rename ρ t)
-  rename-step ρ (node2 op tl tr) = node2 op (rename ρ tl) (rename ρ tr)
-  rename-step ρ (nodeη op t) = nodeη op (rename (ext ρ) t)
+  rename-step ρ (node1 t) = node1 (rename ρ t)
+  rename-step ρ (node2 tl tr) = node2 (rename ρ tl) (rename ρ tr)
+  rename-step ρ (nodeη t) = nodeη (rename (ext ρ) t)
 
 lookup : ∀ {X n} → (Γ : Scope X n) → (x : Fin n) → Tree X n
 lookup (t ,- Γ) zero = rename suc t
@@ -75,12 +74,12 @@ mutual
 
   data IsRenaming-step {X : Set} : {n m : ℕ} (ρ : Rename n m) (tx : Tree-step X n) (ty : Tree-step X m) → Set where
     leaf : ∀ {n m} {ρ : Rename n m} → IsRenaming-step ρ leaf leaf
-    node1 : ∀ {n m} {ρ : Rename n m} op → {tx : Tree X n} {ty : Tree X m}
-          → IsRenaming ρ tx ty → IsRenaming-step ρ (node1 op tx) (node1 op ty)
-    node2 : ∀ {n m} {ρ : Rename n m} op → {txl txr : Tree X n} {tyl tyr : Tree X m}
-          → IsRenaming ρ txl tyl → IsRenaming ρ txr tyr → IsRenaming-step ρ (node2 op txl txr) (node2 op tyl tyr)
-    nodeη : ∀ {n m} {ρ : Rename n m} op → {tx : Tree X (suc n)} {ty : Tree X (suc m)}
-          → IsRenaming (ext ρ) tx ty → IsRenaming-step ρ (nodeη op tx) (nodeη op ty)
+    node1 : ∀ {n m} {ρ : Rename n m} → {tx : Tree X n} {ty : Tree X m}
+          → IsRenaming ρ tx ty → IsRenaming-step ρ (node1 tx) (node1 ty)
+    node2 : ∀ {n m} {ρ : Rename n m} → {txl txr : Tree X n} {tyl tyr : Tree X m}
+          → IsRenaming ρ txl tyl → IsRenaming ρ txr tyr → IsRenaming-step ρ (node2 txl txr) (node2 tyl tyr)
+    nodeη : ∀ {n m} {ρ : Rename n m} → {tx : Tree X (suc n)} {ty : Tree X (suc m)}
+          → IsRenaming (ext ρ) tx ty → IsRenaming-step ρ (nodeη tx) (nodeη ty)
 
 ---------------
 -- Thinnings --
@@ -211,10 +210,10 @@ data Any {X} P where
   loop : ∀ {n x} {Γ : Scope X n} → Any P Γ (lookup Γ x) → Any P Γ (var x)
 
 data Any-step {X} P x where -- needs to know the last x that was stored so that the scope can be correct in the last step
-  node1  : ∀ {op n} {Γ : Scope X n} {t : Tree X n} → Any P Γ t → Any-step P x Γ (node1 op t)
-  node2l : ∀ {op n} {Γ : Scope X n} {tl : Tree X n} {tr : Tree X n} → Any P Γ tl → Any-step P x Γ (node2 op tl tr)
-  node2r : ∀ {op n} {Γ : Scope X n} {tl : Tree X n} {tr : Tree X n} → Any P Γ tr → Any-step P x Γ (node2 op tl tr)
-  nodeη  : ∀ {op n} {Γ : Scope X n} {t : Tree X (suc n)} → Any P (step x (nodeη op t) ,- Γ) t → Any-step P x Γ (nodeη op t)
+  node1  : ∀ {n} {Γ : Scope X n} {t : Tree X n} → Any P Γ t → Any-step P x Γ (node1 t)
+  node2l : ∀ {n} {Γ : Scope X n} {tl : Tree X n} {tr : Tree X n} → Any P Γ tl → Any-step P x Γ (node2 tl tr)
+  node2r : ∀ {n} {Γ : Scope X n} {tl : Tree X n} {tr : Tree X n} → Any P Γ tr → Any-step P x Γ (node2 tl tr)
+  nodeη  : ∀ {n} {Γ : Scope X n} {t : Tree X (suc n)} → Any P (step x (nodeη t) ,- Γ) t → Any-step P x Γ (nodeη t)
 
 _∈_ : {X : Set} → X → Tree X 0 → Set
 x ∈ t = Any (x ≡_ ) [] t
@@ -236,9 +235,9 @@ mutual
 
   unravel-subtree : ∀ {X n} → (Γ : Scope X n) → Tree X n → NWFTree X
   unravel-subtree Γ (step x leaf) = leaf
-  unravel-subtree Γ (step x (node1 op t)) = node1 op (unravel Γ t)
-  unravel-subtree Γ (step x (node2 op tl tr)) = node2 op (unravel Γ tl) (unravel Γ tr)
-  unravel-subtree Γ (step x (nodeη op t)) = nodeη op (unravel ((step x (nodeη op t)) ,- Γ) t)
+  unravel-subtree Γ (step x (node1 t)) = node1 (unravel Γ t)
+  unravel-subtree Γ (step x (node2 tl tr)) = node2 (unravel Γ tl) (unravel Γ tr)
+  unravel-subtree Γ (step x (nodeη t)) = nodeη (unravel ((step x (nodeη t)) ,- Γ) t)
   unravel-subtree (t ,- Γ) (var zero) = unravel-subtree Γ t
   unravel-subtree (t ,- Γ) (var (suc x)) = unravel-subtree Γ (var x)
 
@@ -249,9 +248,9 @@ mutual
 
 size : ∀ {X n} → Tree X n → ℕ
 size (step x leaf) = 1
-size (step x (node1 op t)) = suc (size t)
-size (step x (node2 op tl tr)) = suc (size tl N.+ size tr)
-size (step x (nodeη op t)) = suc (size t)
+size (step x (node1 t)) = suc (size t)
+size (step x (node2 tl tr)) = suc (size tl N.+ size tr)
+size (step x (nodeη t)) = suc (size t)
 size (var x) = 0
 
 

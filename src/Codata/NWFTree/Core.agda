@@ -17,6 +17,7 @@ record ∞NWFTree (X : Set) : Set
 data NWFTree (X : Set) : Set
 
 record ∞NWFTree X where
+  constructor _∷_
   coinductive
   field
     head : X -- we factor this out, rather that duplicating it between every constructor
@@ -25,9 +26,9 @@ open ∞NWFTree public
 
 data NWFTree X where
   leaf : NWFTree X
-  node1 : Op₁ → ∞NWFTree X → NWFTree X
-  node2 : Op₂ → ∞NWFTree X → ∞NWFTree X → NWFTree X
-  nodeη : Opη → ∞NWFTree X → NWFTree X
+  node1 : ∞NWFTree X → NWFTree X
+  node2 : ∞NWFTree X → ∞NWFTree X → NWFTree X
+  nodeη : ∞NWFTree X → NWFTree X
 
 
 -- P possibly becomes true (in finitely many steps). AKA there is a path through the tree
@@ -40,10 +41,10 @@ data Any P t where
   there : Any-step P (tree t) → Any P t
 
 data Any-step P where
-  node1  : ∀ {op t}   → Any P t → Any-step P (node1 op t)
-  node2l : ∀ {op l r} → Any P l → Any-step P (node2 op l r)
-  node2r : ∀ {op l r} → Any P r → Any-step P (node2 op l r)
-  nodeη  : ∀ {op t}   → Any P t → Any-step P (nodeη op t)
+  node1  : ∀ {t}   → Any P t → Any-step P (node1 t)
+  node2l : ∀ {l r} → Any P l → Any-step P (node2 l r)
+  node2r : ∀ {l r} → Any P r → Any-step P (node2 l r)
+  nodeη  : ∀ {t}   → Any P t → Any-step P (nodeη t)
 
 -- x ∈ t, for a nwf tree `t`
 _∈_ : X → ∞NWFTree X → Set
@@ -66,9 +67,9 @@ open ∞Pointwise public
 
 data Pointwise R where
   leaf : Pointwise R leaf leaf
-  node1 : ∀ {op op' s t} → ∞Pointwise R s t → Pointwise R (node1 op s) (node1 op' t)
-  node2 : ∀ {op op' sl sr tl tr} → ∞Pointwise R sl tl → ∞Pointwise R sr tr → Pointwise R (node2 op sl sr) (node2 op' tl tr)
-  nodeη : ∀ {op op' s t} → ∞Pointwise R s t → Pointwise R (nodeη op s) (nodeη op' t)
+  node1 : ∀ {s t} → ∞Pointwise R s t → Pointwise R (node1 s) (node1 t)
+  node2 : ∀ {sl sr tl tr} → ∞Pointwise R sl tl → ∞Pointwise R sr tr → Pointwise R (node2 sl sr) (node2 tl tr)
+  nodeη : ∀ {s t} → ∞Pointwise R s t → Pointwise R (nodeη s) (nodeη t)
 
 
 -- Bisim is pointwise ≡
@@ -104,9 +105,9 @@ module pw-Reasoning (S : Setoid 0ℓ 0ℓ) where
 
   data `Pointwise where
     leaf : `Pointwise leaf leaf
-    node1 : ∀ {op op' s t} → `PointwiseProof s t → `Pointwise (node1 op s) (node1 op' t)
-    node2 : ∀ {op op' sl sr tl tr} → `PointwiseProof sl tl → `PointwiseProof sr tr → `Pointwise (node2 op sl sr) (node2 op' tl tr)
-    nodeη : ∀ {op op' s t} → `PointwiseProof s t → `Pointwise (nodeη op s) (nodeη op' t)
+    node1 : ∀ {s t} → `PointwiseProof s t → `Pointwise (node1 s) (node1 t)
+    node2 : ∀ {sl sr tl tr} → `PointwiseProof sl tl → `PointwiseProof sr tr → `Pointwise (node2 sl sr) (node2  tl tr)
+    nodeη : ∀ {s t} → `PointwiseProof s t → `Pointwise (nodeη s) (nodeη  t)
 
   data `PointwiseProof s t where
     `lift  : (rs : ∞Pointwise _≈_ s t) → `PointwiseProof s t
@@ -131,9 +132,9 @@ module pw-Reasoning (S : Setoid 0ℓ 0ℓ) where
 
   `map-refl : ∀ {s t} → s ≡ t → `Pointwise s t
   `map-refl {leaf} refl = leaf
-  `map-refl {node1 _ _} refl = node1 (`refl refl)
-  `map-refl {node2 _ _ _} refl = node2 (`refl refl) (`refl refl)
-  `map-refl {nodeη _ _} refl = nodeη (`refl refl)
+  `map-refl {node1 _} refl = node1 (`refl refl)
+  `map-refl {node2 _ _} refl = node2 (`refl refl) (`refl refl)
+  `map-refl {nodeη _} refl = nodeη (`refl refl)
 
   `map-sym : ∀ {s t} → `Pointwise t s → `Pointwise s t
   `map-sym leaf = leaf

@@ -52,9 +52,9 @@ data IsSuccessor (X : Set) : ∞NWFTree X → Arity → ∞NWFTree X → Set
 head (~-reflexive refl) = refl
 tree (~-reflexive {xs = xs} refl) with tree xs
 ... | leaf = leaf
-... | node1 op rs = node1 (~-reflexive refl)
-... | node2 op rsl rsr = node2 (~-reflexive refl) (~-reflexive refl)
-... | nodeη op rs = nodeη (~-reflexive refl)
+... | node1 rs = node1 (~-reflexive refl)
+... | node2 rsl rsr = node2 (~-reflexive refl) (~-reflexive refl)
+... | nodeη rs = nodeη (~-reflexive refl)
 
 
 ~-refl : ∀ (xs : ∞NWFTree X) → xs ~ xs
