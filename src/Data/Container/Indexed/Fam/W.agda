@@ -57,10 +57,10 @@ module _ (ext : Extensionality 0ℓ 0ℓ)
 -- fold, the unique algebra morphism that sends any arbitrary algebra to the initial algebra
 module _ {C : Container J J}
          (P : J → Set)
-         (algebra : ∀ {j} → ⟦ C ⟧ P j → P j) where
+         (α : ∀ {j} → ⟦ C ⟧ P j → P j) where
 
   fold : ∀ {j} → W C j → P j
-  fold = induction (λ {j} _ → P j) (λ x → algebra (-, λ p → □.proof x {p = p}))
+  fold = induction (λ {j} _ → P j) (λ x → α (-, λ p → □.proof x {p = p}))
 
 module _ (ext : Extensionality 0ℓ 0ℓ)
          {C : Container J J}

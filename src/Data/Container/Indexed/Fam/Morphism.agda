@@ -30,21 +30,8 @@ record _⇒_ (C : Container I J) (D : Container I J) : Set where
   ⟪_⟫ : {P : I → Set}
       → ∀ {j} → ⟦ C ⟧ P j → ⟦ D ⟧ P j
   ⟪_⟫ (s , p) = fw s , p ∘ bw
-
+open _⇒_ public
 infixr 20 _⇒_
-
--- A variant which is truly J-indexed, to play around with
--- "Fibred hom of indexed containers" -Timo
--- Possibly the wrong thing for now?
-record IHom (C : Container I J) (D : Container I J) (j : J) : Set where
-  constructor _▷_
-  field
-    fw : Shape C j → Shape D j
-    bw : {s : Shape C j} → ∀ {i} → Position D (fw s) i → Position C s i
-
-  ⟪_⟫ : {P : I → Set}
-      → ⟦ C ⟧ P j → ⟦ D ⟧ P j
-  ⟪_⟫ (s , p) = fw s , p ∘ bw
 
 -- ⟦_⟧ is a functor from containers to endofunctors on sets.
 -- This predicate expresses that a given set function is in

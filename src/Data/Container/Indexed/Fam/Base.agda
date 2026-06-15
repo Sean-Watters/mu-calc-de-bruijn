@@ -19,6 +19,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Axiom.Extensionality.Propositional using (Extensionality)
 open import Relation.Binary.Isomorphism
 
+open import Data.Container.Indexed.Functors
+
 ----------
 -- Base --
 ----------
@@ -27,28 +29,29 @@ open import Relation.Binary.Isomorphism
 record Container (I J : Set) : Set₁ where
   constructor _◁_
   field
-    Shape : J → Set
-    Position : {j : J} → Shape j → I → Set
+    Shape : Fam J
+    Position : {j : J} → Shape j → Fam I
 open Container public
 
 
 -- The meaning/extension of a container is the indexed functor that it represents.
-⟦_⟧ : {I J : Set} → Container I J → (I → Set) → (J → Set)
+⟦_⟧ : {I J : Set} → Container I J → IFunc* I J
 ⟦ S ◁ P ⟧ F j = Σ[ s ∈ S j ] (∀ {i} → P s i → F i)
 
 -- And it actually is a functor
 ⟦_⟧-map : {I J : Set}
         → (C : Container I J)
-        → {X Y : I → Set}
-        → (∀ {i : I} → X i → Y i)
-        → (∀ {j : J} → ⟦ C ⟧ X j  → ⟦ C ⟧ Y j)
+        → IFunc*-map (⟦ C ⟧)
+        -- → {X Y : I → Set}
+        -- → (∀ {i : I} → X i → Y i)
+        -- → (∀ {j : J} → ⟦ C ⟧ X j  → ⟦ C ⟧ Y j)
 ⟦ C ⟧-map f (s , g) = s , (f ∘ g)
 
--------------------
--- Functoriality --
--------------------
+----------------
+-- Reindexing --
+----------------
 
--- (In the sense of the reindexing functor)
+-- (In the sense of reindexing)
 
 -- In both indices
 ⟨bimap⟩ : {I I' J J' : Set} → (I' → I) → (J' → J) → Container I J → Container I' J'
