@@ -15,20 +15,18 @@ record LTS (ℓs ℓl ℓt : Level) : Set (suc (ℓs ⊔ ℓl ⊔ ℓt)) where
     Label : Set ℓl
     _-[_]->_ : State -> Label -> State -> Set ℓt
 
-IsSim : (lts : LTS ℓs ℓl ℓt) → (R : LTS.State lts → LTS.State lts → Set) → Set (ℓs ⊔ ℓl ⊔ ℓt)
-IsSim lts R
-  = (p q : State)
+IsBisimulation : (lts : LTS ℓs ℓl ℓt) → (R : LTS.State lts → LTS.State lts → Set) → Set (ℓs ⊔ ℓl ⊔ ℓt)
+IsBisimulation lts R
+  = {p q : State}
   → R p q
   → (l : Label)
-  → (∀ p' → p -[ l ]-> p' → Σ[ q' ∈ State ] (q -[ l ]-> q'))
+  → (∀ {p'} → p -[ l ]-> p' → Σ[ q' ∈ State ] (q -[ l ]-> q') × (R p' q'))
+  × (∀ {q'} → q -[ l ]-> q' → Σ[ p' ∈ State ] (p -[ l ]-> p') × (R p' q'))
   where open LTS lts
   
-IsBisimulation : (lts : LTS ℓs ℓl ℓt) → (R : LTS.State lts → LTS.State lts → Set) → Set (ℓs ⊔ ℓl ⊔ ℓt)
-IsBisimulation lts R = IsSim lts R × IsSim lts (flip R)
-
 IsBisimilarity :  (lts : LTS ℓs ℓl ℓt) → (_~_ : LTS.State lts → LTS.State lts → Set) → Set (suc zero ⊔ ℓs ⊔ ℓl ⊔ ℓt)
 IsBisimilarity lts _~_
   = ∀ (p q : State)
-  → ((p ~ q) ⇔ (Σ[ R ∈ (State → State → Set) ] (IsBisimulation lts R)))
+  → ((p ~ q) ⇔ (Σ[ R ∈ (State → State → Set) ] (IsBisimulation lts R) × R p q))
   where open LTS lts
 
