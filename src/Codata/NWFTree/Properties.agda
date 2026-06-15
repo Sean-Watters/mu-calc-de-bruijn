@@ -1,15 +1,48 @@
 {-# OPTIONS --safe --guardedness #-}
 module Codata.NWFTree.Properties where
 
-open import Level using (0ℓ)
+open import Level using (0ℓ) renaming (suc to lsuc)
+open import Data.Product
 open import Relation.Binary
 open import Relation.Binary.PropositionalEquality
 
+open import Data.LTS.Core
 open import Codata.NWFTree.Core
 open import MuCalc.Base
 
 private variable
   X : Set
+
+open LTS
+
+------------------------------
+-- Interpretation as an LTS --
+------------------------------
+
+{-
+
+-- The labels will be the node arities.
+-- There is no label for leaves, since they don't have successors.
+data Arity : Set where
+  n1 n2ₗ n2ᵣ nη : Arity
+
+-- The labelled transition relation;
+data IsSuccessor (X : Set) : ∞NWFTree X → Arity → ∞NWFTree X → Set
+  node1 : IsSuccessor (x ∷ (node1 op s))
+
+-- We can interpret the entire type of cotrees for any X as an LTS.
+-- We could have even intepreted the fibration of cotrees bundled with their parameter
+-- X, but then we'd have needed to consider equality of heads up to an isomorphism of the
+-- parameter types; this easier notion suffices.
+-- 
+-- The states are the cotrees themselves, and there is a transition `s -[l]-> t` if t is exactly
+-- the successor of s in direction l. 
+∞NWFTree-LTS : (X : Set) → LTS 0ℓ 0ℓ 0ℓ
+∞NWFTree-LTS X .State = ∞NWFTree X
+∞NWFTree-LTS X .Label = Arity
+∞NWFTree-LTS X ._-[_]->_ xs l ys = {!xs .subtree!}
+
+-}
 
 -----------------------------
 -- The Bisimilarity Setoid --
