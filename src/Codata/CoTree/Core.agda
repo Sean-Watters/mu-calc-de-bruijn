@@ -21,7 +21,7 @@ record CoTree X where
   coinductive
   field
     head : X -- we factor this out, rather that duplicating it between every constructor
-    tree : CoTree-step X
+    subtree : CoTree-step X
 open CoTree public
 
 data CoTree-step X where
@@ -38,7 +38,7 @@ data Any-step {X : Set} (P : X → Set) : CoTree-step X → Set
 
 data Any P t where
   here : P (head t) → Any P t
-  there : Any-step P (tree t) → Any P t
+  there : Any-step P (subtree t) → Any P t
 
 data Any-step P where
   node1  : ∀ {t}   → Any P t → Any-step P (node1 t)
@@ -63,7 +63,7 @@ record Pointwise R s t where
   coinductive
   field
     head : R (head s) (head t)
-    tree : Pointwise-step R (tree s) (tree t)
+    subtree : Pointwise-step R (subtree s) (subtree t)
 open Pointwise public
 
 data Pointwise-step R where
@@ -101,7 +101,7 @@ module pw-Reasoning (S : Setoid 0ℓ 0ℓ) where
     coinductive
     field
       head : (head s) ≈ (head t)
-      tree : `Pointwise-step (tree s) (tree t)
+      subtree : `Pointwise-step (subtree s) (subtree t)
   open `Pointwise public
 
   data `Pointwise-step where
@@ -157,19 +157,19 @@ module pw-Reasoning (S : Setoid 0ℓ 0ℓ) where
   `head (`sym `rs) = S.sym (`head `rs)
   `head (`trans `rsl `rsr) = S.trans (`head `rsl) (`head `rsr)
 
-  `tree : ∀ {s t} → `PointwiseProof s t → `Pointwise-step (tree s) (tree t)
-  `tree (`lift rs) = `map-lift (tree rs)
-  `tree (`bisim rs) = `map-bisim (tree rs)
-  `tree (`refl eq) = `map-refl (cong tree eq)
-  `tree (`step `rs) = tree `rs
-  `tree (`sym `rs) = `map-sym (`tree `rs)
-  `tree (`trans `rsl `rsr) = `map-trans (`tree `rsl) (`tree `rsr)
+  `subtree : ∀ {s t} → `PointwiseProof s t → `Pointwise-step (subtree s) (subtree t)
+  `subtree (`lift rs) = `map-lift (subtree rs)
+  `subtree (`bisim rs) = `map-bisim (subtree rs)
+  `subtree (`refl eq) = `map-refl (cong subtree eq)
+  `subtree (`step `rs) = subtree `rs
+  `subtree (`sym `rs) = `map-sym (`subtree `rs)
+  `subtree (`trans `rsl `rsr) = `map-trans (`subtree `rsl) (`subtree `rsr)
 
   run : ∀ {s t} → `PointwiseProof s t → Pointwise _≈_ s t
   run-tree : ∀ {s t} → `Pointwise-step s t → Pointwise-step _≈_ s t
 
   head (run `rs) = `head `rs
-  tree (run `rs) = run-tree (`tree `rs)
+  subtree (run `rs) = run-tree (`subtree `rs)
 
   run-tree leaf = leaf
   run-tree (node1 x) = node1 (run x)
