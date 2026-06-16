@@ -290,8 +290,17 @@ succη-subst t refl | z = refl
                                                       ps))
 
 --------------------------------------------------------------
--- Bisimulation of the Cotrees LTS and of Cotrees Coindices --
+-- The two notions of bisimulation coincide
 --------------------------------------------------------------
+
+-- To show that the two notions of bisimulation coincide, we must first show that two trees
+-- being bisimilar (in the sense of the LTS) implies that they have the same arity. This is
+-- intuitively easy, but in practice it's pretty gnarly and technical.
+
+-- The intuition is that we have a 1:1 relationship between the labels of the outgoing transitions
+-- and the arities of the nodes at their source. And that's it; that's the whole proof. Showing this
+-- formally just requires a massive comparison of cases. The lack of eta equality for coinductive records
+-- gets in the way a bit as well.
 
 -- We first need to explicitly spell out the restrictions that the IsSuccessor relation places
 -- on the shape of the predecessor. ie, leaf has no successors, node1 has only n1-labelled sucessors,
@@ -396,11 +405,22 @@ Bisim⇒SameArity bisim {s} Rst with s .subtree in eq
 ... | node2 _ _ = IsBinary-SameArity (Bisim⇒SameArity-node2 bisim (IsBinary-fromEq eq) Rst)
 ... | nodeη _ = IsBinder-SameArity (Bisim⇒SameArity-nodeη bisim (IsBinder-fromEq eq) Rst)
 
+-- First part done!!!
+
+---------
+
+-- To finish the proof of this first direction, we need to show that if two trees of the same
+-- arity are bisimilar, then they have equal heads and bisimilar subtrees. And we have to do
+-- this separately for each of the four possible arities.
+
+
+-- TODO: Would be easiest to shift over to LTSO's for this I think.
+
 Bisim⇒CotreeBisim : ∀ {X} {R : CoTree X → CoTree X → Set}
                   → IsBisimulation (CoTree-LTS X) R
                   → IsCotreeBisimulation R
 Bisim⇒CotreeBisim bisim .same-arity = Bisim⇒SameArity bisim
-Bisim⇒CotreeBisim bisim .nullary = {!!}
+Bisim⇒CotreeBisim bisim .nullary {s} {t} Rst u v = {!bisim Rst !} -- yeahhhhhh we really do need the observations here
 Bisim⇒CotreeBisim bisim .unary = {!!}
 Bisim⇒CotreeBisim bisim .binary = {!!}
 Bisim⇒CotreeBisim bisim .binder = {!!}
@@ -422,7 +442,7 @@ CotreeBisim⇒Bisim bisim Rpq l .proj₂ q→q' = {!!}
 ~-greatest-bisimulation : ∀ {X} {R : CoTree X → CoTree X → Set}
                         → IsBisimulation (CoTree-LTS X) R
                         → (∀ {s t : CoTree X} → R s t → s ~ t)
-~-greatest-bisimulation = {!!}
+~-greatest-bisimulation = ~-greatest-cotree-bisimulation ∘ Bisim⇒CotreeBisim
 
 -- And thus, pointwise lifting of equality really is bisimilarity of cotrees.
 ~-is-bisimilarity : ∀ {X} → IsBisimilarity (CoTree-LTS X) _~_
