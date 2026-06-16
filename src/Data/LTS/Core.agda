@@ -31,6 +31,7 @@ IsBisimilarity :  (lts : LTS ℓs ℓl ℓt)
                → Set (suc zero ⊔ ℓs ⊔ ℓl ⊔ ℓt)
 IsBisimilarity lts _~_
   = ∀ (p q : State)
-  → ((p ~ q) ⇔ (Σ[ R ∈ (State → State → Set) ] (IsBisimulation lts R) × R p q))
+  → ((p ~ q) → (Σ[ R ∈ (State → State → Set) ] (IsBisimulation lts R) × R p q))
+  × ((Σ[ R ∈ (State → State → Set) ] (IsBisimulation lts R) × R p q) → (p ~ q))
   where open LTS lts
 

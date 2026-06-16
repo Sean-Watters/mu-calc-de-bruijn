@@ -160,6 +160,12 @@ data IsUnary {X : Set} : CoTree-step X → Set where
 IsUnary-prop : ∀ {X} {s : CoTree-step X} → (p q : IsUnary s) → p ≡ q
 IsUnary-prop (node1 s) (node1 .s) = refl
 
+IsUnary-fromEq : {x : CoTree-step X} {s : CoTree X} → x ≡ node1 s → IsUnary x
+IsUnary-fromEq refl = node1 _
+
+IsUnary-SameArity : {x : CoTree-step X} {s : CoTree X} → IsUnary x → SameArity' (node1 s) x
+IsUnary-SameArity (node1 _) = node1 _ _
+
 succ : ∀ {X} {s : CoTree-step X} → IsUnary s → CoTree X
 succ {s = node1 t} _ = t
 
@@ -168,6 +174,12 @@ data IsBinary {X : Set} : CoTree-step X → Set where
 
 IsBinary-prop : ∀ {X} {s : CoTree-step X} → (p q : IsBinary s) → p ≡ q
 IsBinary-prop (node2 l r) (node2 .l .r) = refl
+
+IsBinary-fromEq : {x : CoTree-step X} {l r : CoTree X} → x ≡ node2 l r → IsBinary x
+IsBinary-fromEq refl = node2 _ _
+
+IsBinary-SameArity : {x : CoTree-step X} {l r : CoTree X} → IsBinary x → SameArity' (node2 l r) x
+IsBinary-SameArity (node2 _ _) = node2 _ _ _ _
 
 succl : ∀ {X} {s : CoTree-step X} → IsBinary s → CoTree X
 succl {s = node2 l r} _ = l
@@ -180,6 +192,12 @@ data IsBinder {X : Set} : CoTree-step X → Set where
 
 IsBinder-prop : ∀ {X} {s : CoTree-step X} → (p q : IsBinder s) → p ≡ q
 IsBinder-prop (nodeη s) (nodeη .s) = refl
+
+IsBinder-fromEq : {x : CoTree-step X} {s : CoTree X} → x ≡ nodeη s → IsBinder x
+IsBinder-fromEq refl = nodeη _
+
+IsBinder-SameArity : {x : CoTree-step X} {s : CoTree X} → IsBinder x → SameArity' (nodeη s) x
+IsBinder-SameArity (nodeη _) = nodeη _ _
 
 succη : ∀ {X} {s : CoTree-step X} → IsBinder s → CoTree X
 succη {s = nodeη t} _ = t
@@ -275,38 +293,108 @@ succη-subst t refl | z = refl
 -- Bisimulation of the Cotrees LTS and of Cotrees Coindices --
 --------------------------------------------------------------
 
+-- We first need to explicitly spell out the restrictions that the IsSuccessor relation places
+-- on the shape of the predecessor. ie, leaf has no successors, node1 has only n1-labelled sucessors,
+-- etc
+
 leaf-no-successors : ∀ {l} {s : CoTree-step X} {t : CoTree X} → s ≡ leaf → ¬ (IsSuccessor' s l t)
 leaf-no-successors refl (node1 ())
 leaf-no-successors refl (node2ₗ ())
 leaf-no-successors refl (node2ᵣ ())
 leaf-no-successors refl (nodeη ())
 
+unary-only-n1 : ∀ {l} {s : CoTree-step X} {t : CoTree X} → IsUnary s → ¬ (l ≡ n1) → ¬ (IsSuccessor' s l t)
+unary-only-n1 (node1 _) l≠n1 (node1 _) = l≠n1 refl
+
+-- Because there are two binary cases, it is slightly easier to say what they are not rather than what they are
+binary-not-n1 : ∀ {l} {s : CoTree-step X} {t : CoTree X} → IsBinary s → l ≡ n1 → ¬ (IsSuccessor' s l t)
+binary-not-n1 (node2 _ _) refl (node1 ())
+
+binary-not-nη : ∀ {l} {s : CoTree-step X} {t : CoTree X} → IsBinary s → l ≡ nη → ¬ (IsSuccessor' s l t)
+binary-not-nη (node2 _ _) refl (nodeη ())
+
+binder-only-nη : ∀ {l} {s : CoTree-step X} {t : CoTree X} → IsBinder s → ¬ (l ≡ nη) → ¬ (IsSuccessor' s l t)
+binder-only-nη (nodeη _) l≠nη (nodeη _) = l≠nη refl
+
+-- Now we prove that two trees being bisimilar implies they have the same arity. This requires
+-- handling all 25 cases, using the above to discharge the impossible ones.
+
 Bisim⇒SameArity-leaf : ∀ {X} {R : CoTree X → CoTree X → Set}
                      → IsBisimulation (CoTree-LTS X) R
-                     → ∀ {s} → IsLeaf (s .subtree) → ∀ t
+                     → ∀ {s} → IsLeaf (s .subtree) → ∀ {t}
                      → R s t
                      → IsLeaf (t .subtree)
-Bisim⇒SameArity-leaf bisim {s} leaf-s t Rst with s .subtree in eqS | t .subtree in eqT
-Bisim⇒SameArity-leaf bisim leaf t Rst | .leaf | leaf = leaf
-Bisim⇒SameArity-leaf bisim leaf t Rst | .leaf | node1 t'
+Bisim⇒SameArity-leaf bisim {s} leaf-s {t} Rst with s .subtree in eqS | t .subtree in eqT
+Bisim⇒SameArity-leaf bisim leaf Rst | .leaf | leaf = leaf
+Bisim⇒SameArity-leaf bisim leaf Rst | .leaf | node1 t'
   with bisim Rst n1 .proj₂ (node1 (~-reflexive-step eqT)) 
 ... | p , lf→p , Rpt = ⊥-elim (leaf-no-successors eqS lf→p)
-Bisim⇒SameArity-leaf bisim leaf t Rst | .leaf | node2 tl tr 
+Bisim⇒SameArity-leaf bisim leaf Rst | .leaf | node2 tl tr 
   with bisim Rst n2ₗ .proj₂ (node2ₗ (~-reflexive-step eqT)) 
 ... | p , lf→p , Rpt = ⊥-elim (leaf-no-successors eqS lf→p)
-Bisim⇒SameArity-leaf bisim leaf t Rst | .leaf | nodeη t' 
+Bisim⇒SameArity-leaf bisim leaf Rst | .leaf | nodeη t' 
   with bisim Rst nη .proj₂ (nodeη (~-reflexive-step eqT)) 
 ... | p , lf→p , Rpt = ⊥-elim (leaf-no-successors eqS lf→p)
 
+Bisim⇒SameArity-node1 : ∀ {X} {R : CoTree X → CoTree X → Set}
+                      → IsBisimulation (CoTree-LTS X) R
+                      → ∀ {s} → IsUnary (s .subtree) → ∀ {t}
+                      → R s t
+                      → IsUnary (t .subtree)
+Bisim⇒SameArity-node1 bisim {s} node1-s {t} Rst with s .subtree in eqS | t .subtree in eqT
+Bisim⇒SameArity-node1 bisim {s} (node1 s') {t} Rst | ._ | leaf
+  with bisim Rst n1 .proj₁ {s'} (node1 (~-reflexive-step eqS))
+... | p , t→p , Rs'p = ⊥-elim (leaf-no-successors eqT t→p)
+Bisim⇒SameArity-node1 bisim {s} (node1 s') Rst | ._ | node1 t' = node1 t'
+Bisim⇒SameArity-node1 bisim {s} (node1 s') Rst | ._ | node2 tl tr 
+  with bisim Rst n2ₗ .proj₂ {tl} (node2ₗ (~-reflexive-step eqT))
+... | p , t→p , Rs'p = ⊥-elim (unary-only-n1 {s = s .subtree} (IsUnary-fromEq eqS) (λ ()) t→p)
+Bisim⇒SameArity-node1 bisim {s} (node1 s') Rst | ._ | nodeη t'
+  with bisim Rst nη .proj₂ {t'} (nodeη (~-reflexive-step eqT))
+... | p , t→p , Rs'p = ⊥-elim (unary-only-n1 {s = s .subtree} (IsUnary-fromEq eqS) (λ ()) t→p)
+
+Bisim⇒SameArity-node2 : ∀ {X} {R : CoTree X → CoTree X → Set}
+                      → IsBisimulation (CoTree-LTS X) R
+                      → ∀ {s} → IsBinary (s .subtree) → ∀ {t}
+                      → R s t
+                      → IsBinary (t .subtree)
+Bisim⇒SameArity-node2 bisim {s} node2-s {t} Rst with s .subtree in eqS | t .subtree in eqT
+Bisim⇒SameArity-node2 bisim {s} (node2 sl sr) {t} Rst | ._ | leaf 
+  with bisim Rst n2ₗ .proj₁ {sl} (node2ₗ (~-reflexive-step eqS))
+... | p , t→p , Rs'p = ⊥-elim (leaf-no-successors eqT t→p)
+Bisim⇒SameArity-node2 bisim {s} (node2 sl sr) {t} Rst | ._ | node1 t' 
+  with bisim Rst n1 .proj₂ {t'} (node1 (~-reflexive-step eqT))
+... | p , t→p , Rs'p = ⊥-elim (binary-not-n1 (IsBinary-fromEq eqS) refl t→p)
+Bisim⇒SameArity-node2 bisim {s} (node2 sl sr) {t} Rst | ._ | node2 tl tr = node2 tl tr
+Bisim⇒SameArity-node2 bisim {s} (node2 sl sr) {t} Rst | ._ | nodeη t' 
+  with bisim Rst nη .proj₂ {t'} (nodeη (~-reflexive-step eqT))
+... | p , t→p , Rs'p = ⊥-elim (binary-not-nη (IsBinary-fromEq eqS) refl t→p)
+
+Bisim⇒SameArity-nodeη : ∀ {X} {R : CoTree X → CoTree X → Set}
+                      → IsBisimulation (CoTree-LTS X) R
+                      → ∀ {s} → IsBinder (s .subtree) → ∀ {t}
+                      → R s t
+                      → IsBinder (t .subtree)
+Bisim⇒SameArity-nodeη bisim {s} nodeη-s {t} Rst with s .subtree in eqS | t .subtree in eqT
+Bisim⇒SameArity-nodeη bisim {s} (nodeη s') {t} Rst | ._ | leaf 
+  with bisim Rst nη .proj₁ {s'} (nodeη (~-reflexive-step eqS))
+... | p , t→p , Rs'p = ⊥-elim (leaf-no-successors eqT t→p)
+Bisim⇒SameArity-nodeη bisim {s} (nodeη s') {t} Rst | ._ | node1 t' 
+  with bisim Rst n1 .proj₂ {t'} (node1 (~-reflexive-step eqT))
+... | p , t→p , Rs'p = ⊥-elim (binder-only-nη (IsBinder-fromEq eqS) (λ ()) t→p)
+Bisim⇒SameArity-nodeη bisim {s} (nodeη s') {t} Rst | ._ | node2 tl tr 
+  with bisim Rst n2ₗ .proj₂ {tl} (node2ₗ (~-reflexive-step eqT))
+... | p , t→p , Rs'p = ⊥-elim (binder-only-nη (IsBinder-fromEq eqS) (λ ()) t→p)
+Bisim⇒SameArity-nodeη bisim {s} (nodeη s') {t} Rst | ._ | nodeη t' = nodeη t'
 
 Bisim⇒SameArity : ∀ {X} {R : CoTree X → CoTree X → Set}
                 → IsBisimulation (CoTree-LTS X) R
                 → ∀ {s t} → R s t → SameArity s t
-Bisim⇒SameArity bisim {s} {t} Rst with s .subtree in eq
-... | leaf = IsLeaf-SameArity (Bisim⇒SameArity-leaf bisim {s} (IsLeaf-fromEq eq) t Rst)
-... | node1 x = {!!}
-... | node2 x x₁ = {!!}
-... | nodeη x = {!!}
+Bisim⇒SameArity bisim {s} Rst with s .subtree in eq
+... | leaf = IsLeaf-SameArity (Bisim⇒SameArity-leaf bisim (IsLeaf-fromEq eq) Rst)
+... | node1 _ = IsUnary-SameArity (Bisim⇒SameArity-node1 bisim (IsUnary-fromEq eq) Rst)
+... | node2 _ _ = IsBinary-SameArity (Bisim⇒SameArity-node2 bisim (IsBinary-fromEq eq) Rst)
+... | nodeη _ = IsBinder-SameArity (Bisim⇒SameArity-nodeη bisim (IsBinder-fromEq eq) Rst)
 
 Bisim⇒CotreeBisim : ∀ {X} {R : CoTree X → CoTree X → Set}
                   → IsBisimulation (CoTree-LTS X) R
@@ -316,6 +404,14 @@ Bisim⇒CotreeBisim bisim .nullary = {!!}
 Bisim⇒CotreeBisim bisim .unary = {!!}
 Bisim⇒CotreeBisim bisim .binary = {!!}
 Bisim⇒CotreeBisim bisim .binder = {!!}
+
+-- TODO: It would be proper to also assert CotreeBisim⇒Bisim, showing that the two notions are inter-derivable.
+-- Ideally these two maps will even be mutually inverse, but I don't really care about that.
+CotreeBisim⇒Bisim : ∀ {X} {R : CoTree X → CoTree X → Set}
+                  → IsCotreeBisimulation R
+                  → IsBisimulation (CoTree-LTS X) R
+CotreeBisim⇒Bisim bisim Rpq l .proj₁ p→p' = {!!}
+CotreeBisim⇒Bisim bisim Rpq l .proj₂ q→q' = {!!}
 
 ------------------
 -- Bisimilarity --
@@ -330,8 +426,6 @@ Bisim⇒CotreeBisim bisim .binder = {!!}
 
 -- And thus, pointwise lifting of equality really is bisimilarity of cotrees.
 ~-is-bisimilarity : ∀ {X} → IsBisimilarity (CoTree-LTS X) _~_
-~-is-bisimilarity p q .Equivalence.to p~q = _~_ , ~-is-bisimulation , p~q
-~-is-bisimilarity p q .Equivalence.from (R , R-bisim , Rpq) = ~-greatest-bisimulation R-bisim Rpq
-~-is-bisimilarity p q .Equivalence.to-cong = {!!}
-~-is-bisimilarity p q .Equivalence.from-cong = {!!}
+~-is-bisimilarity p q .proj₁ p~q = _~_ , ~-is-bisimulation , p~q
+~-is-bisimilarity p q .proj₂ (R , R-bisim , Rpq) = ~-greatest-bisimulation R-bisim Rpq
 
