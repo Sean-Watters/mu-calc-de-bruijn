@@ -9,13 +9,14 @@ open import Relation.Nullary
 open import Relation.Binary
 open import Relation.Binary.PropositionalEquality
 
-open import Data.LTS.Core
+open import Data.LTS.Core as Lts using (LTS) 
+open import Data.LTS.WithObservations
 open import Codata.CoTree.Core
 
 private variable
   X : Set
 
-open LTS
+open LTSO
 
 -----------------------------
 -- The Bisimilarity Setoid --
@@ -103,31 +104,45 @@ IsSuccessor s l t = IsSuccessor' (s .subtree) l t
 -- isomorphism of the parameter types; this easier notion suffices.
 -- 
 -- The states are the cotrees themselves, and there is a transition `s -[l]-> t`
--- if t is exactly the successor of s in direction l. 
-CoTree-LTS : (X : Set) → LTS 0ℓ 0ℓ 0ℓ
-CoTree-LTS X .State = CoTree X
-CoTree-LTS X .Label = Arity
-CoTree-LTS X ._-[_]->_ = IsSuccessor
+-- if t is exactly the successor of s in direction l.
+-- The direct obervations correspond exactly to reading the head.
+CoTree-LTSO : (X : Set) → LTSO 0ℓ 0ℓ 0ℓ 0ℓ
+CoTree-LTSO X .lts .LTS.State = CoTree X
+CoTree-LTSO X .lts .LTS.Label = Arity
+CoTree-LTSO X .lts .LTS._-[_]->_ = IsSuccessor
+CoTree-LTSO X .Data = X
+CoTree-LTSO X .Observe = CoTree.head
 
--- The identity type is a bisimulation of this LTS
-≡-is-bisimulation : ∀ {X} → IsBisimulation (CoTree-LTS X) _≡_
-≡-is-bisimulation {p = p} {q = .p} refl l .proj₁ {p'} p→p' = p' , p→p' , refl
-≡-is-bisimulation {p = p} {q = .p} refl l .proj₂ {q'} p→q' = q' , p→q' , refl
+
+-- The identity type is a bisimulation of this LTSO
+≡-is-bisimulation : ∀ {X} → IsBisimulation (CoTree-LTSO X) _≡_
+≡-is-bisimulation .IsBisimulation.lts-bisim refl l .proj₁ p→p' = _ , p→p' , refl
+≡-is-bisimulation .IsBisimulation.lts-bisim refl l .proj₂ q→q' = _ , q→q' , refl
+≡-is-bisimulation .IsBisimulation.eq-obervations refl = refl
 
 -- The pointwise lifting of equality is a bisimulation of this LTS
-~-is-bisimulation : ∀ {X} → IsBisimulation (CoTree-LTS X) _~_
-~-is-bisimulation p~q l .proj₁ (node1 x) = _ , node1 (~-trans-step ((~-sym p~q) .subtree) x) , ~-refl
-~-is-bisimulation p~q l .proj₁ (node2ₗ x) = _ , node2ₗ (~-trans-step ((~-sym p~q) .subtree) x) , ~-refl
-~-is-bisimulation p~q l .proj₁ (node2ᵣ x) = _ , node2ᵣ (~-trans-step ((~-sym p~q) .subtree) x) , ~-refl
-~-is-bisimulation p~q l .proj₁ (nodeη x) = _ , nodeη (~-trans-step ((~-sym p~q) .subtree) x) , ~-refl
-~-is-bisimulation p~q l .proj₂ (node1 x) = _ , node1 (~-trans-step (p~q .subtree) x) , ~-refl
-~-is-bisimulation p~q l .proj₂ (node2ₗ x) =  _ , node2ₗ (~-trans-step (p~q .subtree) x) , ~-refl
-~-is-bisimulation p~q l .proj₂ (node2ᵣ x) = _ , node2ᵣ (~-trans-step (p~q .subtree) x) , ~-refl
-~-is-bisimulation p~q l .proj₂ (nodeη x) = _ , nodeη (~-trans-step (p~q .subtree) x) , ~-refl
+~-is-bisimulation' : ∀ {X} → Lts.IsBisimulation (CoTree-LTSO X .lts) _~_
+~-is-bisimulation' p~q l .proj₁ (node1 x) = _ , node1 (~-trans-step ((~-sym p~q) .subtree) x) , ~-refl
+~-is-bisimulation' p~q l .proj₁ (node2ₗ x) = _ , node2ₗ (~-trans-step ((~-sym p~q) .subtree) x) , ~-refl
+~-is-bisimulation' p~q l .proj₁ (node2ᵣ x) = _ , node2ᵣ (~-trans-step ((~-sym p~q) .subtree) x) , ~-refl
+~-is-bisimulation' p~q l .proj₁ (nodeη x) = _ , nodeη (~-trans-step ((~-sym p~q) .subtree) x) , ~-refl
+~-is-bisimulation' p~q l .proj₂ (node1 x) = _ , node1 (~-trans-step (p~q .subtree) x) , ~-refl
+~-is-bisimulation' p~q l .proj₂ (node2ₗ x) =  _ , node2ₗ (~-trans-step (p~q .subtree) x) , ~-refl
+~-is-bisimulation' p~q l .proj₂ (node2ᵣ x) = _ , node2ᵣ (~-trans-step (p~q .subtree) x) , ~-refl
+~-is-bisimulation' p~q l .proj₂ (nodeη x) = _ , nodeη (~-trans-step (p~q .subtree) x) , ~-refl
+
+~-is-bisimulation : ∀ {X} → IsBisimulation (CoTree-LTSO X) _~_
+~-is-bisimulation .IsBisimulation.lts-bisim = ~-is-bisimulation' 
+~-is-bisimulation .IsBisimulation.eq-obervations p~q = p~q .head
+
 
 ----------------------------------------
 -- A Different Notion of Bisimilarity --
 ----------------------------------------
+
+-- Bisimilarity for LTS(O)'s makes it hard to infer that bisimilar trees have root nodes with the same arity.
+-- We introduce a more concrete notion of bisimulation specialised to cotrees, which makes this explicit, and
+-- show that it implies the usual notion of bisimulation. (TODO: does it even coincide?)
 
 data SameArity' {X : Set} : CoTree-step X → CoTree-step X → Set where
   leaf : SameArity' leaf leaf
@@ -329,7 +344,7 @@ binder-only-nη (nodeη _) l≠nη (nodeη _) = l≠nη refl
 -- handling all 25 cases, using the above to discharge the impossible ones.
 
 Bisim⇒SameArity-leaf : ∀ {X} {R : CoTree X → CoTree X → Set}
-                     → IsBisimulation (CoTree-LTS X) R
+                     → Lts.IsBisimulation (CoTree-LTSO X .lts) R
                      → ∀ {s} → IsLeaf (s .subtree) → ∀ {t}
                      → R s t
                      → IsLeaf (t .subtree)
@@ -346,7 +361,7 @@ Bisim⇒SameArity-leaf bisim leaf Rst | .leaf | nodeη t'
 ... | p , lf→p , Rpt = ⊥-elim (leaf-no-successors eqS lf→p)
 
 Bisim⇒SameArity-node1 : ∀ {X} {R : CoTree X → CoTree X → Set}
-                      → IsBisimulation (CoTree-LTS X) R
+                      → Lts.IsBisimulation (CoTree-LTSO X .lts) R
                       → ∀ {s} → IsUnary (s .subtree) → ∀ {t}
                       → R s t
                       → IsUnary (t .subtree)
@@ -363,7 +378,7 @@ Bisim⇒SameArity-node1 bisim {s} (node1 s') Rst | ._ | nodeη t'
 ... | p , t→p , Rs'p = ⊥-elim (unary-only-n1 {s = s .subtree} (IsUnary-fromEq eqS) (λ ()) t→p)
 
 Bisim⇒SameArity-node2 : ∀ {X} {R : CoTree X → CoTree X → Set}
-                      → IsBisimulation (CoTree-LTS X) R
+                      → Lts.IsBisimulation (CoTree-LTSO X .lts) R
                       → ∀ {s} → IsBinary (s .subtree) → ∀ {t}
                       → R s t
                       → IsBinary (t .subtree)
@@ -380,7 +395,7 @@ Bisim⇒SameArity-node2 bisim {s} (node2 sl sr) {t} Rst | ._ | nodeη t'
 ... | p , t→p , Rs'p = ⊥-elim (binary-not-nη (IsBinary-fromEq eqS) refl t→p)
 
 Bisim⇒SameArity-nodeη : ∀ {X} {R : CoTree X → CoTree X → Set}
-                      → IsBisimulation (CoTree-LTS X) R
+                      → Lts.IsBisimulation (CoTree-LTSO X .lts) R
                       → ∀ {s} → IsBinder (s .subtree) → ∀ {t}
                       → R s t
                       → IsBinder (t .subtree)
@@ -397,7 +412,7 @@ Bisim⇒SameArity-nodeη bisim {s} (nodeη s') {t} Rst | ._ | node2 tl tr
 Bisim⇒SameArity-nodeη bisim {s} (nodeη s') {t} Rst | ._ | nodeη t' = nodeη t'
 
 Bisim⇒SameArity : ∀ {X} {R : CoTree X → CoTree X → Set}
-                → IsBisimulation (CoTree-LTS X) R
+                → Lts.IsBisimulation (CoTree-LTSO X .lts) R
                 → ∀ {s t} → R s t → SameArity s t
 Bisim⇒SameArity bisim {s} Rst with s .subtree in eq
 ... | leaf = IsLeaf-SameArity (Bisim⇒SameArity-leaf bisim (IsLeaf-fromEq eq) Rst)
@@ -414,13 +429,11 @@ Bisim⇒SameArity bisim {s} Rst with s .subtree in eq
 -- this separately for each of the four possible arities.
 
 
--- TODO: Would be easiest to shift over to LTSO's for this I think.
-
 Bisim⇒CotreeBisim : ∀ {X} {R : CoTree X → CoTree X → Set}
-                  → IsBisimulation (CoTree-LTS X) R
+                  → IsBisimulation (CoTree-LTSO X) R
                   → IsCotreeBisimulation R
-Bisim⇒CotreeBisim bisim .same-arity = Bisim⇒SameArity bisim
-Bisim⇒CotreeBisim bisim .nullary {s} {t} Rst u v = {!bisim Rst !} -- yeahhhhhh we really do need the observations here
+Bisim⇒CotreeBisim bisim .same-arity = Bisim⇒SameArity (bisim .IsBisimulation.lts-bisim)
+Bisim⇒CotreeBisim bisim .nullary {s} {t} Rst u v = {!bisim Rst !}
 Bisim⇒CotreeBisim bisim .unary = {!!}
 Bisim⇒CotreeBisim bisim .binary = {!!}
 Bisim⇒CotreeBisim bisim .binder = {!!}
@@ -429,9 +442,8 @@ Bisim⇒CotreeBisim bisim .binder = {!!}
 -- Ideally these two maps will even be mutually inverse, but I don't really care about that.
 CotreeBisim⇒Bisim : ∀ {X} {R : CoTree X → CoTree X → Set}
                   → IsCotreeBisimulation R
-                  → IsBisimulation (CoTree-LTS X) R
-CotreeBisim⇒Bisim bisim Rpq l .proj₁ p→p' = {!!}
-CotreeBisim⇒Bisim bisim Rpq l .proj₂ q→q' = {!!}
+                  → IsBisimulation (CoTree-LTSO X) R
+CotreeBisim⇒Bisim = {!!}
 
 ------------------
 -- Bisimilarity --
@@ -440,12 +452,12 @@ CotreeBisim⇒Bisim bisim Rpq l .proj₂ q→q' = {!!}
 -- Pointwise equality is therefore also the greatest bisimulation of the cotrees
 -- LTS:
 ~-greatest-bisimulation : ∀ {X} {R : CoTree X → CoTree X → Set}
-                        → IsBisimulation (CoTree-LTS X) R
+                        → IsBisimulation (CoTree-LTSO X) R
                         → (∀ {s t : CoTree X} → R s t → s ~ t)
 ~-greatest-bisimulation = ~-greatest-cotree-bisimulation ∘ Bisim⇒CotreeBisim
 
 -- And thus, pointwise lifting of equality really is bisimilarity of cotrees.
-~-is-bisimilarity : ∀ {X} → IsBisimilarity (CoTree-LTS X) _~_
+~-is-bisimilarity : ∀ {X} → IsBisimilarity (CoTree-LTSO X) _~_
 ~-is-bisimilarity p q .proj₁ p~q = _~_ , ~-is-bisimulation , p~q
 ~-is-bisimilarity p q .proj₂ (R , R-bisim , Rpq) = ~-greatest-bisimulation R-bisim Rpq
 

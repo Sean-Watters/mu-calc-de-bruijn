@@ -20,16 +20,16 @@ record LTSO (ℓs ℓl ℓt ℓx : Level) : Set (suc (ℓs ⊔ ℓl ⊔ ℓt ⊔
     lts : LTS ℓs ℓl ℓt
   open LTS lts public
   field
-    X : Set ℓx
-    Observe : State -> X
+    Data : Set ℓx
+    Observe : State -> Data
 
 -- A bisimulation on the underlying LTS, plus the observations have to match
 -- at bisimilar states.
 record IsBisimulation (ltso : LTSO ℓs ℓl ℓt ℓx) (R : (p q : LTSO.State ltso) → Set) : Set (ℓs ⊔ ℓl ⊔ ℓt ⊔ ℓx) where
   open LTSO ltso                    
   field
-    bisim : Lts.IsBisimulation lts R
-    eq-obervations : ((p q : State) → R p q → Observe p ≡ Observe q)
+    lts-bisim : Lts.IsBisimulation lts R
+    eq-obervations : ({p q : State} → R p q → Observe p ≡ Observe q)
 
 -- Bisimilarity is exactly the same, except it uses the new notion of bisimulation.
 IsBisimilarity :  (ltso : LTSO ℓs ℓl ℓt ℓx) → (_~_ : (p q : LTSO.State ltso) → Set) → Set (suc zero ⊔ ℓs ⊔ ℓl ⊔ ℓt ⊔ ℓx)
@@ -40,25 +40,24 @@ IsBisimilarity ltso _~_
   where open LTSO ltso
 
 
--- By adding X to the state space, and adding a new "observe" label for transitions to X,
--- we can encode (X, Observe) in a normal LTS.
+-- By adding Data to the state space, and adding a new "observe" label for transitions to Data,
+-- we can encode (Data, Observe) in a normal LTS.
 
-LTSO→LTS : LTSO ℓs ℓl ℓt ℓx → LTS (ℓs ⊔ ℓx) ℓl {!!}
-LTSO→LTS ltso .LTS.State = State ⊎ X
+LTSO→LTS : LTSO ℓs ℓl 0ℓ 0ℓ → LTS ℓs ℓl 0ℓ
+LTSO→LTS ltso .LTS.State = State ⊎ Data
   where open LTSO ltso
-LTSO→LTS ltso .LTS.Label = Maybe Label -- `nothing` represents the "observe an X" transitions
+LTSO→LTS ltso .LTS.Label = Maybe Label -- `nothing` represents the "observation" transitions
   where open LTSO ltso
-LTSO→LTS ltso .LTS._-[_]->_ (inj₁ s) (just l) (inj₁ t) = {!s -[ l ]-> t!}
+LTSO→LTS ltso .LTS._-[_]->_ (inj₁ s) (just l) (inj₁ t) = (s -[ l ]-> t) -- l-labelled transitions s→t are as usual
   where open LTSO ltso
-LTSO→LTS ltso .LTS._-[_]->_ (inj₁ s) nothing (inj₂ x) = {! Observe s ≡ x !}
+LTSO→LTS ltso .LTS._-[_]->_ (inj₁ s) nothing (inj₂ x) =  Observe s ≡ x -- nothing-labelled transitions s→x are observation
   where open LTSO ltso
-LTSO→LTS ltso .LTS._-[_]->_ _ _ _ = {!⊥!}
+LTSO→LTS ltso .LTS._-[_]->_ _ _ _ = ⊥ -- there are no other transitions
 
 
-
--- LTSO→LTS-preserves-bisimulation : (ltso : LTSO ℓs ℓl ℓt ℓx)
+-- LTSO→LTS-preserves-bisimulation : (ltso : LTSO ℓs ℓl 0ℓ 0ℓ)
 --                                 → (R : (p q : LTSO.State ltso) → Set)
 --                                 → IsBisimulation ltso R
---                                 → Lts.IsBisimulation (LTSO→LTS ltso) (λ p q → R (p .proj₁) (q .proj₁))
--- LTSO→LTS-preserves-bisimulation ltso R isbisim = ?
+--                                 → Lts.IsBisimulation (LTSO→LTS ltso) {!R!}
+-- LTSO→LTS-preserves-bisimulation ltso R isbisim = {!!}
 
