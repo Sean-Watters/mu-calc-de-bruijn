@@ -29,7 +29,7 @@ record IsBisimulation (ltso : LTSO ℓs ℓl ℓt ℓx) (R : (p q : LTSO.State l
   open LTSO ltso                    
   field
     lts-bisim : Lts.IsBisimulation lts R
-    eq-obervations : ({p q : State} → R p q → Observe p ≡ Observe q)
+    eq-observations : ({p q : State} → R p q → Observe p ≡ Observe q)
 
 -- Bisimilarity is exactly the same, except it uses the new notion of bisimulation.
 IsBisimilarity :  (ltso : LTSO ℓs ℓl ℓt ℓx) → (_~_ : (p q : LTSO.State ltso) → Set) → Set (suc zero ⊔ ℓs ⊔ ℓl ⊔ ℓt ⊔ ℓx)

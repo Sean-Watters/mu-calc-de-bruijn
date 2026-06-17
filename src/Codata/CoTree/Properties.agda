@@ -17,6 +17,7 @@ private variable
   X : Set
 
 open LTSO
+open IsBisimulation
 
 -----------------------------
 -- The Bisimilarity Setoid --
@@ -92,11 +93,24 @@ data IsSuccessor' {X : Set} : CoTree-step X → Arity → CoTree X → Set where
   node2ᵣ : ∀ {s tl tr} → Pointwise-step _≡_ s (node2 tl tr) → IsSuccessor' s n2ᵣ tr
   nodeη : ∀ {s t} → Pointwise-step _≡_ s (nodeη t) → IsSuccessor' s nη t
 
-
-IsSuccessor : {X : Set} → CoTree X → Arity → CoTree X → Set
+IsSuccessor : CoTree X → Arity → CoTree X → Set
 IsSuccessor s l t = IsSuccessor' (s .subtree) l t
-  
 
+IsSuccessor-node1-fromEq : ∀ {s t : CoTree X} → s .subtree ≡ node1 t → IsSuccessor s n1 t
+IsSuccessor-node1-fromEq {s = s} {t} x with s .subtree in eq
+IsSuccessor-node1-fromEq {s = s} {t} refl | s' = node1 (node1 ~-refl)
+
+IsSuccessor-node2ₗ-fromEq : ∀ {s tl tr : CoTree X} → s .subtree ≡ node2 tl tr → IsSuccessor s n2ₗ tl
+IsSuccessor-node2ₗ-fromEq {s = s} {t} x with s .subtree in eq
+IsSuccessor-node2ₗ-fromEq {s = s} {t} refl | s' = node2ₗ (node2 ~-refl ~-refl)
+
+IsSuccessor-node2ᵣ-fromEq : ∀ {s tl tr : CoTree X} → s .subtree ≡ node2 tl tr → IsSuccessor s n2ᵣ tr
+IsSuccessor-node2ᵣ-fromEq {s = s} {t} x with s .subtree in eq
+IsSuccessor-node2ᵣ-fromEq {s = s} {t} refl | s' = node2ᵣ (node2 ~-refl ~-refl)
+
+IsSuccessor-nodeη-fromEq : ∀ {s t : CoTree X} → s .subtree ≡ nodeη t → IsSuccessor s nη t
+IsSuccessor-nodeη-fromEq {s = s} {t} x with s .subtree in eq
+IsSuccessor-nodeη-fromEq {s = s} {t} refl | s' = nodeη (nodeη ~-refl)
 
 -- We can interpret the entire type of cotrees for any X as an LTS.
 -- We could have even intepreted the fibration of cotrees bundled with their
@@ -116,9 +130,9 @@ CoTree-LTSO X .Observe = CoTree.head
 
 -- The identity type is a bisimulation of this LTSO
 ≡-is-bisimulation : ∀ {X} → IsBisimulation (CoTree-LTSO X) _≡_
-≡-is-bisimulation .IsBisimulation.lts-bisim refl l .proj₁ p→p' = _ , p→p' , refl
-≡-is-bisimulation .IsBisimulation.lts-bisim refl l .proj₂ q→q' = _ , q→q' , refl
-≡-is-bisimulation .IsBisimulation.eq-obervations refl = refl
+≡-is-bisimulation .lts-bisim refl l .proj₁ p→p' = _ , p→p' , refl
+≡-is-bisimulation .lts-bisim refl l .proj₂ q→q' = _ , q→q' , refl
+≡-is-bisimulation .eq-observations refl = refl
 
 -- The pointwise lifting of equality is a bisimulation of this LTS
 ~-is-bisimulation' : ∀ {X} → Lts.IsBisimulation (CoTree-LTSO X .lts) _~_
@@ -132,8 +146,8 @@ CoTree-LTSO X .Observe = CoTree.head
 ~-is-bisimulation' p~q l .proj₂ (nodeη x) = _ , nodeη (~-trans-step (p~q .subtree) x) , ~-refl
 
 ~-is-bisimulation : ∀ {X} → IsBisimulation (CoTree-LTSO X) _~_
-~-is-bisimulation .IsBisimulation.lts-bisim = ~-is-bisimulation' 
-~-is-bisimulation .IsBisimulation.eq-obervations p~q = p~q .head
+~-is-bisimulation .lts-bisim = ~-is-bisimulation' 
+~-is-bisimulation .eq-observations p~q = p~q .head
 
 
 ----------------------------------------
@@ -424,6 +438,14 @@ Bisim⇒SameArity bisim {s} Rst with s .subtree in eq
 
 ---------
 
+predecessor-unique : ∀ {l} {s s' : CoTree-step X} {t : CoTree X} → IsSuccessor' s l t → IsSuccessor' s' l t → Pointwise-step _≡_ s s'
+predecessor-unique (node1 x) (node1 y) = ~-trans-step x (~-sym-step y)
+predecessor-unique (node2ₗ {tr = tr0} x) (node2ₗ {tr = tr1} y) = {!!} -- this is gonna be false; we need *Both* sides for the binary case
+predecessor-unique (node2ᵣ x) (node2ᵣ y) = {!!}
+predecessor-unique (nodeη x) (nodeη y) = ~-trans-step x (~-sym-step y)
+
+---------
+
 -- To finish the proof of this first direction, we need to show that if two trees of the same
 -- arity are bisimilar, then they have equal heads and bisimilar subtrees. And we have to do
 -- this separately for each of the four possible arities.
@@ -432,9 +454,14 @@ Bisim⇒SameArity bisim {s} Rst with s .subtree in eq
 Bisim⇒CotreeBisim : ∀ {X} {R : CoTree X → CoTree X → Set}
                   → IsBisimulation (CoTree-LTSO X) R
                   → IsCotreeBisimulation R
-Bisim⇒CotreeBisim bisim .same-arity = Bisim⇒SameArity (bisim .IsBisimulation.lts-bisim)
-Bisim⇒CotreeBisim bisim .nullary {s} {t} Rst u v = {!bisim Rst !}
-Bisim⇒CotreeBisim bisim .unary = {!!}
+Bisim⇒CotreeBisim bisim .same-arity = Bisim⇒SameArity (bisim .lts-bisim)
+Bisim⇒CotreeBisim bisim .nullary Rst _ _ = bisim .eq-observations Rst
+Bisim⇒CotreeBisim bisim .unary Rst _ _ .proj₁ = bisim .eq-observations Rst
+Bisim⇒CotreeBisim bisim .unary {s} {t} Rst u v .proj₂ with s .subtree in eqS | t .subtree in eqT
+Bisim⇒CotreeBisim {X} {R} bisim .unary {s} {t} Rst (node1 s') (node1 t') .proj₂ | node1 _ | node1 _
+  with bisim .lts-bisim Rst n1 .proj₁ {p' = s'} (IsSuccessor-node1-fromEq {s = s} eqS)
+  | bisim .lts-bisim Rst n1 .proj₂ {t'} (IsSuccessor-node1-fromEq {s = t} eqT)
+... | u , t→u , Rs'u | v , s→v , Rvt′ = {!!}
 Bisim⇒CotreeBisim bisim .binary = {!!}
 Bisim⇒CotreeBisim bisim .binder = {!!}
 
