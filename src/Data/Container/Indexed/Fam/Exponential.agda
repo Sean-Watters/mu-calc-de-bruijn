@@ -86,4 +86,4 @@ uncurry : ∀ {X Y Z : Container I J}
         → X ⇒ (Y ⟨⇒⟩ Z)
         → (X ⟨×⟩ Y) ⇒ Z
 uncurry f .fw = uncurry-fw f
-uncurry f .bw = {!!}
+uncurry f .bw pz = uncurry-bw f pz _ refl
