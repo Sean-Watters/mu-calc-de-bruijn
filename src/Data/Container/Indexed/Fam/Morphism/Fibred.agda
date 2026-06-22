@@ -9,7 +9,7 @@ open Container
 
 private variable
   I J : Set
-  C D : Container I J
+  C D E : Container I J
 
 -- A variant which is truly J-indexed, to play around with
 -- "Fibred hom of indexed containers" -Timo
@@ -23,3 +23,11 @@ record IHom (C : Container I J) (D : Container I J) (j : J) : Set where
   ⟪_⟫ : {P : I → Set}
       → ⟦ C ⟧ P j → ⟦ D ⟧ P j
   ⟪_⟫ (s , p) = fw s , p ∘ bw
+open IHom
+
+⟨id⟩ : ∀ j → IHom C C j
+⟨id⟩ {C = S ◁ P} j = id ▷ id
+
+⟨comp⟩ : ∀ j → IHom C D j → IHom D E j → IHom C E j
+⟨comp⟩ j f g = (g .fw ∘ f .fw) ▷ (f .bw ∘ g .bw)
+

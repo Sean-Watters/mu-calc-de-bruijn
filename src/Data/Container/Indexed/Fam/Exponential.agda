@@ -4,7 +4,7 @@ module Data.Container.Indexed.Fam.Exponential where
 open import Data.Container.Indexed.Fam.Base
 open import Data.Container.Indexed.Fam.Modality
 open import Data.Container.Indexed.Fam.Combinator
-open import Data.Container.Indexed.Fam.Morphism
+open import Data.Container.Indexed.Fam.Morphism.Base
 open _⇒_
 open import Data.Maybe
 open import Data.Product hiding (curry; uncurry)
@@ -16,9 +16,16 @@ open import Relation.Binary.PropositionalEquality hiding (J)
 private variable
   I J : Set
 
+
+
+
+
+-------------------------------------
+
 _⟨⇒⟩_ : (C D : Container I J) → Container I J
 (C ⟨⇒⟩ D) .Shape j = (s : C .Shape j) → ⟦ D ⟧ (λ i → Maybe (C .Position s i)) j
-(C ⟨⇒⟩ D) .Position {j} fw i = Σ[ s ∈ C .Shape j ] (◇ D (_≡ nothing) (fw s))
+(C ⟨⇒⟩ D) .Position {j} fw i = Σ[ s ∈ C .Shape j ] (◇ D (λ {i'} m → i ≡ i' × m ≡ nothing) (fw s))
+
 
 -- Currying
 
@@ -26,6 +33,7 @@ curry-fw : {X Y Z : Container I J}
          → (X ⟨×⟩ Y) ⇒ Z
          → {j : J} → (sx : Shape X j) → Shape (Y ⟨⇒⟩ Z) j
 curry-fw (fw ▷ bw) sx sy = (fw (sx , sy)) , isInj₂ ∘ bw
+
 
 -- The backwards pass.
 curry-bw : {X Y Z : Container I J}
@@ -35,16 +43,17 @@ curry-bw : {X Y Z : Container I J}
          → {i : I}
          → Position (Y ⟨⇒⟩ Z) (curry-fw f sx) i
          → Position X sx i
-curry-bw (fw ▷ bw) {i = i} (sy , p)
-  = let (pz , f) = ◇.proof p i
+curry-bw {X = X} (fw ▷ bw) {sx = sx} {i = i} (sy , p)
+  = let (i' , pz , (i≡i' , f)) = ◇.proof p
         x+y = bw pz
-    in isInj₂-lemma x+y f
+    in subst (Position X sx) (sym i≡i') (isInj₂-lemma x+y f)
 
 curry : ∀ {X Y Z : Container I J}
       → (X ⟨×⟩ Y) ⇒ Z
       → X ⇒ (Y ⟨⇒⟩ Z)
 curry f .fw = curry-fw f
 curry f .bw = curry-bw f
+
 
 -- Uncurrying
 
@@ -71,7 +80,7 @@ uncurry-bw : ∀ {X Y Z : Container I J}
 uncurry-bw (fw ▷ bw) {j} {sx , sy} {i} pz (just y) m-eq
   = inj₂ y
 uncurry-bw (fw ▷ bw) {j} {sx , sy} {i} pz nothing m-eq
-  = inj₁ (bw (sy , any λ i' → {!pz!} , {!!}))
+  = inj₁ (bw (sy , any (i , pz , refl , m-eq)))
 
 uncurry : ∀ {X Y Z : Container I J}
         → X ⇒ (Y ⟨⇒⟩ Z)

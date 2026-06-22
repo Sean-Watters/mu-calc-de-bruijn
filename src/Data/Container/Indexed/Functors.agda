@@ -83,15 +83,15 @@ record RawIFunc* (I J : Set) : Set₁ where
     obj : IFunc* I J
     mor : IFunc*-map obj
 
-record LawfulIFunc* (I J : Set) : Set₁ where
-  field
-    raw : RawIFunc* I J
-  open RawIFunc* raw
-  field
-    -- preserves-id : ∀ {A : Fam I} (i : I) (j : J) → mor (id* {A = A}) ≗ id* 
-    -- preserves-∘ : ∀ {A B C}
-    --             → (g : B →* C) (f : A →* B)
-    --             → mor (g ∘* f) ≗ ((mor g) ∘* (mor f))
+-- record LawfulIFunc* (I J : Set) : Set₁ where
+--   field
+--     raw : RawIFunc* I J
+--   open RawIFunc* raw
+--   field
+--     -- preserves-id : ∀ {A : Fam I} (i : I) (j : J) → mor (id* {A = A}) ≗ id* 
+--     -- preserves-∘ : ∀ {A B C}
+--     --             → (g : B →* C) (f : A →* B)
+--     --             → mor (g ∘* f) ≗ ((mor g) ∘* (mor f))
 
 -- Natural transformations of doubly indexed functors
 _⇒*_ : (F G : IFunc* I J) → Set₁

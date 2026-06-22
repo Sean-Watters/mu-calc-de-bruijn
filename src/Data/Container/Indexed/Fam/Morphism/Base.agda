@@ -1,5 +1,5 @@
 {-# OPTIONS --safe #-}
-module Data.Container.Indexed.Fam.Morphism where
+module Data.Container.Indexed.Fam.Morphism.Base where
 
 open import Data.Empty
 open import Data.Unit

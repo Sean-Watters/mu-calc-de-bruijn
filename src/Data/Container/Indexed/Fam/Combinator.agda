@@ -44,7 +44,7 @@ private
 
 _⟨×⟩_ : Container I J → Container I J → Container I J
 (S ◁ P) ⟨×⟩ (T ◁ Q) = (λ j → S j × T j)
-                    ◁ (λ x i → (P (proj₁ x) i) ⊎ (Q (proj₂ x) i))
+                    ◁ (λ S×T i → (P (proj₁ S×T) i) ⊎ (Q (proj₂ S×T) i))
 
 -- Indexed Product.
 -- Generalisation of binary product to indexing sets other than Bool.

@@ -45,7 +45,8 @@ open Container public
         -- → {X Y : I → Set}
         -- → (∀ {i : I} → X i → Y i)
         -- → (∀ {j : J} → ⟦ C ⟧ X j  → ⟦ C ⟧ Y j)
-⟦ C ⟧-map f (s , g) = s , (f ∘ g)
+⟦ C ⟧-map f i (s , g) = s , λ z → f _ (g z)
+
 
 ----------------
 -- Reindexing --
@@ -65,3 +66,4 @@ open Container public
 -- In J
 ⟨mapJ⟩ : {I J J' : Set} → (J' → J) → Container I J → Container I J'
 ⟨mapJ⟩ f = ⟨bimap⟩ id f
+
